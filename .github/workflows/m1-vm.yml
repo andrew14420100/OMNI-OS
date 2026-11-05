@@ -1,4 +1,5 @@
-# OMNI OS — M1: verifica del runner, build sperimentale (P1–P4) e avvio in VM (P5–P7).
+# OMNI OS — M1: verifica del runner, build sperimentale (P1–P4), avvio in VM (P5–P7),
+# Secure Boot emulato solo in VM (P6b), aggiornamenti/rollback (P8) e firme di prova (P9).
 # Prototipo SOLO per macchina virtuale. Nessuna pubblicazione su registry,
 # nessuna release, nessuna ISO, nessun segreto, nessuna chiave definitiva.
 # Percorso approvato: docs/11-m1/percorso-build-vm.md (decisione M1-D2).
@@ -54,10 +55,10 @@ jobs:
         run: MIN_FREE_GB=0 bash tests/vm/runner_check.sh
 
   build-p1-p4:
-    name: P1–P7 base, build, lint, contenuto, disco, avvio UEFI, schermata
+    name: P1–P9 build e test in VM
     needs: runner-check
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -156,6 +157,8 @@ jobs:
           set -euo pipefail
           bash tests/vm/make_disk.sh "$IMAGE_REF" "$VMWORK" "$TESTKEY.pub"
           sudo chown "$(id -u):$(id -g)" "$VMWORK/disk.raw"
+          # copia mai avviata, punto di partenza identico per P6b, P8 e P9
+          cp --sparse=always "$VMWORK/disk.raw" "$VMWORK/disk-pristine.raw"
 
       - name: "P6: avvio UEFI in QEMU e controlli nel sistema avviato"
         run: |
@@ -164,24 +167,86 @@ jobs:
           bash tests/vm/wait_ssh.sh "$TESTKEY" "$VMWORK" 900
           scp -i "$TESTKEY" -P 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
             tests/vm/vm_checks.sh root@127.0.0.1:/var/tmp/vm_checks.sh
-          # attende che la sessione grafica si stabilizzi prima dei controlli
-          for i in $(seq 1 30); do
-            bash tests/vm/vm_ssh.sh "$TESTKEY" systemctl is-active display-manager >/dev/null 2>&1 && break
-            sleep 10
-          done
+          # attende la fine dell'avvio (systemd) prima dei controlli, al massimo 10 minuti
+          t0=$(date +%s)
+          timeout 600 bash tests/vm/vm_ssh.sh "$TESTKEY" systemctl is-system-running --wait || true
+          echo "avvio completato (o scaduto) dopo $(( $(date +%s) - t0 )) s dalla risposta SSH"
           bash tests/vm/vm_ssh.sh "$TESTKEY" bash /var/tmp/vm_checks.sh "$OMNI_VERSION"
 
       - name: "P7: cattura della schermata di accesso"
+        id: p7
         run: |
           set -euo pipefail
           sleep 30
           python3 tests/vm/screenshot.py "$VMWORK/qmp.sock" "$VMWORK/p7-schermata.png"
           ls -l "$VMWORK/p7-schermata.png"
 
-      - name: Arresto della VM
+      - name: Arresto della VM di P6/P7
         if: always()
         run: |
           if [ -f "${VMWORK:-/nonexistent}/qemu.pid" ]; then kill "$(cat "$VMWORK/qemu.pid")" 2>/dev/null || true; fi
+          sleep 3
+
+      - name: "P6b: avvio con Secure Boot emulato (OVMF con chiavi Microsoft, solo VM)"
+        if: ${{ !cancelled() && steps.p7.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          w="$VMWORK/p6b"; mkdir -p "$w"
+          cp --sparse=always "$VMWORK/disk-pristine.raw" "$w/disk.raw"
+          bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" secureboot
+          bash tests/vm/wait_ssh.sh "$TESTKEY" "$w" 900
+          # variabile EFI SecureBoot (GUID globale EFI): 5° byte = 1 se attivo
+          sb=$(bash tests/vm/vm_ssh.sh "$TESTKEY" "od -An -t u1 -j 4 -N 1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c" | tr -d ' ' || true)
+          echo "variabile EFI SecureBoot nella VM: '${sb}' (1 = attivo)"
+          kver=$(bash tests/vm/vm_ssh.sh "$TESTKEY" uname -r || true)
+          echo "kernel avviato con Secure Boot emulato: $kver"
+          kill "$(cat "$w/qemu.pid")" 2>/dev/null || true; sleep 3; rm -f "$w/disk.raw"
+          [ "$sb" = 1 ] || { echo "ERRORE: Secure Boot non risulta attivo nella VM"; exit 1; }
+
+      - name: "P8: aggiornamento, rollback ed errori — bootc e rpm-ostree (dischi separati)"
+        if: ${{ !cancelled() && steps.p7.outcome == 'success' }}
+        run: |
+          set -uo pipefail
+          $PODMAN build --build-arg BASE_IMAGE='${{ steps.lock.outputs.base }}' \
+            --build-arg OMNI_VERSION=0.1.1-m1-dev -t localhost/omni-os:m1-ci-n1 image/ > "$VMWORK/build-n1.log" 2>&1 \
+            || { tail -50 "$VMWORK/build-n1.log"; exit 1; }
+          $PODMAN save --format oci-archive -o "$VMWORK/omni-n1.tar" localhost/omni-os:m1-ci-n1
+          sudo chown "$(id -u):$(id -g)" "$VMWORK/omni-n1.tar"
+          rc=0
+          for c in bootc rpm-ostree; do
+            w="$VMWORK/p8-$c"; mkdir -p "$w"
+            cp --sparse=always "$VMWORK/disk-pristine.raw" "$w/disk.raw"
+            bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" uefi
+            if bash tests/vm/wait_ssh.sh "$TESTKEY" "$w" 900; then
+              bash tests/vm/update_test.sh "$c" "$TESTKEY" "$w" "$VMWORK/omni-n1.tar" 0.1.0-m1-dev 0.1.1-m1-dev || rc=1
+            else
+              rc=1
+            fi
+            cat "$w/update-$c.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+            kill "$(cat "$w/qemu.pid")" 2>/dev/null || true; sleep 3; rm -f "$w/disk.raw"
+          done
+          exit "$rc"
+
+      - name: "P9: firme con chiavi effimere (registro locale solo loopback)"
+        if: ${{ !cancelled() && steps.p7.outcome == 'success' }}
+        run: |
+          set -uo pipefail
+          $PODMAN build --build-arg BASE_IMAGE='${{ steps.lock.outputs.base }}' \
+            --build-arg OMNI_VERSION=0.1.2-m1-dev -t localhost/omni-os:m1-ci-n2 image/ > "$VMWORK/build-n2.log" 2>&1 \
+            || { tail -50 "$VMWORK/build-n2.log"; exit 1; }
+          curl -sSLf -o "$RUNNER_TEMP/cosign" https://github.com/sigstore/cosign/releases/download/v2.6.5/cosign-linux-amd64
+          echo "c3b4f5410e608af03a5eb0aaac84a4313d8da131248e08ff1759ac70c79d1644  $RUNNER_TEMP/cosign" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/cosign"
+          w="$VMWORK/p9"; mkdir -p "$w"
+          cp --sparse=always "$VMWORK/disk-pristine.raw" "$w/disk.raw"
+          bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" uefi
+          bash tests/vm/wait_ssh.sh "$TESTKEY" "$w" 900 || exit 1
+          rc=0
+          bash tests/vm/signature_test.sh "$PODMAN" localhost/omni-os:m1-ci-n1 localhost/omni-os:m1-ci-n2 \
+            "$TESTKEY" "$w" "$RUNNER_TEMP/cosign" 0.1.1-m1-dev || rc=1
+          cat "$w/p9-firma.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          kill "$(cat "$w/qemu.pid")" 2>/dev/null || true; sleep 3; rm -f "$w/disk.raw"
+          exit "$rc"
 
       - name: Artefatti di diagnosi (schermata e console seriale, 3 giorni)
         if: always()
@@ -190,7 +255,12 @@ jobs:
           name: m1-vm-diagnosi
           path: |
             ${{ runner.temp }}/vm/p7-schermata.png
-            ${{ runner.temp }}/vm/serial.log
+            ${{ runner.temp }}/vm/**/serial.log
+            ${{ runner.temp }}/vm/**/*.md
+            ${{ runner.temp }}/vm/**/*.log
+            ${{ runner.temp }}/vm/**/*.json
+            !${{ runner.temp }}/vm/**/*.key
+            !${{ runner.temp }}/vm/**/keys/**
           retention-days: 3
           if-no-files-found: ignore
 

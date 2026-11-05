@@ -21,7 +21,8 @@ version() { ssh_vm '. /usr/lib/omni-os/build-info; echo "$OMNI_OS_VERSION"' 2>/d
 reboot_vm() {
   ssh_vm 'systemctl reboot' >/dev/null 2>&1 || true
   sleep 20
-  bash "$here/wait_ssh.sh" "$key" "$work" 900
+  bash "$here/wait_ssh.sh" "$key" "$work" 900 || return 1
+  timeout 600 bash "$here/vm_ssh.sh" "$key" systemctl is-system-running --wait >/dev/null 2>&1 || true
 }
 status() {
   case "$client" in
@@ -71,7 +72,7 @@ if ssh_vm "$up" > "$work/e2-stage-$client.log" 2>&1; then rec OK "E2 aggiornamen
 ssh_vm 'sync' || true
 kill -9 "$(cat "$work/qemu.pid")" 2>/dev/null; sleep 3
 bash "$here/boot_vm.sh" "$work/disk.raw" "$work" uefi >/dev/null
-if bash "$here/wait_ssh.sh" "$key" "$work" 900 >/dev/null; then rec OK "E2 avvio dopo spegnimento forzato"; else rec FAIL "E2 avvio dopo spegnimento forzato"; exit 1; fi
+if bash "$here/wait_ssh.sh" "$key" "$work" 900 >/dev/null; then timeout 600 bash "$here/vm_ssh.sh" "$key" systemctl is-system-running --wait >/dev/null 2>&1; rec OK "E2 avvio dopo spegnimento forzato"; else rec FAIL "E2 avvio dopo spegnimento forzato"; exit 1; fi
 v=$(version); echo "INFO versione dopo spegnimento forzato: $v" | tee -a "$results"
 case "$v" in "$vN"|"$vN1") rec OK "E2 sistema coerente dopo l'interruzione (versione $v)";; *) rec FAIL "E2 versione inattesa '$v'";; esac
 status > "$work/e2-status-$client.json" 2>&1 || true
