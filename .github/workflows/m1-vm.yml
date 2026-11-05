@@ -84,12 +84,12 @@ jobs:
         id: res
         run: MIN_FREE_GB=30 bash tests/vm/runner_check.sh
 
-      - name: Configura lo storage di podman
+      - name: Configura podman (storage predefinito, come richiesto da bootc install)
         run: |
           set -euo pipefail
-          sudo mkdir -p "${{ steps.res.outputs.storage_dir }}"
-          echo "PODMAN=sudo podman --root ${{ steps.res.outputs.storage_dir }}" >> "$GITHUB_ENV"
+          echo "PODMAN=sudo podman" >> "$GITHUB_ENV"
           sudo podman --version
+          df -h /var/lib
 
       - name: "P1: ricontrollo del digest e download della base"
         run: |
@@ -145,8 +145,7 @@ jobs:
       - name: "P5: disco virtuale di prova (bootc install to-disk)"
         run: |
           set -euo pipefail
-          storage=$(echo "$PODMAN" | awk '{print $4}')
-          bash tests/vm/make_disk.sh "$storage" "$IMAGE_REF" "$VMWORK" "$TESTKEY.pub"
+          bash tests/vm/make_disk.sh "$IMAGE_REF" "$VMWORK" "$TESTKEY.pub"
           sudo chown "$(id -u):$(id -g)" "$VMWORK/disk.raw"
 
       - name: "P6: avvio UEFI in QEMU e controlli nel sistema avviato"

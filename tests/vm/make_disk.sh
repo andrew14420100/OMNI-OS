@@ -3,9 +3,12 @@
 # con "bootc install to-disk --via-loopback". Solo per VM: il file disco resta
 # nel job della CI e non viene pubblicato.
 #
-# Uso: make_disk.sh <podman-root> <immagine> <dir-uscita> <chiave-pubblica-ssh-di-prova>
+# Invocazione secondo la documentazione di bootc: storage predefinito di podman
+# dell'host montato come /var/lib/containers.
+#
+# Uso: make_disk.sh <immagine> <dir-uscita> <chiave-pubblica-ssh-di-prova>
 set -euo pipefail
-storage=$1 image=$2 outdir=$3 pubkey=$4
+image=$1 outdir=$2 pubkey=$3
 size=${DISK_SIZE:-30G}
 
 mkdir -p "$outdir"
@@ -15,10 +18,10 @@ truncate -s "$size" "$outdir/disk.raw"
 # - console=ttyS0: log di avvio sulla console seriale (letto dai test)
 # - systemd.wants=sshd.service: avvia sshd solo su questo disco di prova,
 #   senza modificare l'immagine OMNI
-sudo podman --root "$storage" run --rm --privileged --pid=host \
+sudo podman run --rm --privileged --pid=host \
   --security-opt label=type:unconfined_t \
   -v /dev:/dev \
-  -v "$storage":/var/lib/containers/storage \
+  -v /var/lib/containers:/var/lib/containers \
   -v "$outdir":/output \
   "$image" \
   bootc install to-disk \
