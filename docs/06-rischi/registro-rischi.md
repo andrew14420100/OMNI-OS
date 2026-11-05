@@ -12,7 +12,7 @@
 | R-04 | Modifica accidentale di Windows | 2 | 5 | 10 | **SEC-INST-01 (scollegamento obbligatorio)**, SEC-INST-02..07 | Proprietario | M2–M3 | Aperto |
 | R-05 | Problemi HDR/VRR sul monitor ASUS 4K | 4 | 2 | 8 | Test specifici M3/M5; profili di fallback; nessun supporto presunto | Claude | M3, M5 | Aperto |
 | R-06 | Giochi incompatibili con Linux (anti-cheat, DRM) | 4 | 3 | 12 | Matrice per singolo gioco; nessuna garanzia universale; Windows resta disponibile in dual boot | Proprietario + Claude | M8 | Aperto |
-| R-07 | Compromissione o perdita delle chiavi di firma (cosign, MOK) | 2 | 5 | 10 | Chiavi distinte; segreti CI con job di firma protetti; backup offline cifrato; rotazione e revoca (SEC-KEY-01…12) | Proprietario | M1+ | Aperto |
+| R-07 | Compromissione o perdita delle chiavi di firma (cosign, MOK) | 2 | 5 | 10 | Chiavi distinte; segreti CI con job di firma protetti; backup offline cifrato; rotazione e revoca (SEC-KEY-01…17) | Proprietario | M1+ | Aperto |
 | R-08 | Esaurimento VRAM (16 GB) con gaming + AI | 4 | 3 | 12 | Piano benchmark combinato; budget VRAM; scaricamento modelli; priorità Gaming | Claude | M6 | Aperto |
 | R-09 | Errori o abusi degli agenti AI (prompt injection) | 4 | 4 | 16 | SEC-AI-01..14; livelli R0–R3; audit; arresto globale | Claude | M6–M7 | Aperto |
 | R-10 | Ripristino incompleto (dati non coperti dal rollback ostree) | 3 | 4 | 12 | Backup separati; avvisi in Update Center; prove reali di ripristino | Claude | M2, M5 | Aperto |

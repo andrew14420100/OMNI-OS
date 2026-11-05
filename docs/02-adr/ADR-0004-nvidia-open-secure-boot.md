@@ -86,7 +86,7 @@ La chiave MOK firma **solo moduli kernel** ed è verificata dal kernel con
 Secure Boot attivo. È distinta dalla chiave cosign che firma le immagini
 (ADR-0003): compromettere l'una non compromette l'altra, e vanno custodite,
 ruotate e revocate separatamente. Requisiti in
-`../03-sicurezza/requisiti-sicurezza.md` §5.1 (SEC-KEY-01…12); in particolare la
+`../03-sicurezza/requisiti-sicurezza.md` §5.1 (SEC-KEY-01…17); in particolare la
 rotazione MOK richiede un'immagine di transizione (SEC-KEY-10) e va provata in VM
 prima del PC reale (SEC-KEY-12).
 

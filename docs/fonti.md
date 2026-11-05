@@ -25,6 +25,9 @@ Data di consultazione: 2026-11-05. Tipo: **U** = ufficiale/primaria, **S** = sec
 | 19 | Fedora Magazine, "Announcing Fedora Linux 45" (3 novembre 2026) — https://fedoramagazine.org/announcing-fedora-linux-45/ | U | ADR-0005 |
 | 20 | Fedora Project, download Fedora Kinoite — https://fedoraproject.org/atomic-desktops/kinoite/download/ | U | ADR-0005 |
 | 21 | Fedora Project, Fedora Kinoite — https://fedoraproject.org/atomic-desktops/kinoite/ | U | ADR-0005 |
+| 22 | containers/image, `containers-policy.json(5)` (requisito `sigstoreSigned`, campi `keyPaths`/`keyDatas`) — https://github.com/containers/image/blob/main/docs/containers-policy.json.5.md | U | Requisiti sicurezza §5.3, ADR-0003 |
+| 23 | Microsoft Learn, "manage-bde protectors" — https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/manage-bde-protectors | U | Procedura prima installazione, parte F |
+| 24 | Microsoft Learn, "BitLocker operations guide" — https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/operations-guide | U | Procedura prima installazione, parte F |
 
 ## Fonti non accessibili (da verificare manualmente)
 

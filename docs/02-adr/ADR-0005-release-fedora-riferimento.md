@@ -66,7 +66,9 @@ superamento di questa checklist prima dell'avvio di M1:
 | F45-03 | Data di fine supporto sul calendario Fedora | Parziale: "circa 13 mesi" (fedoraproject.org); data esatta da verificare |
 | F45-04 | Pacchetti NVIDIA RPM Fusion disponibili per F45 e per il kernel corrente | Da verificare |
 | F45-05 | Problemi noti (Common Issues) di Kinoite 45 rilevanti per NVIDIA, KDE, Wayland, bootc | Da verificare |
-| F45-06 | Se si sceglie Universal Blue (ADR-0002 B/C): immagini/kmod F45 disponibili | Da verificare |
+| F45-06a | **Solo per l'opzione B** di ADR-0002 (Universal Blue come base) o per l'uso di Universal Blue come banco di prova in M3: disponibilità di immagini Universal Blue per Fedora 45 con kmod `nvidia-open` per il kernel F45, firmate, con tag e digest | Da verificare solo se si sceglie B o il banco di prova |
+| F45-06b | **Per l'opzione C** (riuso di codice e tecniche): **nessuna** dipendenza dalla disponibilità di immagini o kmod Universal Blue, perché l'immagine parte da Kinoite ufficiale e i kmod sono compilati dalla CI OMNI (dipende invece da F45-04). Da verificare solo che il codice riusato (es. script di `ublue-os/akmods`) funzioni con F45 e che siano rispettati gli obblighi Apache-2.0 (avvisi di copyright, NOTICE, indicazione delle modifiche) | Da verificare solo se si sceglie C |
+| — | Per l'opzione A nessuna delle due verifiche è necessaria | — |
 
 **Alternativa di riserva:** Fedora Kinoite 44 (supportata fino a circa quattro
 settimane dopo il rilascio di Fedora 46), se F45 presentasse problemi bloccanti

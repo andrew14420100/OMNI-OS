@@ -68,14 +68,16 @@ Windows resta inaccessibile.
 **Regole fisse**
 
 - La chiave di recupero **non** va mai scritta nel repository (pubblico), nella PR, nei rapporti o nella chat con Claude. Claude non la chiede e non deve riceverla.
-- Nei documenti si annota al massimo l'**ID della chiave** (le prime cifre dell'identificativo mostrato da Windows), che non permette di sbloccare il disco.
+- **Anche l'ID della chiave resta solo in locale**, conservato dal proprietario insieme alle sue note private (non nel repository, non nella PR, non nei rapporti, non in chat). Nei documenti del progetto si scrive soltanto se la verifica è stata fatta ("sì/no").
+- **Comandi che possono mostrare la password di recupero:** `manage-bde -protectors -get C:` elenca le protezioni con tipo e ID (documentazione Microsoft) e per la protezione "Password numerica" può mostrare anche la **password di recupero completa**; lo stesso vale per l'equivalente PowerShell `(Get-BitLockerVolume -MountPoint C).KeyProtector`, che espone il campo `RecoveryPassword`. Questi comandi li esegue **solo il proprietario, in locale**, senza condividere output, copie, registrazioni dello schermo, fotografie o condivisione schermo con nessuno (Claude compreso), e chiudendo la finestra al termine.
+- Claude **non** esegue comandi BitLocker: tutti i comandi di questa parte sono indicazioni per il proprietario.
 - Nessuna azione che modifichi la configurazione di BitLocker viene eseguita senza approvazione esplicita del proprietario (Regola operativa 10).
 
 ### F.1 Prima di qualsiasi modifica al firmware o all'avvio
 
-1. In Windows, da prompt amministratore, **in sola lettura**: `manage-bde -status` → annotare se la protezione è attiva sul disco di sistema.
-2. Sempre in sola lettura: `manage-bde -protectors -get C:` → annotare l'**ID** della protezione "Password numerica" (non serve trascrivere qui la password).
-3. Verificare che la chiave di recupero con lo stesso ID sia disponibile **fuori dal PC**: account Microsoft (pagina chiavi di ripristino BitLocker), stampa conservata o file su supporto esterno.
+1. In Windows, da prompt amministratore, **in sola lettura**: `manage-bde -status` → verificare se la protezione è attiva sul disco di sistema e se fra le protezioni compare "Password numerica". Questo comando non mostra la password.
+2. **Solo il proprietario, in locale** (vedi regole fisse): `manage-bde -protectors -get C:` → leggere l'ID della protezione "Password numerica" e annotarlo **solo nelle proprie note locali**. L'output può contenere la password di recupero: non copiarlo, non salvarlo, non fotografarlo, non condividerlo.
+3. Verificare che la chiave di recupero con lo stesso ID sia disponibile **fuori dal PC**: account Microsoft (pagina delle chiavi di ripristino BitLocker, che mostra ID e chiave), stampa conservata o file su supporto esterno conservato dal proprietario.
 4. Verificare di poterla leggere davvero (non solo che "dovrebbe esserci").
 5. Esito: **se la chiave non è disponibile, STOP**. Nessuna modifica al firmware, a Secure Boot o ai dischi finché non è recuperata o salvata.
 
@@ -92,12 +94,12 @@ non viene verificato e la protezione si riattiva automaticamente.
 ### F.3 Se compare la schermata di ripristino BitLocker
 
 1. **Non** riavviare ripetutamente e **non** cambiare altre impostazioni del firmware.
-2. Confrontare l'ID chiave mostrato sullo schermo con quello annotato in F.1.
+2. Confrontare l'ID chiave mostrato sullo schermo con quello annotato **localmente** in F.1 (o con quello associato alla chiave nell'account Microsoft).
 3. Se coincide: inserire la chiave di recupero. Windows dovrebbe avviarsi.
 4. Dopo l'avvio: `manage-bde -status` per verificare che la protezione sia di nuovo attiva; riavviare una volta per verificare che la richiesta non si ripresenti.
 5. Se la richiesta si ripresenta a ogni avvio: fermarsi e analizzare la causa (stato di Secure Boot o ordine di avvio cambiato) prima di continuare.
 6. Se l'ID non coincide o la chiave non è disponibile: spegnere, **ripristinare le impostazioni UEFI precedenti** (foto del punto A.3) e riprovare l'avvio; spesso il ritorno allo stato precedente permette al TPM di sbloccare di nuovo il disco.
-7. Annotare tutto nel registro (data, causa probabile, esito) senza riportare la chiave.
+7. Annotare nel registro (parte E) solo data, causa probabile ed esito: **né la chiave né il suo ID**.
 
 ### F.4 Momenti in cui applicare la parte F
 

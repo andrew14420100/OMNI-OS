@@ -96,7 +96,7 @@ Elementi aggiuntivi proposti:
 
 - **Pin per digest** dell'immagine base Fedora nel Containerfile, aggiornato da un processo controllato (riproducibilità).
 - **SBOM** (es. formato SPDX) generato a ogni build: utile anche per l'analisi licenze.
-- **Rotazione e revoca della chiave**: vedi `../03-sicurezza/requisiti-sicurezza.md` §5.1 (SEC-KEY). L'immagine può contenere due chiavi pubbliche durante la transizione [D: supporto a più chiavi nella policy da verificare sulla versione di containers/image inclusa in F45].
+- **Rotazione e revoca della chiave**: vedi `../03-sicurezza/requisiti-sicurezza.md` §5.1 e §5.3. La policy accetta un elenco di chiavi (`keyPaths`/`keyDatas` del requisito `sigstoreSigned`, documentazione `containers-policy.json`) [D: confermare sulla versione inclusa in F45]. La **rotazione ordinaria** usa la vecchia chiave per introdurre la nuova, con un periodo di doppia firma; la **rotazione per compromissione** non può farlo e richiede un canale indipendente (installazione locale della chiave verificata per impronta, o chiave di recupero offline se adottata). Eliminare il segreto dalla CI non revoca copie già rubate.
 
 > **Separazione delle firme.** La firma cosign riguarda **solo l'immagine di
 > sistema** (verificata da rpm-ostree/bootc al momento dell'aggiornamento). Non

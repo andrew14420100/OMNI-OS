@@ -28,7 +28,7 @@ questa analisi e della verifica del marchio.
 |---|---|
 | REQ-PUB-01 | Nessuna licenza è ancora concessa: finché la decisione DA-07 è aperta il contenuto è "tutti i diritti riservati"; i Termini di GitHub consentono comunque a chiunque di visualizzare e fare fork del repository sulla piattaforma. Il `README.md` lo dichiara esplicitamente |
 | REQ-PUB-02 | Contributi esterni non accettati finché non sono definite licenza e regole di contribuzione |
-| REQ-PUB-03 | Nessun segreto, chiave privata, password, chiave BitLocker o numero di serie nel repository: ciò che entra nella cronologia Git pubblica va considerato **permanentemente esposto** (una rimozione successiva non basta: il segreto va revocato e sostituito) |
+| REQ-PUB-03 | Nessun segreto, chiave privata, password, chiave BitLocker (né il suo ID), output di comandi che possono contenerla, o numero di serie nel repository: ciò che entra nella cronologia Git pubblica va considerato **permanentemente esposto** (una rimozione successiva non basta: il segreto va revocato e sostituito) |
 | REQ-PUB-04 | Nessun dato personale non necessario (numeri di serie, identificativi univoci, indirizzi): la configurazione hardware generica (modelli dei componenti) è già presente nelle specifiche e si considera accettata dal proprietario |
 | REQ-PUB-05 | Citazioni da documentazione di terzi limitate a brevi estratti con fonte (`../fonti.md`) |
 | REQ-PUB-06 | Controllo segreti prima di ogni push (scansione manuale in M0; strumento automatico da valutare quando sarà introdotta la CI) |

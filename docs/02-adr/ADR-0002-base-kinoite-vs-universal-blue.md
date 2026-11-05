@@ -33,8 +33,8 @@ esterno (RPM Fusion) o da un'immagine che li includa già.
 ### Fatti da verificare prima di M1
 
 - Esistenza e tag delle immagini OCI ufficiali Fedora Kinoite 45 sul registry Fedora (la documentazione Fedora non era raggiungibile dall'ambiente di analisi: protezione anti-bot).
-- Disponibilità delle immagini Universal Blue `kinoite` per Fedora 45 e dei kmod `nvidia-open` per il kernel di Fedora 45.
-- Politica attuale di Universal Blue sulle varianti NVIDIA delle immagini intermedie (rischio di rimozione).
+- **Solo per l'opzione B** (o per il banco di prova in M3): disponibilità delle immagini Universal Blue per Fedora 45 e dei kmod `nvidia-open` per il kernel di Fedora 45; politica attuale di Universal Blue sulle varianti NVIDIA delle immagini intermedie (rischio di rimozione). Verifica F45-06a in ADR-0005.
+- **Per l'opzione C**: l'opzione non dipende dalla disponibilità di immagini o kmod Universal Blue; va verificato solo che il codice e le tecniche riusati siano compatibili con Fedora 45 e con la licenza Apache-2.0. Verifica F45-06b in ADR-0005.
 
 ## Opzioni considerate
 
