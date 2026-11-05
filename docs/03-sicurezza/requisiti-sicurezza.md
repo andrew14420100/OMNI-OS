@@ -86,10 +86,54 @@ Questi requisiti corrispondono alla lista "Test specifici di sicurezza AI" (spec
 
 | ID | Requisito |
 |---|---|
-| SEC-BOOT-01 | Obiettivo: Secure Boot attivo (ADR-0004, opzione SB-A proposta) |
-| SEC-BOOT-02 | Le chiavi private di firma (MOK, cosign) non sono mai nel repository; custodite nei segreti della CI o su token hardware; accesso solo al proprietario |
-| SEC-BOOT-03 | Procedura di revoca e rotazione delle chiavi documentata prima della prima release pubblica |
-| SEC-BOOT-04 | Nessuna modifica alle chiavi del firmware (PK/KEK/db) senza approvazione esplicita (opzione SB-E esclusa) |
+| SEC-BOOT-01 | Obiettivo: Secure Boot attivo. L'opzione specifica (SB-A, SB-C, SB-D) **resta da decidere** (ADR-0004) |
+| SEC-BOOT-02 | Le chiavi private di firma non sono mai nel repository (che è **pubblico**); custodia secondo §5.1 |
+| SEC-BOOT-03 | Rotazione e revoca delle chiavi secondo §5.1, documentate e provate in VM prima di usare una chiave sul PC reale |
+| SEC-BOOT-04 | Nessuna modifica alle chiavi del firmware (PK/KEK/db/dbx) senza approvazione esplicita (opzione SB-E esclusa) |
+| SEC-BOOT-05 | Qualsiasi cambio di stato di Secure Boot o del firmware segue la procedura BitLocker (`procedura-prima-installazione.md`, parte F) |
+
+### 5.1 Gestione delle chiavi di firma — SEC-KEY
+
+> Questa sezione descrive i requisiti **indipendentemente** dalle scelte ancora
+> aperte: firma delle immagini (ADR-0003, F1/F2) e opzione Secure Boot
+> (ADR-0004). Se si scegliesse cosign "keyless" (F2) non esisterebbe una chiave
+> privata cosign da custodire; se si scegliesse SB-C o SB-D non esisterebbe una
+> chiave MOK di progetto. Nessuna di queste scelte è stata fatta.
+
+#### Due chiavi diverse, due funzioni diverse
+
+| | **Chiave cosign** (firma delle immagini) | **Chiave MOK** (firma dei moduli kernel) |
+|---|---|---|
+| Cosa protegge | L'immagine di sistema scaricata dal registry: il client accetta solo immagini firmate | I moduli kernel (es. NVIDIA): con Secure Boot attivo il kernel carica solo moduli firmati da chiavi fidate |
+| Chi verifica | rpm-ostree/bootc tramite `containers-policy.json` (spazio utente, al momento dell'aggiornamento) | Il kernel Linux, tramite le chiavi caricate da shim/MOK (all'avvio e al caricamento del modulo) |
+| Dove sta la parte pubblica | Nell'immagine, `/etc/pki/containers/` + policy | Nel firmware NVRAM come MOK, registrata con `mokutil --import` e confermata in MOK Manager |
+| Tipo di chiave | Coppia cosign (formato sigstore), protetta da password | Certificato X.509 + chiave privata (es. RSA 2048/4096) per firmare i moduli |
+| Se viene rubata | Un attaccante che controlla anche il registry può far accettare un'immagine malevola ai client | Un attaccante con accesso root al PC può caricare un modulo kernel malevolo nonostante Secure Boot |
+| Come si ruota | Nuova immagine con due chiavi pubbliche → firma con la nuova → nuova immagine senza la vecchia | Registrazione della nuova MOK sul PC (presenza fisica in MOK Manager) → moduli firmati con la nuova → rimozione della vecchia |
+| Come si revoca | Rimozione dalla policy in un'immagine nuova; ri-firma delle immagini valide | `mokutil --delete` della chiave; in caso di compromissione anche inserimento nella lista di esclusione MOKX (`mokutil --mokx --import`) [D] |
+
+| ID | Requisito |
+|---|---|
+| SEC-KEY-01 | Le due chiavi sono **distinte**: mai la stessa chiave, mai la stessa password, segreti CI separati |
+| SEC-KEY-02 | Ogni chiave è generata dal proprietario (o in sua presenza) su una macchina affidabile; Claude non genera, non riceve e non vede chiavi private o password |
+| SEC-KEY-03 | Custodia primaria: segreto cifrato della CI, accessibile **solo** al job di firma |
+| SEC-KEY-04 | I job di firma girano solo su `push` a `main`/tag approvati, **mai** su PR (in particolare mai su `pull_request_target` o PR da fork, possibili perché il repository è pubblico), con un *environment* GitHub protetto da approvazione del proprietario |
+| SEC-KEY-05 | Copia di riserva offline: chiave privata cifrata su due supporti separati (es. due chiavette USB in luoghi diversi), password conservata separatamente dal supporto |
+| SEC-KEY-06 | Opzione rafforzata da valutare: chiave MOK su token hardware (smart card/HSM) usato solo per firme manuali di release |
+| SEC-KEY-07 | Inventario delle chiavi nel repository con **sole** informazioni pubbliche: impronta (fingerprint), data di creazione, scadenza prevista, stato (attiva/in rotazione/revocata) |
+| SEC-KEY-08 | Rotazione programmata: almeno a ogni cambio di release Fedora per cosign, e alla scadenza del certificato per la MOK (validità proposta: 2–3 anni) |
+| SEC-KEY-09 | Rotazione d'emergenza entro 24 ore dalla sospetta compromissione, con procedura §5.2 |
+| SEC-KEY-10 | La rotazione MOK richiede un aggiornamento in due tempi: prima un'immagine che contiene moduli firmati con la vecchia chiave **e** la nuova chiave pubblica da registrare; solo dopo la registrazione della nuova un'immagine firmata solo con la nuova. Altrimenti il driver NVIDIA non si carica |
+| SEC-KEY-11 | Prima di revocare una MOK, verificare che il deployment di rollback (R1/R2, ADR-0003) non dipenda ancora da quella chiave; in caso contrario il rollback avvierebbe senza driver NVIDIA |
+| SEC-KEY-12 | Procedure di rotazione e revoca provate prima in VM con Secure Boot emulato (M1/M2), mai sperimentate per la prima volta sul PC reale |
+
+#### 5.2 Procedura in caso di compromissione (sintesi)
+
+1. Revocare subito il segreto nella CI e sospendere i job di firma.
+2. **cosign:** pubblicare un'immagine firmata con una nuova chiave e senza la vecchia nella policy; ritirare dal canale `:stable` le immagini firmate dopo la data sospetta; verificare l'integrità del registry.
+3. **MOK:** generare una nuova chiave; distribuire un'immagine di transizione (SEC-KEY-10); sul PC registrare la nuova MOK, poi cancellare la vecchia e, se compromessa, metterla in MOKX.
+4. Verificare sul PC l'elenco delle chiavi registrate (`mokutil --list-enrolled`) e dei moduli caricati.
+5. Annotare l'incidente nel registro dei rischi e nel rapporto di milestone.
 
 ## 6. Aggiornamenti — SEC-UPD
 

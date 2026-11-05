@@ -14,7 +14,25 @@ Gli obblighi dipendono da come viene distribuito OMNI OS:
 | D2 — Immagine pubblica nel registry | Chiunque può scaricare l'immagine | Obblighi GPL/LGPL (disponibilità del sorgente corrispondente), licenze proprietarie NVIDIA, codec, **marchi** |
 | D3 — ISO di installazione pubblica | Come D2 + supporti | Come D2 |
 
-**Proposta:** restare in D0/D1 fino a M9; valutare D2/D3 solo dopo completamento di questa analisi e della verifica del marchio.
+**Situazione attuale (verificata il 2026-11-05):** il repository GitHub
+`andrew14420100/OMNI-OS` è **pubblico**. Il progetto è quindi già nello
+scenario **D1**: documentazione visibile a chiunque, nessuna immagine o ISO
+pubblicata.
+
+**Proposta:** restare in D1 fino a M9; valutare D2/D3 solo dopo completamento di
+questa analisi e della verifica del marchio.
+
+### Conseguenze del repository pubblico
+
+| ID | Requisito |
+|---|---|
+| REQ-PUB-01 | Nessuna licenza è ancora concessa: finché la decisione DA-07 è aperta il contenuto è "tutti i diritti riservati"; i Termini di GitHub consentono comunque a chiunque di visualizzare e fare fork del repository sulla piattaforma. Il `README.md` lo dichiara esplicitamente |
+| REQ-PUB-02 | Contributi esterni non accettati finché non sono definite licenza e regole di contribuzione |
+| REQ-PUB-03 | Nessun segreto, chiave privata, password, chiave BitLocker o numero di serie nel repository: ciò che entra nella cronologia Git pubblica va considerato **permanentemente esposto** (una rimozione successiva non basta: il segreto va revocato e sostituito) |
+| REQ-PUB-04 | Nessun dato personale non necessario (numeri di serie, identificativi univoci, indirizzi): la configurazione hardware generica (modelli dei componenti) è già presente nelle specifiche e si considera accettata dal proprietario |
+| REQ-PUB-05 | Citazioni da documentazione di terzi limitate a brevi estratti con fonte (`../fonti.md`) |
+| REQ-PUB-06 | Controllo segreti prima di ogni push (scansione manuale in M0; strumento automatico da valutare quando sarà introdotta la CI) |
+| REQ-PUB-07 | Se si volesse tornare privati, la visibilità si cambia nelle impostazioni di GitHub, ma copie o fork già effettuati restano fuori controllo |
 
 ## 2. Categorie di licenza e implicazioni
 
@@ -41,6 +59,8 @@ Gli obblighi dipendono da come viene distribuito OMNI OS:
 
 Per la documentazione si può valutare CC BY-SA 4.0 o la stessa licenza del codice.
 
+Con il repository già pubblico questa decisione diventa **prioritaria** (REQ-PUB-01, REQ-PUB-02), ma **resta aperta**: nessun file `LICENSE` viene aggiunto senza la scelta del proprietario.
+
 ## 4. Marchi di terzi
 
 | Marchio | Vincolo da verificare |
@@ -53,10 +73,21 @@ Per la documentazione si può valutare CC BY-SA 4.0 o la stessa licenza del codi
 
 ## 5. Verifica del marchio "OMNI OS" — requisito obbligatorio
 
-> **REQ-TM-01:** prima di **qualsiasi distribuzione pubblica** (scenari D2/D3,
-> e anche prima di pubblicare il repository con il nome come prodotto) deve
-> essere completata e approvata dal proprietario la verifica del marchio
-> "OMNI OS" e dei nomi dei moduli "OMNI …".
+> **REQ-TM-01 (aggiornato):** il nome "OMNI OS" è **già visibile pubblicamente**
+> nel repository GitHub. Di conseguenza:
+>
+> - **REQ-TM-01a:** la verifica del marchio (checklist TM-01…TM-09) va completata
+>   e approvata dal proprietario **prima di qualsiasi ulteriore passo pubblico**:
+>   immagini o ISO (D2/D3), registrazione di domini, organizzazioni o namespace,
+>   annunci, loghi, materiale promozionale.
+> - **REQ-TM-01b:** finché la verifica non è completata, il repository presenta
+>   "OMNI OS" come **nome di lavoro provvisorio** (già indicato nel `README.md`),
+>   senza loghi né affermazioni di prodotto.
+> - **REQ-TM-01c:** se la verifica rivelasse un conflitto, il cambio di nome deve
+>   essere possibile in modo rapido: i nomi tecnici restano concentrati in pochi
+>   punti (D-Bus `org.omnios.*`, pacchetti `omni-*`).
+> - **REQ-TM-01d:** la pubblicazione del repository **non** è stata preceduta dalla
+>   verifica: questo rischio è registrato come R-23.
 
 Motivazione: "Omni" è un termine molto diffuso nel software e nell'elettronica;
 esiste il rischio di conflitto con marchi registrati o prodotti esistenti con
@@ -87,4 +118,5 @@ punti per facilitare un eventuale cambio.
 | M1 | SBOM automatico della prima immagine; elenco licenze generato dai metadati RPM |
 | M3 | Lettura dei termini di licenza del driver NVIDIA per la redistribuzione |
 | M6 | Registro delle licenze dei modelli AI proposti |
+| Subito (M0) | Decisione sulla licenza (DA-07); avvio della checklist marchio TM-01…TM-09 (REQ-TM-01a) |
 | Prima di D2/D3 | REQ-TM-01 completato; verifica obblighi GPL (sorgenti); branding Fedora sostituito; revisione legale consigliata |

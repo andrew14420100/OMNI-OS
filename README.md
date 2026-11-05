@@ -9,3 +9,7 @@ del marchio prima di qualsiasi distribuzione pubblica.
 
 Documentazione: [`docs/`](docs/README.md) — riferimento principale:
 [specifiche funzionali v1.0](docs/00-specifiche/specifiche-funzionali-v1.0.md).
+
+**Licenza:** nessuna licenza è ancora stata concessa; la scelta è una decisione
+aperta del proprietario. Fino ad allora tutti i diritti sono riservati e non si
+accettano contributi esterni.

@@ -12,9 +12,9 @@
 ## A. Preparazione (giorni prima)
 
 1. Backup completo di Windows su supporto esterno, verificato aprendo alcuni file dal backup.
-2. Salvare la **chiave di recupero BitLocker** (account Microsoft o stampa) se BitLocker è attivo.
+2. Preparare la **chiave di recupero BitLocker** secondo la parte F (F.1), se BitLocker è attivo.
 3. Annotare (foto) le impostazioni UEFI attuali: ordine di avvio, Secure Boot, CSM, slot M.2.
-4. Annotare modello, numero di serie e capacità di **entrambi** gli SSD (da Windows: `Get-PhysicalDisk` in PowerShell, sola lettura).
+4. Annotare modello, numero di serie e capacità di **entrambi** gli SSD (da Windows: `Get-PhysicalDisk` in PowerShell, sola lettura). Conservare i numeri di serie **solo in locale**, non nel repository pubblico.
 5. Identificare fisicamente quale slot M.2 / connettore contiene l'SSD Windows (manuale MSI B850A Gaming Plus WiFi).
 6. Preparare il supporto USB di installazione OMNI e il supporto USB di recupero (prodotti in M2).
 
@@ -45,7 +45,7 @@ Esito:
 
 1. PC spento e scollegato dalla corrente, ricollegare l'SSD Windows.
 2. Nel firmware: verificare che entrambi i dischi siano visibili; impostare l'ordine di avvio desiderato.
-3. Avviare **Windows**: verificare avvio normale, nessuna richiesta BitLocker, Secure Boot attivo (`msinfo32`), integrità dei dati.
+3. Avviare **Windows**: verificare avvio normale, Secure Boot attivo (`msinfo32`), integrità dei dati. Se compare la schermata di ripristino BitLocker applicare la parte F (F.3).
 4. Avviare **OMNI** dal menu di avvio del firmware: verificare che non abbia modificato l'SSD Windows (confronto della tabella delle partizioni letta prima e dopo, in sola lettura).
 5. Registrare gli esiti nel rapporto M3.
 
@@ -54,3 +54,58 @@ Esito:
 | Data | Passo | Esito | Note | Esecutore |
 |---|---|---|---|---|
 | | | | | |
+
+## F. Procedura controllata per la chiave di recupero BitLocker
+
+**Perché serve.** Se BitLocker protegge il disco di Windows con il TPM, la
+chiave di sblocco è legata a misure dell'avvio (fra cui stato e chiavi di
+Secure Boot, configurazione del firmware, ordine di avvio). Cambiare queste
+impostazioni, aggiornare il BIOS o aggiungere un disco con un altro bootloader
+**può** far comparire all'avvio di Windows la schermata di ripristino che chiede
+la chiave di recupero (48 cifre). Non è un danno ai dati, ma senza la chiave
+Windows resta inaccessibile.
+
+**Regole fisse**
+
+- La chiave di recupero **non** va mai scritta nel repository (pubblico), nella PR, nei rapporti o nella chat con Claude. Claude non la chiede e non deve riceverla.
+- Nei documenti si annota al massimo l'**ID della chiave** (le prime cifre dell'identificativo mostrato da Windows), che non permette di sbloccare il disco.
+- Nessuna azione che modifichi la configurazione di BitLocker viene eseguita senza approvazione esplicita del proprietario (Regola operativa 10).
+
+### F.1 Prima di qualsiasi modifica al firmware o all'avvio
+
+1. In Windows, da prompt amministratore, **in sola lettura**: `manage-bde -status` → annotare se la protezione è attiva sul disco di sistema.
+2. Sempre in sola lettura: `manage-bde -protectors -get C:` → annotare l'**ID** della protezione "Password numerica" (non serve trascrivere qui la password).
+3. Verificare che la chiave di recupero con lo stesso ID sia disponibile **fuori dal PC**: account Microsoft (pagina chiavi di ripristino BitLocker), stampa conservata o file su supporto esterno.
+4. Verificare di poterla leggere davvero (non solo che "dovrebbe esserci").
+5. Esito: **se la chiave non è disponibile, STOP**. Nessuna modifica al firmware, a Secure Boot o ai dischi finché non è recuperata o salvata.
+
+### F.2 Sospensione temporanea di BitLocker (facoltativa, solo con approvazione)
+
+Microsoft prevede la sospensione temporanea della protezione prima di
+aggiornamenti del firmware: la cifratura resta, ma al riavvio successivo il TPM
+non viene verificato e la protezione si riattiva automaticamente.
+
+- Comando (solo se approvato): `manage-bde -protectors -disable C: -RebootCount 1`
+- È una modifica alla configurazione di Windows: richiede approvazione esplicita e va annotata nel registro (parte E).
+- Proposta: **non** usarla per impostazione predefinita; la chiave di recupero disponibile (F.1) è sufficiente come protezione.
+
+### F.3 Se compare la schermata di ripristino BitLocker
+
+1. **Non** riavviare ripetutamente e **non** cambiare altre impostazioni del firmware.
+2. Confrontare l'ID chiave mostrato sullo schermo con quello annotato in F.1.
+3. Se coincide: inserire la chiave di recupero. Windows dovrebbe avviarsi.
+4. Dopo l'avvio: `manage-bde -status` per verificare che la protezione sia di nuovo attiva; riavviare una volta per verificare che la richiesta non si ripresenti.
+5. Se la richiesta si ripresenta a ogni avvio: fermarsi e analizzare la causa (stato di Secure Boot o ordine di avvio cambiato) prima di continuare.
+6. Se l'ID non coincide o la chiave non è disponibile: spegnere, **ripristinare le impostazioni UEFI precedenti** (foto del punto A.3) e riprovare l'avvio; spesso il ritorno allo stato precedente permette al TPM di sbloccare di nuovo il disco.
+7. Annotare tutto nel registro (data, causa probabile, esito) senza riportare la chiave.
+
+### F.4 Momenti in cui applicare la parte F
+
+| Evento | Rischio di richiesta BitLocker |
+|---|---|
+| Cambio di stato di Secure Boot (attivo/disattivo, modalità) | Alto |
+| Aggiornamento BIOS/UEFI della scheda madre | Alto |
+| Modifica dell'ordine di avvio o aggiunta di voci di avvio | Possibile |
+| Ricollegamento dell'SSD Windows dopo l'installazione di OMNI | Possibile |
+| Registrazione di una MOK (non modifica le chiavi del firmware) | Basso, da verificare |
+| Reset delle impostazioni UEFI ai valori predefiniti | Alto |

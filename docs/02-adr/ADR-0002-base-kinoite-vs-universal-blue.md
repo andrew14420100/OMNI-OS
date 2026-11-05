@@ -119,4 +119,4 @@ difetto è nella nostra build). Questo uso non implica adottarla come base.
 
 ## Decisione del proprietario
 
-_In attesa. Opzioni: A, B, C, oppure B come banco di prova + C come base._
+_In attesa. Opzioni: A, B, C, oppure B come banco di prova + C come base. Nessuna scelta definitiva: la decisione resta aperta fino alla revisione della documentazione._

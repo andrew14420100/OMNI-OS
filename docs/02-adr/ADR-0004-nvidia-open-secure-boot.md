@@ -80,6 +80,16 @@ comunque verificato su questo PC prima di procedere.
 | **SB-D — Secure Boot disattivato** | Nessuna firma richiesta | Massima semplicità | Riduce la sicurezza anche per Windows; possibile richiesta chiave BitLocker; anti-cheat di alcuni giochi Windows non funzionanti |
 | SB-E — Chiavi firmware personalizzate (sbctl, db proprio) | Sostituisce/integra le chiavi del firmware | Controllo totale | Rischio elevato di rendere non avviabile Windows o il PC, rischio con firmware di periferiche (Option ROM GPU); **sconsigliata** |
 
+### Separazione dalla firma delle immagini
+
+La chiave MOK firma **solo moduli kernel** ed è verificata dal kernel con
+Secure Boot attivo. È distinta dalla chiave cosign che firma le immagini
+(ADR-0003): compromettere l'una non compromette l'altra, e vanno custodite,
+ruotate e revocate separatamente. Requisiti in
+`../03-sicurezza/requisiti-sicurezza.md` §5.1 (SEC-KEY-01…12); in particolare la
+rotazione MOK richiede un'immagine di transizione (SEC-KEY-10) e va provata in VM
+prima del PC reale (SEC-KEY-12).
+
 ## 3. Proposta
 
 - **SB-A** come configurazione obiettivo (coerente con ADR-0002 opzione C e ADR-0003).
@@ -89,7 +99,7 @@ comunque verificato su questo PC prima di procedere.
 
 ## 4. Procedura proposta (da eseguire solo in M3, previa autorizzazione)
 
-1. Prima di toccare il firmware: annotare impostazioni UEFI attuali (foto), stato Secure Boot (`msinfo32` su Windows), verificare di avere la **chiave di recupero BitLocker** di Windows.
+1. Prima di toccare il firmware: annotare impostazioni UEFI attuali (foto), stato Secure Boot (`msinfo32` su Windows), ed eseguire la procedura BitLocker F.1 (`../03-sicurezza/procedura-prima-installazione.md`, parte F).
 2. Lasciare Secure Boot attivo in modalità standard.
 3. Primo avvio di OMNI dall'SSD dedicato (con SSD Windows scollegato, SEC-INST-01).
 4. `mokutil --import` della chiave pubblica OMNI; conferma in MOK Manager (password temporanea, tastiera QWERTY).
@@ -107,4 +117,4 @@ comunque verificato su questo PC prima di procedere.
 
 ## Decisione del proprietario
 
-_In attesa. Scelta richiesta: SB-A (proposta), SB-C, SB-D._
+_In attesa. Scelta richiesta: SB-A (proposta di Claude, **non adottata**), SB-C, SB-D. La decisione resta aperta fino alla revisione della documentazione._

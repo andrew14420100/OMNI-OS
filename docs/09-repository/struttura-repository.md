@@ -1,6 +1,7 @@
 # Struttura del repository e flusso di lavoro Git
 
-- **Stato:** proposta M0. In M0 esiste solo `docs/` (e un `README.md`). Le altre cartelle saranno create **solo** nelle milestone che le richiedono, con autorizzazione.
+- **Stato:** proposta M0. In M0 esistono solo `docs/` e un `README.md`, nella PR #1 (non ancora unita a `main`). Le altre cartelle saranno create **solo** nelle milestone che le richiedono, con autorizzazione.
+- **Stato attuale:** repository pubblico; `main` contiene solo il commit iniziale vuoto; protezione di `main` e controlli automatici **non ancora configurati** (vedi `inizializzazione-repository.md`).
 
 ## 1. Struttura proposta (monorepo)
 
@@ -44,7 +45,8 @@ Canali delle immagini (ADR-0003): `:dev` da branch di lavoro (solo VM),
 2. La descrizione distingue implementato / testato / proposto (Regola 4).
 3. Nessun merge senza approvazione del proprietario.
 4. Le modifiche alle specifiche approvate sono evidenziate esplicitamente (Regola 2).
-5. Nessun segreto (chiavi, token) nel repository.
+5. Nessun segreto (chiavi, token) né dato sensibile nel repository, che è pubblico (REQ-PUB-03/04).
+6. Finché non esiste la CI, ogni PR riporta le verifiche manuali eseguite.
 
 ## 4. Commit
 

@@ -64,7 +64,7 @@
 | AC-M3-06 | Sospensione/ripresa e riavvio ripetuti (almeno 10 cicli) senza errori |
 | AC-M3-07 | Prova di stabilità prolungata (durata da definire) senza errori Xid |
 | AC-M3-08 | Recupero da mancato avvio dimostrato |
-| AC-M3-09 | Windows avvia normalmente dopo il ricollegamento, senza richiesta BitLocker, con tabella partizioni invariata |
+| AC-M3-09 | Windows avvia normalmente dopo il ricollegamento, con Secure Boot attivo e tabella partizioni invariata; un'eventuale richiesta BitLocker è gestita con la procedura controllata (parte F) e non si ripresenta ai riavvii successivi |
 | AC-M3-10 | HDR/VRR: stato documentato, **non** dichiarato supportato senza test |
 
 ## M4 — Desktop OMNI

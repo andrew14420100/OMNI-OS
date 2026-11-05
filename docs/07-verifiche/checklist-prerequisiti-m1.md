@@ -2,6 +2,7 @@
 
 - **Stato:** da compilare. Queste verifiche **non autorizzano** modifiche al computer o al repository.
 - Le rilevazioni sul PC devono essere **in sola lettura** ed eseguite dal proprietario. Claude non ha accesso al computer.
+- **Il repository è pubblico:** i valori sensibili (numeri di serie, ID e chiavi BitLocker, identificativi univoci) vanno conservati **solo in locale** dal proprietario. In questo file si riportano al massimo modello e capacità, oppure "rilevato".
 
 ## 1. Rilevazioni sul PC (dal proprietario, in sola lettura)
 
@@ -15,7 +16,7 @@
 | H-06 | Stato Secure Boot | `msinfo32` → "Stato avvio protetto" | |
 | H-07 | Modalità BIOS (UEFI) | `msinfo32` → "Modalità BIOS" | |
 | H-08 | Versione BIOS/UEFI della scheda madre | `msinfo32` → "Versione/data BIOS" | |
-| H-09 | Stato BitLocker e disponibilità chiave di recupero | `manage-bde -status` (prompt amministratore, sola lettura) | |
+| H-09 | Stato BitLocker e disponibilità chiave di recupero (mai la chiave stessa) | `manage-bde -status` (prompt amministratore, sola lettura); procedura `../03-sicurezza/procedura-prima-installazione.md` parte F | |
 | H-10 | Situazione dei backup Windows (data ultimo backup, supporto) | — | |
 | H-11 | Scheda Wi-Fi/Bluetooth (modello) | Gestione dispositivi | |
 | H-12 | Controller audio, microfoni, webcam | Gestione dispositivi | |
@@ -34,7 +35,7 @@
 | D-05 | Licenze dei componenti distribuiti | `../05-licenze/analisi-licenze.md` | Preliminare |
 | D-06 | Base: Kinoite ufficiale vs Universal Blue | ADR-0002 | Attende decisione |
 | D-07 | Opzione Secure Boot | ADR-0004 | Attende decisione |
-| D-08 | Repository Git inizializzato con branch di base | `../09-repository/inizializzazione-repository.md` | **Completato** (opzione 1, 2026-11-05) |
+| D-08 | Repository Git inizializzato con branch di base | `../09-repository/inizializzazione-repository.md` | **Completato** (opzione 1, 2026-11-05): `main` = commit vuoto `25f607b`, PR #1 in bozza |
 
 ## 3. Requisiti di compatibilità applicativa (dal proprietario)
 

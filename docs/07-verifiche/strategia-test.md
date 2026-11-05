@@ -2,6 +2,10 @@
 
 - **Stato:** proposta M0. Riferimento: spec §8, decisione 54.
 
+> **Stato attuale dei controlli automatici:** nessuno. Il repository non ha
+> workflow CI e la PR #1 non ha check. L'ambiente E1 (CI) è una proposta da
+> realizzare non prima di M1, con autorizzazione.
+
 ## 1. Ambienti (in ordine di rischio crescente)
 
 | Ambiente | Uso | Dati reali | Dischi reali | Milestone |

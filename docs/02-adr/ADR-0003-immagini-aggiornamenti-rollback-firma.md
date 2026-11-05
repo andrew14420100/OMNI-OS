@@ -96,7 +96,13 @@ Elementi aggiuntivi proposti:
 
 - **Pin per digest** dell'immagine base Fedora nel Containerfile, aggiornato da un processo controllato (riproducibilità).
 - **SBOM** (es. formato SPDX) generato a ogni build: utile anche per l'analisi licenze.
-- **Rotazione della chiave** documentata: l'immagine può contenere due chiavi pubbliche durante la transizione.
+- **Rotazione e revoca della chiave**: vedi `../03-sicurezza/requisiti-sicurezza.md` §5.1 (SEC-KEY). L'immagine può contenere due chiavi pubbliche durante la transizione [D: supporto a più chiavi nella policy da verificare sulla versione di containers/image inclusa in F45].
+
+> **Separazione delle firme.** La firma cosign riguarda **solo l'immagine di
+> sistema** (verificata da rpm-ostree/bootc al momento dell'aggiornamento). Non
+> ha alcun effetto su Secure Boot né sul caricamento dei moduli kernel: quella è
+> la firma **MOK** trattata in ADR-0004. Sono due chiavi distinte, con custodia,
+> rotazione e revoca distinte (SEC-KEY-01).
 - **Bootstrap della fiducia:** la prima installazione deve avvenire da un supporto costruito dall'immagine firmata, che contiene già policy e chiave, così da evitare il passaggio iniziale "non verificato" usato da alcuni progetti.
 
 ## Proposta
@@ -122,4 +128,4 @@ Elementi aggiuntivi proposti:
 
 ## Decisione del proprietario
 
-_In attesa._
+_In attesa. Restano aperte: client di aggiornamento (rpm-ostree/bootc) e metodo di firma (F1/F2)._
