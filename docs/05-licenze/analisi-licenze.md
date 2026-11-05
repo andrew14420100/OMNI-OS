@@ -88,6 +88,13 @@ Con il repository già pubblico questa decisione diventa **prioritaria** (REQ-PU
 >   punti (D-Bus `org.omnios.*`, pacchetti `omni-*`).
 > - **REQ-TM-01d:** la pubblicazione del repository **non** è stata preceduta dalla
 >   verifica: questo rischio è registrato come R-23.
+> - **REQ-TM-01e (richiesto dal proprietario, 2026-11-05):** prima di qualsiasi
+>   distribuzione pubblica deve essere **risolto** il rischio di confusione con
+>   il sistema operativo esistente **OmniOS** (OmniOS Community Edition, basato su
+>   illumos). "Risolto" significa una delle due: cambio di nome del progetto,
+>   oppure parere professionale che escluda il rischio di confusione, approvato
+>   dal proprietario. Il solo suffisso o la diversa grafia ("OMNI OS" vs "OmniOS")
+>   non è considerato sufficiente senza tale parere.
 
 Motivazione: "Omni" è un termine molto diffuso nel software e nell'elettronica;
 esiste il rischio di conflitto con marchi registrati o prodotti esistenti con
@@ -102,7 +109,7 @@ nomi simili.
 | TM-03 | Ricerca marchi internazionali | WIPO Global Brand Database | Da fare |
 | TM-04 | Ricerca marchi USA (se distribuzione globale) | USPTO | Da fare |
 | TM-05 | Classi di Nizza rilevanti: 9 (software), 42 (servizi software) | — | Da fare |
-| TM-06 | Prodotti/progetti esistenti chiamati "Omni OS", "OmniOS" o simili (sistemi operativi, firmware, distribuzioni) | Ricerca web, GitHub, DistroWatch | Da fare |
+| TM-06 | Prodotti/progetti esistenti chiamati "Omni OS", "OmniOS" o simili (sistemi operativi, firmware, distribuzioni) | Ricerca web, GitHub, DistroWatch | **Conflitto noto**: esiste il sistema operativo **OmniOS** (OmniOS Community Edition, sistema server basato su illumos, https://omnios.org, release stabile r151060 annunciata il 2 novembre 2026). Ricerca completa sugli altri nomi ancora da fare |
 | TM-07 | Disponibilità dei nomi: dominio, organizzazione GitHub, namespace del registry | — | Da fare |
 | TM-08 | Valutazione di un professionista se emergono somiglianze | — | Da fare |
 | TM-09 | Decisione: mantenere il nome, registrarlo o rinominare | Proprietario | Da fare |

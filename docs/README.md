@@ -1,7 +1,8 @@
 # Documentazione tecnica OMNI OS — M0
 
-> Fase attuale: **M0 — Preparazione tecnica e documentazione** (solo documenti).
-> Nessun codice operativo, build, ISO o installazione. M1 non avviata.
+> Fase attuale: **M1 preliminare — base Linux in macchina virtuale**, autorizzata il 2026-11-05.
+> M0 conclusa. Nessuna immagine costruita finora: la base OCI attende la decisione del proprietario.
+> Nessuna ISO, nessun installer fisico, nessuna modifica al PC.
 
 | Cartella | Contenuto |
 |---|---|
@@ -15,9 +16,10 @@
 | [`07-verifiche/`](07-verifiche/) | Checklist pre-M1, piano benchmark gaming+AI, strategia di test |
 | [`08-accettazione/`](08-accettazione/criteri-accettazione.md) | Criteri di accettazione M0–M9 |
 | [`09-repository/`](09-repository/struttura-repository.md) | Struttura del repository, flusso Git, inizializzazione |
-| [`10-rapporti/`](10-rapporti/rapporto-M0.md) | Rapporti di milestone |
+| [`10-rapporti/`](10-rapporti/rapporto-M0.md) | Rapporti di milestone ([M0](10-rapporti/rapporto-M0.md), [M1](10-rapporti/rapporto-M1.md)) |
+| [`11-m1/`](11-m1/verifica-base-oci.md) | M1: [verifica della base OCI](11-m1/verifica-base-oci.md), [percorso di build e test in VM](11-m1/percorso-build-vm.md) |
 | [`fonti.md`](fonti.md) | Fonti consultate |
 
 Convenzioni: **[P]** proposta, **[V]** verificato con fonte, **[D]** da verificare.
 
-Contenuto: 25 documenti in `docs/` + `README.md` principale = 26 file (inventario in `10-rapporti/rapporto-M0.md` §1).
+Inventario M0 (26 file) in `10-rapporti/rapporto-M0.md` §1.

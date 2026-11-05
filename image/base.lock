@@ -1,0 +1,12 @@
+# Base OCI dell'immagine OMNI OS (M1, prototipo solo VM).
+# Vedi docs/11-m1/verifica-base-oci.md.
+#
+# STATUS ammessi:
+#   PENDING_OWNER_DECISION  nessuna base approvata: la CI rifiuta ogni build
+#   APPROVED                base approvata dal proprietario (BASE_IMAGE obbligatorio, fissato per digest)
+#
+# Modificare questo file solo dopo una decisione esplicita del proprietario.
+STATUS=PENDING_OWNER_DECISION
+BASE_IMAGE=
+APPROVED_BY=
+APPROVED_ON=

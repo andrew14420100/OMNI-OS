@@ -1,0 +1,20 @@
+# OMNI OS — immagine prototipo M1 (solo macchina virtuale).
+# NON costruire finché image/base.lock non è in stato APPROVED.
+# La base è passata come argomento e deve essere fissata per digest:
+#   podman build --build-arg BASE_IMAGE="<repo>@sha256:<digest>" image/
+ARG BASE_IMAGE
+# La base arriva da ARG ed è fissata per digest: verificato da tests/static/check_image.sh.
+# hadolint ignore=DL3006
+FROM ${BASE_IMAGE}
+
+ARG OMNI_VERSION=0.1.0-m1-dev
+
+LABEL org.opencontainers.image.title="OMNI OS (prototipo M1, solo VM)" \
+      org.opencontainers.image.description="Prototipo sperimentale non destinato agli utenti" \
+      org.opencontainers.image.version="${OMNI_VERSION}" \
+      org.opencontainers.image.source="https://github.com/andrew14420100/OMNI-OS"
+
+COPY files/ /
+
+RUN sed -i "s/@OMNI_VERSION@/${OMNI_VERSION}/" /usr/lib/omni-os/build-info && \
+    bootc container lint
