@@ -59,6 +59,7 @@ Test identici, ciascuno su una copia **mai avviata** dello stesso disco. N = 0.1
 | 3 | 42077152935 | P2 fallito: immagine "non trovata" per nome subito dopo la build | **Non determinata**. Nell'esecuzione successiva, con passi diagnostici e ri-etichettatura di riserva, P2 è riuscito | P2 registra l'ID con `--iidfile` e verifica nome e ID; resta da capire la causa |
 | 4 | 42078680056 | P6 fallito: systemd in `starting` | Il test controllava troppo presto | Attesa con `systemctl is-system-running --wait`; `degraded` accettato solo per guasti attesi in VM elencati e motivati |
 | 5 | 42080528120 | P9 fallito: registro locale non attivo | Da determinare (output del servizio non registrato) | Diagnostica aggiunta; esecuzione ripetuta |
+| 6 | 42085279880 | P9 fallito di nuovo (P1–P8 di nuovo tutti superati: risultati ripetibili) | Il pacchetto Ubuntu `docker-registry` abilita per default l'autenticazione `htpasswd`: ogni richiesta riceveva `401`. Il servizio era attivo e in ascolto **solo su 127.0.0.1:5000** (verificato con `ss`) | Configurazione minima scritta per intero: nessuna autenticazione, solo loopback, dati in cartella temporanea |
 
 ## 5. Cosa NON è stato verificato
 

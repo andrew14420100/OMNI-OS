@@ -23,11 +23,25 @@ mkdir -p "$work/keys"; chmod 700 "$work/keys"
 # --- Registro locale effimero (solo loopback) ---
 sudo apt-get install -y -qq docker-registry 2>&1 | tee -a "$work/p9.log" >/dev/null
 cfg=/etc/docker/registry/config.yml
-echo "--- configurazione originale del registro:"; sudo cat "$cfg" 2>&1 || echo "(file $cfg assente)"
-# ascolto solo su loopback
-sudo sed -i -E 's/^([[:space:]]*addr:).*/\1 127.0.0.1:5000/' "$cfg"
-echo "--- configurazione applicata:"; sudo grep -nE 'addr|rootdirectory' "$cfg" || true
-echo "--- unità systemd del registro:"; systemctl list-unit-files | grep -i registry || true
+echo "--- configurazione del pacchetto (sostituita):"; sudo grep -nE 'addr|auth|htpasswd|realm' "$cfg" 2>&1 || true
+# Configurazione minima scritta per intero: nessuna autenticazione (il pacchetto
+# Ubuntu abilita htpasswd e risponde 401), ascolto SOLO su loopback, dati in una
+# cartella temporanea del job.
+sudo mkdir -p /var/tmp/omni-registry
+sudo tee "$cfg" >/dev/null <<'YAML'
+version: 0.1
+log:
+  level: warn
+storage:
+  filesystem:
+    rootdirectory: /var/tmp/omni-registry
+  delete:
+    enabled: true
+http:
+  addr: 127.0.0.1:5000
+YAML
+sudo chown -R docker-registry: /var/tmp/omni-registry 2>/dev/null || true
+echo "--- configurazione applicata:"; sudo cat "$cfg"
 sudo systemctl restart docker-registry || true
 for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:5000/v2/ >/dev/null 2>&1 && break; sleep 1; done
 if ! curl -fsS http://127.0.0.1:5000/v2/ >/dev/null 2>&1; then
@@ -45,7 +59,7 @@ d_signed=$(cat "$work/signed.digest"); d_unsigned=$(cat "$work/unsigned.digest")
 if [ -n "$d_signed" ] && [ -n "$d_unsigned" ] && [ "$d_signed" != "$d_unsigned" ]; then
   rec OK "immagini caricate nel registro locale (firmata $d_signed, non firmata $d_unsigned)"
 else
-  rec FAIL "caricamento immagini nel registro locale"; exit 1
+  rec FAIL "caricamento immagini nel registro locale"; tail -40 "$work/p9.log"; exit 1
 fi
 
 # --- Chiavi effimere: una corretta e una "sbagliata" per il test di chiave errata ---
@@ -115,6 +129,7 @@ if [ "$v" = "$v_signed" ]; then rec OK "S6 sistema avviato dall'immagine firmata
 shred -u "$work"/keys/*.key 2>/dev/null; rm -rf "$work/keys"; unset COSIGN_PASSWORD
 if [ ! -e "$work/keys" ]; then rec OK "chiavi effimere distrutte"; else rec FAIL "distruzione chiavi"; fi
 
+if [ "$fail" -ne 0 ]; then echo "--- ultime righe di p9.log:"; tail -60 "$work/p9.log"; fi
 echo >> "$results"; echo "Esito complessivo P9: $([ $fail -eq 0 ] && echo SUPERATO || echo FALLITO)" >> "$results"
 cat "$results"
 exit "$fail"
