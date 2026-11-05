@@ -110,10 +110,19 @@ jobs:
       - name: "P2: build dell'immagine OMNI (include bootc container lint)"
         run: |
           set -euo pipefail
+          $PODMAN info --format 'storage: {{.Store.GraphRoot}} driver={{.Store.GraphDriverName}} runroot={{.Store.RunRoot}}'
           $PODMAN build \
             --build-arg BASE_IMAGE='${{ steps.lock.outputs.base }}' \
             --build-arg OMNI_VERSION="$OMNI_VERSION" \
+            --iidfile "$RUNNER_TEMP/omni.iid" \
             -t "$IMAGE_REF" image/
+          iid=$(cat "$RUNNER_TEMP/omni.iid")
+          echo "ID immagine: $iid"
+          echo "--- immagini nello storage:"; $PODMAN images --all --no-trunc
+          if $PODMAN image exists "$IMAGE_REF"; then echo "trovata per nome: $IMAGE_REF"; else echo "NON trovata per nome: $IMAGE_REF"; fi
+          if $PODMAN image exists "$iid"; then echo "trovata per ID"; else echo "NON trovata per ID"; fi
+          # da qui in avanti si usa l'ID (immutabile); il tag viene riapplicato se mancante
+          $PODMAN image exists "$IMAGE_REF" || $PODMAN tag "$iid" "$IMAGE_REF"
           $PODMAN image inspect --format 'ID {{.Id}}  creata {{.Created}}' "$IMAGE_REF"
 
       - name: "P3: bootc container lint (esplicito)"
