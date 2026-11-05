@@ -102,7 +102,15 @@ jobs:
             | jq -r '.manifests[] | select(.platform.architecture=="amd64") | .digest' > tag45.txt || true
           echo "Digest amd64 attuale del tag 45: $(cat tag45.txt 2>/dev/null || echo 'non letto')"
           echo "Digest approvato:                $want"
-          $PODMAN pull "$base"
+          # fino a 3 tentativi per guasti di rete transitori (es. EOF dal CDN di quay.io);
+          # il controllo del digest qui sotto resta obbligatorio
+          ok=0
+          for attempt in 1 2 3; do
+            if $PODMAN pull "$base"; then ok=1; break; fi
+            echo "download fallito (tentativo $attempt/3), nuovo tentativo tra $((attempt * 30)) s"
+            sleep $((attempt * 30))
+          done
+          [ "$ok" = 1 ] || { echo "ERRORE: download della base fallito dopo 3 tentativi"; exit 1; }
           got=$($PODMAN image inspect --format '{{.Digest}}' "$base")
           echo "Digest scaricato: $got"
           [ "$got" = "$want" ] || { echo "ERRORE: digest diverso da quello approvato"; exit 1; }
