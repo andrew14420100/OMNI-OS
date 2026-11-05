@@ -1,7 +1,7 @@
 # Documentazione tecnica OMNI OS — M0
 
 > Fase attuale: **M1 preliminare — base Linux in macchina virtuale**, autorizzata il 2026-11-05.
-> M0 conclusa. Nessuna immagine costruita finora: la base OCI attende la decisione del proprietario.
+> M0 conclusa. Prima immagine sperimentale costruita e avviata in VM (solo CI): vedi `11-m1/risultati-test-vm.md`.
 > Nessuna ISO, nessun installer fisico, nessuna modifica al PC.
 
 | Cartella | Contenuto |
@@ -17,7 +17,7 @@
 | [`08-accettazione/`](08-accettazione/criteri-accettazione.md) | Criteri di accettazione M0–M9 |
 | [`09-repository/`](09-repository/struttura-repository.md) | Struttura del repository, flusso Git, inizializzazione |
 | [`10-rapporti/`](10-rapporti/rapporto-M0.md) | Rapporti di milestone ([M0](10-rapporti/rapporto-M0.md), [M1](10-rapporti/rapporto-M1.md)) |
-| [`11-m1/`](11-m1/verifica-base-oci.md) | M1: [verifica della base OCI](11-m1/verifica-base-oci.md), [percorso di build e test in VM](11-m1/percorso-build-vm.md) |
+| [`11-m1/`](11-m1/verifica-base-oci.md) | M1: [verifica della base OCI](11-m1/verifica-base-oci.md), [percorso di build e test in VM](11-m1/percorso-build-vm.md), [risultati dei test in VM](11-m1/risultati-test-vm.md) |
 | [`fonti.md`](fonti.md) | Fonti consultate |
 
 Convenzioni: **[P]** proposta, **[V]** verificato con fonte, **[D]** da verificare.

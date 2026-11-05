@@ -4,8 +4,9 @@ Sistema operativo per PC x86-64 basato su Fedora Kinoite (KDE Plasma, aggiorname
 atomici), ampliato progressivamente con applicazioni, automazioni e AI locale.
 
 **Stato:** M0 (documentazione) conclusa; **M1 preliminare** in corso, solo in
-macchina virtuale. Nessuna immagine è stata ancora costruita: la base OCI attende
-la decisione del proprietario. Nessun componente è dichiarato funzionante.
+macchina virtuale. Una prima immagine sperimentale è stata costruita e avviata in
+VM nella CI (risultati in `docs/11-m1/risultati-test-vm.md`). Non è destinata agli
+utenti e non va installata su hardware reale.
 
 "OMNI OS" è un nome di lavoro provvisorio: esiste già un sistema operativo
 chiamato OmniOS (illumos). Il rischio di confusione va risolto prima di qualsiasi

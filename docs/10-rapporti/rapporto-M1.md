@@ -1,8 +1,9 @@
-# Rapporto di milestone — M1 preliminare (avanzamento n. 1)
+# Rapporto di milestone — M1 preliminare
 
 - **Data:** 2026-11-05
 - **Autorizzazione:** M1 preliminare autorizzata dal proprietario il 2026-11-05: Fedora Kinoite 45 come riferimento; opzione C dell'ADR-0002 preferita ma **non definitiva**; prototipo **solo in VM**.
-- **Stato:** **bloccato in attesa di decisione** sulla base OCI (condizione 4). Nessuna immagine costruita, nessuna VM avviata.
+- **Stato attuale (avanzamento n. 2):** **prima immagine sperimentale OMNI OS costruita e avviata in VM**; tutti i passi P1–P9 superati nell'esecuzione 42099981099. M1 **non è conclusa**: alcuni criteri di accettazione sono parziali o non verificati (§8).
+- **Avanzamento n. 1:** sotto, invariato (stato al momento della richiesta di decisione sulla base).
 
 ## 1. Attività svolte
 
@@ -59,3 +60,54 @@ chiavi, firma delle immagini definitiva, scelta definitiva della base
 Nessuna modifica al PC, a Windows, ai dischi, al firmware o a Secure Boot.
 Nessun installer, ISO, release o immagine pubblicata. Nessuna chiave generata.
 M2 e M3 non avviate.
+
+---
+
+# Avanzamento n. 2 — build e test in VM (2026-11-05)
+
+## 7. Decisioni del proprietario applicate
+
+| # | Decisione | Applicazione |
+|---|---|---|
+| M1-D1 | A1, solo per prototipo in VM | `image/base.lock`: `quay.io/fedora/fedora-kinoite@sha256:0e0649d7…`, `BASE_SIGNED=false`, `SCOPE=VM_ONLY`; digest ricontrollato prima della build (e a ogni esecuzione, P1). La CI rifiuta una base non firmata senza `SCOPE=VM_ONLY` |
+| M1-D2 | GitHub Actions | Workflow `m1-vm.yml`: permessi in sola lettura, nessun segreto, nessuna pubblicazione; runner verificato (KVM, 4 CPU, 15 GB, 86–99 GB liberi) |
+| M1-D3 | Test con rpm-ostree e bootc | P8 e P9 eseguiti separatamente per entrambi; confronto in `../11-m1/risultati-test-vm.md` §3 |
+
+## 8. Criteri di accettazione M1 (`../08-accettazione/criteri-accettazione.md`)
+
+| Criterio | Stato | Evidenza |
+|---|---|---|
+| AC-M1-01 Build da commit con base fissata per digest | **Soddisfatto** | P1–P2, 5 esecuzioni |
+| AC-M1-02 Avvio UEFI in VM con Secure Boot emulato attivo | **Soddisfatto** | P6 (UEFI) e P6b (variabile EFI `SecureBoot` = 1) |
+| AC-M1-03 Login, desktop Plasma Wayland, rete | **Parziale** | Gestore di accesso `plasmalogin` attivo, `graphical.target` attivo, rete con IPv4. **Non verificati**: accesso di un utente e sessione Plasma Wayland; contenuto della schermata |
+| AC-M1-04 Upgrade N → N+1 | **Soddisfatto** | P8 U1 con bootc e rpm-ostree |
+| AC-M1-05 Rollback R1, R2, R3 | **Parziale** | R1 (deployment precedente) superato con entrambi; **R2** (deployment fissato) e **R3** (ritorno a un tag precedente nel registry) **non provati** |
+| AC-M1-06 Rifiuto immagini non firmate o con firma errata | **Soddisfatto** (chiavi effimere) | P9 S1–S4; accettazione della firma valida S5–S6 |
+| AC-M1-07 Ricostruzione equivalente dallo stesso commit | **Non verificato** | — |
+| AC-M1-08 SBOM | **Non realizzato** | — |
+| AC-M1-09 Confronto rpm-ostree / bootc | **Soddisfatto** | `risultati-test-vm.md` §3, §3.1 |
+| AC-M1-10 NVIDIA dichiarato non verificato | **Soddisfatto** | Nessun driver NVIDIA in VM |
+
+## 9. Test effettivamente eseguiti
+
+Elenco completo, dati e problemi in `../11-m1/risultati-test-vm.md`. Sintesi:
+
+- 5 esecuzioni complete di `m1-vm` dopo l'avvio delle prove; ultima completamente superata: **42099981099** (31 minuti).
+- 9 problemi incontrati e documentati: 5 dovuti a errori dei miei test o della mia configurazione (SDDM presunto, storage di podman, attesa dell'avvio, autenticazione del registro, identità della firma), 1 di rete esterna (CDN di quay.io), 1 non spiegato (P2, non più riprodotto).
+- Nessun test è stato disattivato o saltato per ottenere esiti positivi; l'unica tolleranza introdotta è `mcelog.service` in VM, motivata ed esplicita.
+
+## 10. Raccomandazione sul gestore degli aggiornamenti (non decisione)
+
+Provvisoriamente **rpm-ostree come gestore primario**, mantenendo la compatibilità con bootc: nessuna differenza funzionale osservata; con rpm-ostree l'obbligo di firma è nel riferimento dell'immagine; espone l'API D-Bus prevista. Prima della decisione definitiva: test T1 (persistenza della verifica con `bootc upgrade`), T2 (aggiornamenti automatici), T3 (tempi su più esecuzioni). Dettagli in `risultati-test-vm.md` §3.
+
+## 11. Lavoro restante per concludere M1 (da autorizzare)
+
+1. AC-M1-03: utente di prova e verifica della sessione Plasma Wayland in VM.
+2. AC-M1-05: test R2 (`ostree admin pin`) e R3 (ritorno a un'immagine precedente da registry locale).
+3. AC-M1-07: doppia build dallo stesso commit e confronto dell'elenco pacchetti.
+4. AC-M1-08: generazione dello SBOM.
+5. Test T1–T3 per la scelta del gestore.
+
+## 12. Conformità ai limiti
+
+Nessuna modifica al PC, a Windows, ai dischi, al BIOS/UEFI o a Secure Boot reale (Secure Boot è stato **emulato** nel firmware virtuale della VM). Nessun installer fisico, ISO, release o immagine pubblicata: le immagini sono esistite solo nei runner effimeri; il registro di P9 era raggiungibile solo dal loopback del runner. Nessuna chiave definitiva: solo chiavi SSH e cosign effimere, distrutte con il job. M2 e M3 non avviate. Restano aperte: licenza, Secure Boot, custodia delle chiavi, firma definitiva, base definitiva (ADR-0002), gestore definitivo (ADR-0003), confusione con OmniOS.
