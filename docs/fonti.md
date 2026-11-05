@@ -22,6 +22,9 @@ Data di consultazione: 2026-11-05. Tipo: **U** = ufficiale/primaria, **S** = sec
 | 16 | Forum NVIDIA, "Linux 6.17.x + NVIDIA 580.xx ... (RTX 5080)" — https://forums.developer.nvidia.com/t/linux-6-17-x-nvidia-580-xx-driver-loads-drm-nodes-missing-nvidia-smi-reports-no-devices-were-found-rtx-5080/356769 | C | ADR-0004 |
 | 17 | falcao.org, "NVIDIA on Fedora KDE Wayland in 2026: Field Report from an RTX 5070" — https://falcao.org/posts/nvidia-fedora-kde-wayland/ | C | ADR-0004 |
 | 18 | Discussion Fedora, "HowTo: Test the Fedora Atomic container images by rebasing" — https://discussion.fedoraproject.org/t/howto-test-the-fedora-atomic-container-images-by-rebasing/124526 | C | ADR-0003 |
+| 19 | Fedora Magazine, "Announcing Fedora Linux 45" (3 novembre 2026) — https://fedoramagazine.org/announcing-fedora-linux-45/ | U | ADR-0005 |
+| 20 | Fedora Project, download Fedora Kinoite — https://fedoraproject.org/atomic-desktops/kinoite/download/ | U | ADR-0005 |
+| 21 | Fedora Project, Fedora Kinoite — https://fedoraproject.org/atomic-desktops/kinoite/ | U | ADR-0005 |
 
 ## Fonti non accessibili (da verificare manualmente)
 
@@ -29,4 +32,4 @@ Data di consultazione: 2026-11-05. Tipo: **U** = ufficiale/primaria, **S** = sec
 |---|---|
 | docs.fedoraproject.org (Atomic Desktops, Technical Information) | Protezione anti-bot (Anubis) |
 | forge.fedoraproject.org (tracker Atomic Desktops, bootable containers) | Protezione anti-bot |
-| lists.fedoraproject.org (annuncio Fedora 45) | Protezione anti-bot |
+| lists.fedoraproject.org (annuncio Fedora 45) | Protezione anti-bot (annuncio comunque verificato tramite Fedora Magazine e fedoraproject.org) |

@@ -27,14 +27,14 @@
 
 | # | Verifica | Riferimento | Esito |
 |---|---|---|---|
-| D-01 | Release Fedora scelta e supporto effettivo (F45-01..06) | ADR-0005 | Da verificare |
+| D-01 | Release Fedora scelta e supporto effettivo (F45-01..06) | ADR-0005 | Parziale: rilascio ufficiale F45 verificato (F45-01); F45-02..06 da verificare |
 | D-02 | Compatibilità preliminare NVIDIA: device ID nell'elenco README della versione driver; pacchetti RPM Fusion per F45 | ADR-0004 NV-02/NV-03 | Da verificare |
 | D-03 | Tecnica di costruzione e distribuzione dell'immagine | ADR-0003 | Proposta, attende approvazione |
 | D-04 | Strategia aggiornamenti, firma e ripristino | ADR-0003 | Proposta, attende approvazione |
 | D-05 | Licenze dei componenti distribuiti | `../05-licenze/analisi-licenze.md` | Preliminare |
 | D-06 | Base: Kinoite ufficiale vs Universal Blue | ADR-0002 | Attende decisione |
 | D-07 | Opzione Secure Boot | ADR-0004 | Attende decisione |
-| D-08 | Repository Git inizializzato con branch di base | `../09-repository/inizializzazione-repository.md` | Attende autorizzazione |
+| D-08 | Repository Git inizializzato con branch di base | `../09-repository/inizializzazione-repository.md` | **Completato** (opzione 1, 2026-11-05) |
 
 ## 3. Requisiti di compatibilità applicativa (dal proprietario)
 

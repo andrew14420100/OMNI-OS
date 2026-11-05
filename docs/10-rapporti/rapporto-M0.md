@@ -33,7 +33,7 @@ nessuna modifica al computer, nessun avvio di M1, nessuna modifica a `main`
 | 1 | Confronto Kinoite ufficiale vs Universal Blue, senza scelta definitiva | ADR-0002: tre opzioni confrontate; raccomandazione provvisoria C (ibrida); decisione al proprietario |
 | 2 | Analisi separata bootc, rpm-ostree, aggiornamenti, rollback, firma | ADR-0003: strategia proposta (immagine OCI, rpm-ostree primario + bootc valutato, cosign, canali, rollback R1–R4) |
 | 3 | Requisiti NVIDIA open per RTX 5070 Ti, opzioni Secure Boot | ADR-0004: verificato su README NVIDIA 595.84 che Blackwell richiede moduli open; opzioni SB-A…SB-E; proposta SB-A |
-| 4 | Fedora Kinoite 45 come riferimento, con verifica del supporto | ADR-0005: GO e rilascio 3/11/2026 riportati da fonti secondarie; annuncio ufficiale **non verificato** (siti Fedora inaccessibili dall'ambiente); checklist F45-01..06 |
+| 4 | Fedora Kinoite 45 come riferimento, con verifica del supporto | ADR-0005: rilascio ufficiale del 3/11/2026 **verificato** su Fedora Magazine e fedoraproject.org (F45-01 superata); restano F45-02..06; la conferma non approva l'architettura |
 | 5 | SSD Windows scollegato alla prima installazione fisica | SEC-INST-01 obbligatorio con condizione di blocco; procedura dedicata |
 | 6 | Verifica marchio prima della distribuzione pubblica | REQ-TM-01 con checklist TM-01..09; rischio R-14 |
 | 7 | Benchmark gaming + AI con attenzione ai 16 GB VRAM | Piano con scenari B-00…B-C8 e politiche P-1…P-5 |
@@ -54,8 +54,8 @@ Nessun test software (M0 è documentale). Verifiche effettuate:
 | DA-02 | Opzione Secure Boot | ADR-0004 | SB-A (chiave MOK di progetto) |
 | DA-03 | Client aggiornamenti primario | ADR-0003 | rpm-ostree in M1, bootc valutato in parallelo |
 | DA-04 | Firma immagini | ADR-0003 | cosign con chiave (F1) |
-| DA-05 | Release di riferimento | ADR-0005 | F45, condizionata alla checklist; F44 riserva |
-| DA-06 | Inizializzazione di `main` | `09-repository/inizializzazione-repository.md` | Opzione 1 |
+| DA-05 | Release di riferimento | ADR-0005 | F45 (rilascio ufficiale verificato), condizionata a F45-02..06; F44 riserva |
+| DA-06 | Inizializzazione di `main` | `09-repository/inizializzazione-repository.md` | **Decisa**: opzione 1 autorizzata ed eseguita il 2026-11-05 |
 | DA-07 | Licenza del codice e della documentazione OMNI | `05-licenze/analisi-licenze.md` §3 | Da discutere (GPL-3.0+ o Apache-2.0) |
 | DA-08 | Visibilità del repository e del registry (pubblico/privato) | `04-dipendenze/` §7 | Influisce su costi CI e REQ-TM-01 |
 | DA-09 | Custodia delle chiavi di firma (segreti CI, token hardware) | ADR-0004, SEC-BOOT-02 | Segreti CI + copia offline cifrata |
@@ -70,9 +70,9 @@ Checklist H-01…H-15 e A-01… in `07-verifiche/checklist-prerequisiti-m1.md`
 ## 7. Problemi aperti e limiti
 
 - Documentazione Fedora (docs.fedoraproject.org, forge, liste) non accessibile dall'ambiente di analisi: i punti marcati **[D]** vanno confermati prima di M1 (R-19).
-- Le informazioni su Fedora 45 provengono da fonti secondarie.
+- Rilascio di Fedora 45 confermato da fonti ufficiali; kernel e versione Plasma della release finale ancora da confermare. La pagina di download mostrava ancora un'etichetta "BETA" (anomalia da ricontrollare).
 - Le segnalazioni di instabilità del driver su RTX 50 sono comunitarie, non ufficiali.
-- PR non creata: manca il branch di base (R-21).
+- Repository inizializzato su autorizzazione del proprietario (opzione 1): `main` = commit iniziale vuoto `25f607b`; PR in bozza #1 verso `main`, senza merge (R-21 chiuso).
 
 ## 8. Criteri di accettazione M0
 

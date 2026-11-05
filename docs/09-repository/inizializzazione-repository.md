@@ -1,6 +1,13 @@
 # Situazione del repository GitHub e inizializzazione
 
-- **Stato:** verificato il 2026-11-05. **`main` non è stato inizializzato** (richiede autorizzazione specifica del proprietario).
+- **Stato:** verificato il 2026-11-05.
+- **Aggiornamento 2026-11-05:** il proprietario ha autorizzato l'**opzione 1**. Eseguito:
+  - verificato che il commit `25f607b` non ha genitori e ha l'albero vuoto di Git (`4b825dc642cb6eb9a060e54bf8d69288fbee4904`, 0 file);
+  - pubblicato `main` su `25f607b`; `main` è il branch predefinito (`HEAD` remoto → `refs/heads/main`);
+  - pubblicato `claude/zealous-ritchie-hnvev5` e aperta la PR in bozza #1 verso `main`, **senza merge**.
+  - Da fare a cura del proprietario: regole di protezione di `main` (§5).
+
+Le sezioni seguenti descrivono la situazione **prima** dell'inizializzazione.
 
 ## 1. Situazione rilevata
 

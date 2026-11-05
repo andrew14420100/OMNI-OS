@@ -21,13 +21,13 @@
 | R-13 | Licenze e redistribuzione | 3 | 4 | 12 | Analisi licenze; SBOM; restare in D0/D1 fino a M9 | Proprietario | M9 | Aperto |
 | R-14 | **Conflitto con marchio "OMNI OS"** | 3 | 3 | 9 | REQ-TM-01 prima di ogni distribuzione pubblica; nomi tecnici centralizzati | Proprietario | Prima di D2 | Aperto |
 | R-15 | Dipendenza da immagini Universal Blue che possono essere ridotte o rimosse | 3 | 3 | 9 | ADR-0002 opzione C; Universal Blue solo come riferimento o banco di prova | Claude | M1 | Aperto |
-| R-16 | Fedora 45 appena rilasciata: regressioni iniziali, supporto NVIDIA per kernel 7.2 da confermare | 3 | 3 | 9 | Checklist F45-01..06; F44 come riserva | Claude | Pre-M1 | Aperto |
+| R-16 | Fedora 45 appena rilasciata (3/11/2026, confermato): regressioni iniziali, supporto NVIDIA per il kernel della release da confermare | 3 | 3 | 9 | Checklist F45-02..06; F44 come riserva | Claude | Pre-M1 | Aperto |
 | R-17 | Instabilità di specifiche versioni del driver NVIDIA open su RTX 50 (segnalazioni Xid su 580.x) | 3 | 4 | 12 | Fissare versione driver; test di stabilità prolungati in M3; rollback di immagine | Claude | M3 | Aperto |
 | R-18 | Cambio stato Secure Boot che attiva il ripristino BitLocker di Windows | 2 | 4 | 8 | Chiave di recupero BitLocker disponibile (SEC-INST-07); evitare SB-D | Proprietario | M3 | Aperto |
 | R-19 | Documentazione Fedora non consultabile dall'ambiente di sviluppo (anti-bot) | 3 | 2 | 6 | Verifiche manuali del proprietario o fonti mirror; marcare i punti [D] | Claude | Pre-M1 | Aperto |
 | R-20 | Limiti di GitHub Actions/registry per build di immagini (spazio, minuti) | 3 | 2 | 6 | Repository pubblico o runner alternativo; cache; valutazione in M1 | Claude | M1 | Aperto |
-| R-21 | Repository GitHub senza branch di base: impossibile aprire PR | 5 | 2 | 10 | Inizializzazione `main` su autorizzazione del proprietario (`../09-repository/inizializzazione-repository.md`) | Proprietario | M0 | Aperto |
-| R-22 | Perdita del lavoro non pubblicato nel container effimero di Claude | 3 | 2 | 6 | Push del branch di lavoro appena autorizzato | Claude | M0 | Aperto |
+| R-21 | Repository GitHub senza branch di base: impossibile aprire PR | 5 | 2 | 10 | `main` creato sul commit vuoto `25f607b` su autorizzazione del proprietario (opzione 1) | Proprietario | M0 | **Chiuso** (2026-11-05) |
+| R-22 | Perdita del lavoro non pubblicato nel container effimero di Claude | 3 | 2 | 6 | Branch di lavoro pubblicato su GitHub | Claude | M0 | **Chiuso** (2026-11-05) |
 
 ## Rischi principali (punteggio ≥ 15)
 

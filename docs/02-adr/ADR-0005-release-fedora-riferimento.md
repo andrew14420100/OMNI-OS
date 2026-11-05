@@ -1,6 +1,7 @@
 # ADR-0005 — Release Fedora di riferimento: Fedora Kinoite 45
 
 - **Stato:** Proposto — **verifica obbligatoria del supporto effettivo prima di M1**
+- **Aggiornamento 2026-11-05:** rilascio ufficiale di Fedora Linux 45 (incluso Kinoite 45) **confermato** su fonti ufficiali Fedora (vedi §"Conferma ufficiale"). La conferma del rilascio **non** costituisce approvazione dell'architettura né della scelta della base (ADR-0002) o di Secure Boot (ADR-0004).
 - **Data:** 2026-11-05
 - **Decisioni approvate correlate:** 50
 - **Riferimento:** richiesta 4 dell'autorizzazione M0
@@ -15,7 +16,8 @@ Il proprietario indica Fedora Kinoite 45 come possibile riferimento iniziale.
 |---|---|---|
 | Decisione "GO" per Fedora 45 Final (RC 1.4) al meeting Go/No-Go del 29 ottobre 2026 | Riportata | Phoronix (secondaria, attendibile) |
 | Data di rilascio: martedì 3 novembre 2026 (dopo due rinvii: 20 ottobre → 27 ottobre → 3 novembre) | Riportata | Phoronix, warp2search, linuxcompatible (secondarie) |
-| Annuncio ufficiale Fedora (Fedora Magazine / lista announce) | **Non verificato**: siti Fedora non raggiungibili dall'ambiente di analisi (protezione anti-bot) | — |
+| Annuncio ufficiale Fedora (Fedora Magazine) | **Verificato**: "Announcing Fedora Linux 45", 3 novembre 2026 | Fedora Magazine (ufficiale) |
+| Kinoite 45 disponibile per il download, data di rilascio 3 novembre 2026, ISO `Fedora-Kinoite-Installer-45-1.4.x86_64.iso` | **Verificato** | fedoraproject.org (ufficiale) |
 | Contenuti (da Beta): kernel Linux 7.2, KDE Plasma 6.7 | Riportati per la Beta del 15 settembre 2026 | linuxiac, debugpoint (secondarie) |
 | Atomic Desktops: ISO costruite con image-builder al posto di lorax; immagini raw e qcow2 disponibili; installer Anaconda web | Riportato per la Beta | linuxiac (secondaria) |
 | Verifica delle firme RPM imposta per default (pacchetti non firmati rifiutati) | Riportato per la Beta | linuxiac (secondaria) |
@@ -28,6 +30,23 @@ della release N+2 (circa 13 mesi). **Stima** per Fedora 45: fine supporto
 intorno a fine 2027, dopo il rilascio di Fedora 47. Data da confermare sul
 calendario ufficiale.
 
+## Conferma ufficiale (2026-11-05)
+
+| Fonte ufficiale | Contenuto rilevato |
+|---|---|
+| Fedora Magazine, "Announcing Fedora Linux 45" — https://fedoramagazine.org/announcing-fedora-linux-45/ | Pubblicato il 3 novembre 2026 (autori: Aoife Moloney, Jef Spaleta): "The Fedora Project is pleased to announce the release of Fedora Linux 45!"; le Atomic Desktops, inclusa Kinoite, sono disponibili |
+| Fedora Project, pagina download Kinoite — https://fedoraproject.org/atomic-desktops/kinoite/download/ | "Download Fedora Kinoite 45", "RELEASE DATE: Tuesday, November 3, 2026", ISO `Fedora-Kinoite-Installer-45-1.4.x86_64.iso` (compose RC 1.4, coerente con la decisione GO) |
+| Fedora Project, pagina Kinoite — https://fedoraproject.org/atomic-desktops/kinoite/ | "Each version is updated for approximately 13 months." |
+
+**Anomalia da ricontrollare:** al momento della consultazione la pagina di
+download mostrava ancora l'etichetta "BETA" accanto a Kinoite 45, pur indicando
+la data di rilascio finale e il compose 1.4. Probabile residuo della pagina;
+da ricontrollare prima di M1.
+
+Kernel e versione di Plasma della release finale **non** sono indicati
+nell'annuncio: i valori 7.2 e 6.7 restano quelli riportati per la Beta, da
+confermare sull'immagine effettiva in M1.
+
 ## Implicazioni per OMNI
 
 - **Kernel 7.2:** va verificato che il driver NVIDIA open fissato (ADR-0004) compili e funzioni con il kernel effettivamente distribuito.
@@ -37,14 +56,14 @@ calendario ufficiale.
 
 ## Proposta
 
-Adottare **Fedora Kinoite 45** come riferimento iniziale, **condizionato** al
+Adottare **Fedora Kinoite 45** come riferimento iniziale (proposta, non ancora approvata), **condizionato** al
 superamento di questa checklist prima dell'avvio di M1:
 
 | # | Verifica | Esito |
 |---|---|---|
-| F45-01 | Annuncio ufficiale di rilascio su canali Fedora | Da verificare |
+| F45-01 | Annuncio ufficiale di rilascio su canali Fedora | **Superata** (2026-11-05, Fedora Magazine + fedoraproject.org) |
 | F45-02 | Immagine OCI ufficiale Kinoite 45 disponibile sul registry Fedora (tag e digest) | Da verificare |
-| F45-03 | Data di fine supporto sul calendario Fedora | Da verificare |
+| F45-03 | Data di fine supporto sul calendario Fedora | Parziale: "circa 13 mesi" (fedoraproject.org); data esatta da verificare |
 | F45-04 | Pacchetti NVIDIA RPM Fusion disponibili per F45 e per il kernel corrente | Da verificare |
 | F45-05 | Problemi noti (Common Issues) di Kinoite 45 rilevanti per NVIDIA, KDE, Wayland, bootc | Da verificare |
 | F45-06 | Se si sceglie Universal Blue (ADR-0002 B/C): immagini/kmod F45 disponibili | Da verificare |
