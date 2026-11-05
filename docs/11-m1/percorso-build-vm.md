@@ -1,7 +1,7 @@
-# M1 — Percorso di build e test in VM (proposta da approvare)
+# M1 — Percorso di build e test in VM (approvato)
 
-- **Stato:** **proposta**. Nessun passo di build o di avvio in VM è stato eseguito.
-- **Prerequisito bloccante:** decisione sulla base OCI (`verifica-base-oci.md` §6).
+- **Stato:** **approvato** dal proprietario il 2026-11-05 (decisioni M1-D1 = A1, M1-D2 = GitHub Actions, M1-D3 = test con bootc e rpm-ostree). In esecuzione; risultati in `risultati-test-vm.md`.
+- **Base:** `quay.io/fedora/fedora-kinoite@sha256:0e0649d7…` (eccezione A1, non firmata, solo VM).
 - **Ambito:** prototipo **solo per macchina virtuale**. Esclusi: installer fisici, ISO, release pubbliche, immagini per utenti, modifiche al PC, a Windows, ai dischi, al firmware o a Secure Boot (autorizzazione M1, punti 8–9).
 
 ## 1. Vincoli dell'ambiente rilevati
@@ -9,7 +9,7 @@
 | Ambiente | Situazione verificata | Conseguenza |
 |---|---|---|
 | Container di Claude | Ubuntu 24.04; 4 CPU, 15 GB RAM; **niente `/dev/kvm`**; niente podman, skopeo, qemu, cosign; demone Docker **non** disponibile | Qui non si possono costruire immagini né avviare VM in modo utile. Usato solo per documentazione e controlli statici |
-| GitHub Actions (`ubuntu-24.04`) | Disponibilità di KVM, spazio disco e tempo massimo **da verificare** con un job di prova [D] | Ambiente proposto per build e test in VM |
+| GitHub Actions (`ubuntu-24.04`) | **Verificato** il 2026-11-05: KVM disponibile (`/dev/kvm`, accesso abilitato con regola udev), 4 CPU, 15 GB RAM, 86 GB liberi su `/`, podman 4.9.3, QEMU 8.2.2, OVMF (anche varianti Secure Boot) | Ambiente usato per build e test in VM |
 
 ## 2. Percorso proposto
 
@@ -65,3 +65,16 @@ Regole:
 | M1-D1 | Base OCI: A1–A5 (`verifica-base-oci.md` §5) |
 | M1-D2 | Approvazione di questo percorso di build (GitHub Actions, nessuna pubblicazione di immagini) |
 | M1-D3 | Client per i test di upgrade/rollback in VM: rpm-ostree, bootc o entrambi (ADR-0003 resta aperto: il test serve proprio a confrontarli) |
+
+## 5. Variazioni rispetto alla proposta approvata (Regola operativa 2)
+
+Variazioni tecniche introdotte durante l'esecuzione. Nessuna modifica l'architettura, la base o i limiti di sicurezza.
+
+| # | Proposta | Variazione | Motivo |
+|---|---|---|---|
+| V1 | P5 con `bootc-image-builder` | P5 con `bootc install to-disk --via-loopback`, eseguito dall'immagine OMNI stessa | Evita un'ulteriore immagine esterna non firmata (bootc-image-builder è un'immagine CentOS separata); usa il bootc già contenuto nella base |
+| V2 | — | sshd attivato **solo sul disco di prova** tramite argomento del kernel `systemd.wants=sshd.service`, accesso root con chiave SSH effimera generata nel job | Permette i controlli automatici senza modificare l'immagine OMNI |
+| V3 | P6 "Secure Boot emulato in un passo successivo" | Aggiunto P6b: avvio con OVMF Secure Boot (chiavi Microsoft) **solo nella VM** | Criterio AC-M1-02; nessun effetto sul PC del proprietario |
+| V4 | P9 con registry non specificato | Registro OCI **locale effimero** sul runner, in ascolto solo su `127.0.0.1` (pacchetto Ubuntu `docker-registry`), distrutto con il runner | Le firme sigstore richiedono un registro; nessuna pubblicazione esterna |
+| V5 | P9 con cosign | cosign **2.6.5** (non 3.x), `--tlog-upload=false` | cosign 3.x non offre l'opzione per evitare il registro pubblico di trasparenza Rekor: usarlo avrebbe pubblicato dati della firma |
+| V6 | Storage podman | Storage predefinito `/var/lib/containers` | `bootc install` esegue il podman dell'host nel suo namespace: con uno storage personalizzato non trova l'immagine |
