@@ -10,6 +10,7 @@
 |---|---|
 | Esecuzione completa superata | [42099981099](https://github.com/andrew14420100/OMNI-OS/actions/runs/42099981099), commit `2bae45f`, 2026-11-05 20:05–20:36 UTC (31 min) |
 | Esito | **Tutti i passi P1–P9 e P6b superati** |
+| Conferma | [42105279344](https://github.com/andrew14420100/OMNI-OS/actions/runs/42105279344), commit `e927d1a`: di nuovo **tutti i passi P1–P9 superati** (2 esecuzioni complete superate) |
 | Esecuzioni precedenti usate per §3 | [42080528120](https://github.com/andrew14420100/OMNI-OS/actions/runs/42080528120) (`96560c1`): P1–P8 superati; P1–P8 superati anche in 42085279880 e 42094583863 (risultati ripetuti in 4 esecuzioni) |
 | Runner | 4 CPU, 15 GB RAM, KVM disponibile, 99 GB liberi su `/`, podman 4.9.3, QEMU 8.2.2 |
 
