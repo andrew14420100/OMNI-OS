@@ -1,4 +1,4 @@
-# OMNI OS — M1: verifica del runner e build sperimentale (P1–P4).
+# OMNI OS — M1: verifica del runner, build sperimentale (P1–P4) e avvio in VM (P5–P7).
 # Prototipo SOLO per macchina virtuale. Nessuna pubblicazione su registry,
 # nessuna release, nessuna ISO, nessun segreto, nessuna chiave definitiva.
 # Percorso approvato: docs/11-m1/percorso-build-vm.md (decisione M1-D2).
@@ -54,10 +54,10 @@ jobs:
         run: MIN_FREE_GB=0 bash tests/vm/runner_check.sh
 
   build-p1-p4:
-    name: P1–P4 base, build, lint, contenuto
+    name: P1–P7 base, build, lint, contenuto, disco, avvio UEFI, schermata
     needs: runner-check
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -123,6 +123,68 @@ jobs:
         run: |
           $PODMAN run --rm -v "$PWD/tests/vm:/t:ro,Z" "$IMAGE_REF" \
             bash /t/check_image_content.sh "$OMNI_VERSION"
+
+      # ---- P5–P7: eseguiti solo se P1–P4 sono superati (i passi falliti fermano il job) ----
+      - name: Prerequisiti VM (QEMU, OVMF) e chiave SSH effimera di prova
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-system-x86 ovmf >/dev/null
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+          test -w /dev/kvm || { echo "ERRORE: /dev/kvm non accessibile"; exit 1; }
+          qemu-system-x86_64 --version | head -1
+          ls /usr/share/OVMF/
+          # Chiave effimera: generata qui, mai salvata né pubblicata, distrutta con il runner.
+          ssh-keygen -q -t ed25519 -N '' -C omni-m1-ci-effimera -f "$RUNNER_TEMP/testkey"
+          echo "VMWORK=$RUNNER_TEMP/vm" >> "$GITHUB_ENV"
+          echo "TESTKEY=$RUNNER_TEMP/testkey" >> "$GITHUB_ENV"
+
+      - name: "P5: disco virtuale di prova (bootc install to-disk)"
+        run: |
+          set -euo pipefail
+          storage=$(echo "$PODMAN" | awk '{print $4}')
+          bash tests/vm/make_disk.sh "$storage" "$IMAGE_REF" "$VMWORK" "$TESTKEY.pub"
+          sudo chown "$(id -u):$(id -g)" "$VMWORK/disk.raw"
+
+      - name: "P6: avvio UEFI in QEMU e controlli nel sistema avviato"
+        run: |
+          set -euo pipefail
+          bash tests/vm/boot_vm.sh "$VMWORK/disk.raw" "$VMWORK" uefi
+          bash tests/vm/wait_ssh.sh "$TESTKEY" "$VMWORK" 900
+          scp -i "$TESTKEY" -P 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+            tests/vm/vm_checks.sh root@127.0.0.1:/var/tmp/vm_checks.sh
+          # attende che la sessione grafica si stabilizzi prima dei controlli
+          for i in $(seq 1 30); do
+            bash tests/vm/vm_ssh.sh "$TESTKEY" systemctl is-active display-manager >/dev/null 2>&1 && break
+            sleep 10
+          done
+          bash tests/vm/vm_ssh.sh "$TESTKEY" bash /var/tmp/vm_checks.sh "$OMNI_VERSION"
+
+      - name: "P7: cattura della schermata di accesso"
+        run: |
+          set -euo pipefail
+          sleep 30
+          python3 tests/vm/screenshot.py "$VMWORK/qmp.sock" "$VMWORK/p7-schermata.png"
+          ls -l "$VMWORK/p7-schermata.png"
+
+      - name: Arresto della VM
+        if: always()
+        run: |
+          if [ -f "${VMWORK:-/nonexistent}/qemu.pid" ]; then kill "$(cat "$VMWORK/qemu.pid")" 2>/dev/null || true; fi
+
+      - name: Artefatti di diagnosi (schermata e console seriale, 3 giorni)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-vm-diagnosi
+          path: |
+            ${{ runner.temp }}/vm/p7-schermata.png
+            ${{ runner.temp }}/vm/serial.log
+          retention-days: 3
+          if-no-files-found: ignore
 
       - name: Spazio usato
         if: always()

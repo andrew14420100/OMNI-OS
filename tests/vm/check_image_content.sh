@@ -35,9 +35,22 @@ done
 for bin in bootc rpm-ostree ostree systemctl; do
   check "comando $bin presente" command -v "$bin"
 done
-for pkg in plasma-workspace sddm kwin NetworkManager; do
+for pkg in plasma-workspace kwin NetworkManager; do
   check "pacchetto $pkg installato ($(rpm -q "$pkg" 2>/dev/null || echo assente))" rpm -q "$pkg"
 done
+
+# Gestore di accesso grafico: non si presume quale sia (in Kinoite 45 non è sddm).
+# Si legge quello configurato tramite l'alias display-manager.service.
+dm_link=""
+for d in /etc/systemd/system /usr/lib/systemd/system; do
+  if [ -L "$d/display-manager.service" ]; then dm_link=$(readlink -f "$d/display-manager.service"); break; fi
+done
+check "display-manager.service configurato (${dm_link:-nessuno})" test -n "$dm_link"
+if [ -n "$dm_link" ]; then
+  check "unità del gestore di accesso presente: $dm_link" test -f "$dm_link"
+  dm_pkg=$(rpm -qf "$dm_link" 2>/dev/null || echo "nessun pacchetto")
+  check "gestore di accesso fornito dal pacchetto: $dm_pkg" rpm -qf "$dm_link"
+fi
 
 if [ "$fail" -eq 0 ]; then echo "check_image_content: OK"; else echo "check_image_content: FALLITO"; fi
 exit "$fail"
