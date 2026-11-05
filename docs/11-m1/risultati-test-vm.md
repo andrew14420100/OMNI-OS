@@ -61,6 +61,7 @@ Test identici, ciascuno su una copia **mai avviata** dello stesso disco. N = 0.1
 | 5 | 42080528120 | P9 fallito: registro locale non attivo | Da determinare (output del servizio non registrato) | Diagnostica aggiunta; esecuzione ripetuta |
 | 6 | 42085279880 | P9 fallito di nuovo (P1–P8 di nuovo tutti superati: risultati ripetibili) | Il pacchetto Ubuntu `docker-registry` abilita per default l'autenticazione `htpasswd`: ogni richiesta riceveva `401`. Il servizio era attivo e in ascolto **solo su 127.0.0.1:5000** (verificato con `ss`) | Configurazione minima scritta per intero: nessuna autenticazione, solo loopback, dati in cartella temporanea |
 | 7 | 42094016024 | P1 fallito: download interrotto | Guasto di rete esterno: il CDN di quay.io ha chiuso la connessione durante il download di un blob (`unexpected EOF`). Non legato al codice OMNI | P1 ritenta fino a 3 volte; il controllo del digest resta obbligatorio |
+| 8 | 42094583863 | P9: S1–S4 superati (rifiuto di immagini non firmate e di chiavi sconosciute con entrambi i gestori), S5–S6 falliti: immagine firmata correttamente rifiutata con `Signature for identity "127.0.0.1:5000/omni-os" is not accepted` | **Errore del test**: con `remapIdentity` il nome rimappato mantiene il tag `:signed`, mentre la firma cosign contiene solo il repository; la corrispondenza esatta fallisce | Firma con `--sign-container-identity 10.0.2.2:5000/omni-os` e policy `matchRepository` |
 
 ## 5. Cosa NON è stato verificato
 

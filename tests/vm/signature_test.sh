@@ -4,8 +4,9 @@
 # docker-registry): nessuna pubblicazione all'esterno. Firma cosign senza
 # registro di trasparenza pubblico (--tlog-upload=false).
 #
-# Dalla VM il registro è raggiungibile come 10.0.2.2:5000 (rete utente di QEMU);
-# la policy usa remapIdentity perché la firma è fatta sul nome 127.0.0.1:5000.
+# Dalla VM il registro è raggiungibile come 10.0.2.2:5000 (rete utente di QEMU):
+# la firma riporta quell'identità (--sign-container-identity) e la policy della
+# VM usa matchRepository (la firma cosign non contiene il tag).
 #
 # Uso: signature_test.sh <podman-cmd> <img-firmata> <img-non-firmata> <chiave-ssh> <dir-lavoro> <cosign> <versione-attesa-dopo-switch>
 set -uo pipefail
@@ -71,6 +72,7 @@ expect_ok "chiavi effimere generate" test -s "$work/keys/prova.pub" -a -s "$work
 
 expect_ok "firma dell'immagine con la chiave di prova (senza registro di trasparenza)" \
   "$cosign" sign --yes --key "$work/keys/prova.key" --tlog-upload=false \
+  --sign-container-identity "10.0.2.2:5000/omni-os" \
   --allow-insecure-registry --allow-http-registry "$R@$d_signed"
 expect_ok "verifica sull'host: immagine firmata valida" \
   "$cosign" verify --key "$work/keys/prova.pub" --insecure-ignore-tlog=true \
@@ -91,7 +93,7 @@ write_policy() { # write_policy <file-chiave-pubblica-locale>
       "10.0.2.2:5000/omni-os": [{
         "type": "sigstoreSigned",
         "keyPath": "/etc/pki/containers/omni-prova.pub",
-        "signedIdentity": {"type": "remapIdentity", "prefix": "10.0.2.2:5000/omni-os", "signedPrefix": "127.0.0.1:5000/omni-os"}
+        "signedIdentity": {"type": "matchRepository"}
       }]
     },
     "docker-daemon": {"": [{"type": "reject"}]}
@@ -100,7 +102,7 @@ write_policy() { # write_policy <file-chiave-pubblica-locale>
 JSON
 }
 ssh_vm 'mkdir -p /etc/pki/containers /etc/containers/registries.d /etc/containers/registries.conf.d
-cp -a /etc/containers/policy.json /etc/containers/policy.json.orig-p9
+if [ -f /etc/containers/policy.json ]; then cp -a /etc/containers/policy.json /etc/containers/policy.json.orig-p9; fi
 printf "[[registry]]\nlocation = \"10.0.2.2:5000\"\ninsecure = true\n" > /etc/containers/registries.conf.d/50-omni-prova.conf
 printf "docker:\n  10.0.2.2:5000:\n    use-sigstore-attachments: true\n" > /etc/containers/registries.d/50-omni-prova.yaml' >> "$work/p9.log" 2>&1
 
