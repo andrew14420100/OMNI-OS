@@ -21,10 +21,21 @@ expect_ok()   { local d=$1; shift; if "$@" >> "$work/p9.log" 2>&1; then rec OK "
 mkdir -p "$work/keys"; chmod 700 "$work/keys"
 
 # --- Registro locale effimero (solo loopback) ---
-sudo apt-get install -y -qq docker-registry >/dev/null
-sudo sed -i 's/^\(\s*addr:\).*/\1 127.0.0.1:5000/' /etc/docker/registry/config.yml
-sudo systemctl restart docker-registry
-for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:5000/v2/ >/dev/null 2>&1 && break; sleep 1; done
+sudo apt-get install -y -qq docker-registry 2>&1 | tee -a "$work/p9.log" >/dev/null
+cfg=/etc/docker/registry/config.yml
+echo "--- configurazione originale del registro:"; sudo cat "$cfg" 2>&1 || echo "(file $cfg assente)"
+# ascolto solo su loopback
+sudo sed -i -E 's/^([[:space:]]*addr:).*/\1 127.0.0.1:5000/' "$cfg"
+echo "--- configurazione applicata:"; sudo grep -nE 'addr|rootdirectory' "$cfg" || true
+echo "--- unità systemd del registro:"; systemctl list-unit-files | grep -i registry || true
+sudo systemctl restart docker-registry || true
+for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:5000/v2/ >/dev/null 2>&1 && break; sleep 1; done
+if ! curl -fsS http://127.0.0.1:5000/v2/ >/dev/null 2>&1; then
+  echo "--- diagnosi registro:"
+  sudo systemctl status docker-registry --no-pager -l 2>&1 | tail -20 || true
+  sudo journalctl -u docker-registry --no-pager -n 40 2>&1 || true
+  sudo ss -ltnp 2>&1 | grep -E ':5000|registry' || echo "nessun processo in ascolto su :5000"
+fi
 expect_ok "registro locale attivo su 127.0.0.1:5000" curl -fsS http://127.0.0.1:5000/v2/
 
 R=127.0.0.1:5000/omni-os
