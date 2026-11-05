@@ -50,4 +50,4 @@ jobs:
         run: hadolint image/Containerfile
 
       - name: Lint script shell
-        run: shellcheck tests/run_static.sh tests/static/*.sh
+        run: shellcheck tests/run_static.sh tests/static/*.sh tests/vm/*.sh

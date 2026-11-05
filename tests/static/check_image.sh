@@ -20,6 +20,9 @@ case "$status_line" in
     if ! [[ "$base" =~ ^[a-z0-9./_-]+@sha256:[0-9a-f]{64}$ ]]; then
       echo "ERRORE: BASE_IMAGE deve essere fissato per digest (repo@sha256:<64 hex>): '$base'"; exit 1
     fi
+    if grep -qE '^BASE_SIGNED=false$' "$lock" && ! grep -qE '^SCOPE=VM_ONLY$' "$lock"; then
+      echo "ERRORE: una base non firmata è ammessa solo con SCOPE=VM_ONLY"; exit 1
+    fi
     for f in APPROVED_BY APPROVED_ON; do
       grep -qE "^$f=.+" "$lock" || { echo "ERRORE: $f mancante in $lock"; exit 1; }
     done

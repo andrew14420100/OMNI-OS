@@ -1,0 +1,129 @@
+# OMNI OS — M1: verifica del runner e build sperimentale (P1–P4).
+# Prototipo SOLO per macchina virtuale. Nessuna pubblicazione su registry,
+# nessuna release, nessuna ISO, nessun segreto, nessuna chiave definitiva.
+# Percorso approvato: docs/11-m1/percorso-build-vm.md (decisione M1-D2).
+name: m1-vm
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/**"]
+    paths:
+      - "image/**"
+      - "tests/vm/**"
+      - "tests/static/check_image.sh"
+      - ".github/workflows/m1-vm.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-vm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OMNI_VERSION: 0.1.0-m1-dev
+  IMAGE_REF: localhost/omni-os:m1-ci
+
+jobs:
+  runner-check:
+    name: Verifica del runner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      kvm: ${{ steps.check.outputs.kvm }}
+      free_gb: ${{ steps.check.outputs.free_gb }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Risorse prima della pulizia
+        run: MIN_FREE_GB=0 bash tests/vm/runner_check.sh
+      - name: Abilita /dev/kvm per l'utente del runner (se presente)
+        run: |
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            ls -l /dev/kvm
+          else
+            echo "/dev/kvm assente"
+          fi
+      - name: Verifica finale delle risorse
+        id: check
+        run: MIN_FREE_GB=0 bash tests/vm/runner_check.sh
+
+  build-p1-p4:
+    name: P1–P4 base, build, lint, contenuto
+    needs: runner-check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Base approvata e fissata per digest
+        id: lock
+        run: |
+          set -euo pipefail
+          out=$(bash tests/static/check_image.sh)
+          echo "$out"
+          echo "$out" | grep -qx 'BUILD_ALLOWED=true' || { echo "Build non consentita"; exit 1; }
+          echo "base=$(grep -E '^BASE_IMAGE=' image/base.lock | cut -d= -f2-)" >> "$GITHUB_OUTPUT"
+
+      - name: Libera spazio sul runner
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          df -h / /mnt || true
+
+      - name: Risorse dopo la pulizia (minimo 30 GB)
+        id: res
+        run: MIN_FREE_GB=30 bash tests/vm/runner_check.sh
+
+      - name: Configura lo storage di podman
+        run: |
+          set -euo pipefail
+          sudo mkdir -p "${{ steps.res.outputs.storage_dir }}"
+          echo "PODMAN=sudo podman --root ${{ steps.res.outputs.storage_dir }}" >> "$GITHUB_ENV"
+          sudo podman --version
+
+      - name: "P1: ricontrollo del digest e download della base"
+        run: |
+          set -euo pipefail
+          base='${{ steps.lock.outputs.base }}'
+          want=${base#*@}
+          # Il tag mobile 45 punta ancora al digest approvato? (informativo)
+          sudo skopeo inspect --raw docker://quay.io/fedora/fedora-kinoite:45 \
+            | jq -r '.manifests[] | select(.platform.architecture=="amd64") | .digest' > tag45.txt || true
+          echo "Digest amd64 attuale del tag 45: $(cat tag45.txt 2>/dev/null || echo 'non letto')"
+          echo "Digest approvato:                $want"
+          $PODMAN pull "$base"
+          got=$($PODMAN image inspect --format '{{.Digest}}' "$base")
+          echo "Digest scaricato: $got"
+          [ "$got" = "$want" ] || { echo "ERRORE: digest diverso da quello approvato"; exit 1; }
+          $PODMAN image inspect --format '{{index .Labels "org.opencontainers.image.version"}} {{index .Labels "containers.bootc"}} {{index .Labels "ostree.linux"}}' "$base"
+
+      - name: "P2: build dell'immagine OMNI (include bootc container lint)"
+        run: |
+          set -euo pipefail
+          $PODMAN build \
+            --build-arg BASE_IMAGE='${{ steps.lock.outputs.base }}' \
+            --build-arg OMNI_VERSION="$OMNI_VERSION" \
+            -t "$IMAGE_REF" image/
+          $PODMAN image inspect --format 'ID {{.Id}}  creata {{.Created}}' "$IMAGE_REF"
+
+      - name: "P3: bootc container lint (esplicito)"
+        run: $PODMAN run --rm "$IMAGE_REF" bootc container lint
+
+      - name: "P4: verifica del contenuto"
+        run: |
+          $PODMAN run --rm -v "$PWD/tests/vm:/t:ro,Z" "$IMAGE_REF" \
+            bash /t/check_image_content.sh "$OMNI_VERSION"
+
+      - name: Spazio usato
+        if: always()
+        run: df -h / /mnt || true

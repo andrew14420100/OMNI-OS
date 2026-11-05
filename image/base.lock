@@ -6,7 +6,15 @@
 #   APPROVED                base approvata dal proprietario (BASE_IMAGE obbligatorio, fissato per digest)
 #
 # Modificare questo file solo dopo una decisione esplicita del proprietario.
-STATUS=PENDING_OWNER_DECISION
-BASE_IMAGE=
-APPROVED_BY=
-APPROVED_ON=
+#
+# ECCEZIONE A1 (2026-11-05): immagine NON firmata, ammessa esclusivamente per il
+# prototipo in macchina virtuale. Non è una base definitiva né autentica e non è
+# adatta all'installazione fisica. Prima di M3 serve una base con provenienza
+# verificabile (direzione preferita: A3, non ancora autorizzata).
+STATUS=APPROVED
+BASE_IMAGE=quay.io/fedora/fedora-kinoite@sha256:0e0649d7c3bc07cfd42c2daa0a0b81c3291a09721179f6f0355cbb70618925ee
+BASE_VERSION=45.20261105.0
+BASE_SIGNED=false
+SCOPE=VM_ONLY
+APPROVED_BY=proprietario (andrew14420100), decisione M1-D1 = A1
+APPROVED_ON=2026-11-05
