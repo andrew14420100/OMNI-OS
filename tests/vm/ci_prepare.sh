@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Preparazione comune dei job M1 sul runner GitHub Actions (effimero):
-# spazio disco, base approvata e fissata per digest (con tentativi), e, se NEED_VM=1,
+# spazio disco, base B3 verificata (caricata dalla cache del job 'base'), e, se NEED_VM=1,
 # KVM, QEMU/OVMF, ImageMagick e chiave SSH effimera di prova.
 # Scrive PODMAN, BASE, VMWORK, TESTKEY in $GITHUB_ENV.
 set -euo pipefail
@@ -32,16 +32,9 @@ if [ "$need_vm" = 1 ]; then
   qemu-system-x86_64 --version | head -1
 fi
 
-want=${base#*@}
-ok=0
-for attempt in 1 2 3; do
-  if sudo podman pull "$base"; then ok=1; break; fi
-  echo "download fallito (tentativo $attempt/3)"; sleep $((attempt * 30))
-done
-[ "$ok" = 1 ] || { echo "ERRORE: download della base fallito"; exit 1; }
-got=$(sudo podman image inspect --format '{{.Digest}}' "$base")
-[ "$got" = "$want" ] || { echo "ERRORE: digest $got diverso da quello approvato $want"; exit 1; }
-echo "base verificata: $base"
+# Base B3: archivio OCI derivato, ripristinato dalla cache dal workflow e
+# caricato solo se il digest coincide con quello atteso (base_b3.sh load).
+bash tests/vm/base_b3.sh load "$RUNNER_TEMP/base-b3"
 
 {
   echo "PODMAN=sudo podman"

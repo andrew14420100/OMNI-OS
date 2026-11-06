@@ -2,18 +2,18 @@
 # AC-M1-03 desktop, AC-M1-05 R2/R3, AC-M1-07 riproducibilità, AC-M1-08 SBOM,
 # T1/T2 firma e aggiornamenti automatici, T3 tempi.
 # Nessuna pubblicazione su registry esterni, nessuna release, nessuna ISO,
-# nessun segreto, nessuna chiave definitiva. Base A1 solo per VM.
+# nessun segreto, nessuna chiave definitiva. Base B3 (commit OSTree Fedora verificato), solo VM.
 name: m1-completamento
 
+# Avvio solo manuale, un gruppo alla volta, per limitare il consumo delle risorse gratuite.
 on:
   workflow_dispatch:
-  push:
-    branches: ["claude/**"]
-    paths:
-      - "image/**"
-      - "tests/vm/**"
-      - "tests/static/check_image.sh"
-      - ".github/workflows/m1-completamento.yml"
+    inputs:
+      gruppo:
+        description: "base = solo base B3; base-riverifica = rideriva B3 senza cache; A = desktop + R2/R3; B = T1/T2 + T3; C = riproducibilità + SBOM"
+        required: true
+        type: choice
+        options: [base, base-riverifica, A, B, C]
 
 permissions:
   contents: read
@@ -23,14 +23,68 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  base:
+    name: Base B3 (commit OSTree Fedora verificato con GPG)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Chiave della cache (commit fissato in base.lock)
+        id: key
+        run: echo "key=omni-base-b3-$(grep -E '^OSTREE_COMMIT=' image/base.lock | cut -d= -f2)-v1" >> "$GITHUB_OUTPUT"
+      - name: Ripristino della base dalla cache
+        id: cache
+        if: inputs.gruppo != 'base-riverifica'
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
+      - name: Preparazione e verifica della provenienza (solo se non in cache)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          bash tests/vm/base_b3.sh prepare "$RUNNER_TEMP/base-b3"
+          sudo rm -rf "$RUNNER_TEMP/base-b3.work"
+      - name: Verifica del digest e caricamento di prova
+        run: |
+          bash tests/vm/base_b3.sh load "$RUNNER_TEMP/base-b3"
+          { echo "## Base B3"; echo; echo '```'; cat "$RUNNER_TEMP/base-b3/base-info.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Salvataggio nella cache del repository (non pubblica)
+        if: steps.cache.outputs.cache-hit != 'true' && inputs.gruppo != 'base-riverifica'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
+      - name: Evidenze della provenienza (senza immagine)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-base-b3-evidenze
+          path: |
+            ${{ runner.temp }}/base-b3/base-info.txt
+            ${{ runner.temp }}/base-b3/tool-rpm-ostree.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
   desktop:
     name: AC-M1-03 accesso e sessione Plasma Wayland
+    needs: base
+    if: inputs.gruppo == 'A'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: { persist-credentials: false }
-      - name: Preparazione (base per digest, KVM, QEMU)
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
         run: bash tests/vm/ci_prepare.sh
       - name: Immagine e disco di prova
         run: bash tests/vm/ci_make_disk.sh 0.1.0-m1-dev
@@ -56,6 +110,8 @@ jobs:
 
   recovery:
     name: AC-M1-05 R2/R3 (${{ matrix.client }})
+    needs: base
+    if: inputs.gruppo == 'A'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
@@ -65,7 +121,13 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: { persist-credentials: false }
-      - name: Preparazione (base per digest, KVM, QEMU)
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
         run: bash tests/vm/ci_prepare.sh
       - name: Immagini, disco di prova e registro temporaneo (solo loopback)
         run: |
@@ -101,6 +163,8 @@ jobs:
 
   managers:
     name: T1/T2 firma e aggiornamenti automatici (${{ matrix.client }})
+    needs: base
+    if: inputs.gruppo == 'B'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
@@ -110,7 +174,13 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: { persist-credentials: false }
-      - name: Preparazione (base per digest, KVM, QEMU)
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
         run: bash tests/vm/ci_prepare.sh
       - name: Immagini, disco di prova, registro temporaneo e cosign
         run: |
@@ -147,6 +217,8 @@ jobs:
 
   timing:
     name: T3 tempi (${{ matrix.client }})
+    needs: base
+    if: inputs.gruppo == 'B'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
@@ -156,7 +228,13 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: { persist-credentials: false }
-      - name: Preparazione (base per digest, KVM, QEMU)
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
         run: bash tests/vm/ci_prepare.sh
       - name: Immagini, disco di prova e registro temporaneo (solo loopback)
         run: |
@@ -189,6 +267,8 @@ jobs:
 
   repro-build:
     name: AC-M1-07 build indipendente ${{ matrix.build }}
+    needs: base
+    if: inputs.gruppo == 'C'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -197,7 +277,13 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: { persist-credentials: false }
-      - name: Preparazione (solo base per digest)
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (solo base B3 verificata)
         run: NEED_VM=0 bash tests/vm/ci_prepare.sh
       - name: Build predefinita e build con data fissata, raccolta dati
         run: |
@@ -217,6 +303,7 @@ jobs:
   repro-compare:
     name: AC-M1-07 confronto
     needs: repro-build
+    if: inputs.gruppo == 'C'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -245,12 +332,20 @@ jobs:
 
   sbom:
     name: AC-M1-08 SBOM (SPDX e CycloneDX)
+    needs: base
+    if: inputs.gruppo == 'C'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: { persist-credentials: false }
-      - name: Preparazione (solo base per digest)
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (solo base B3 verificata)
         run: NEED_VM=0 bash tests/vm/ci_prepare.sh
       - name: Build, syft 1.55.0 (checksum fissato), generazione SBOM
         run: |

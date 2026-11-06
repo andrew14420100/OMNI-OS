@@ -1,20 +1,31 @@
-# Base OCI dell'immagine OMNI OS (M1, prototipo solo VM).
-# Vedi docs/11-m1/verifica-base-oci.md.
+# Base dell'immagine OMNI OS (M1, prototipo solo VM).
+# Vedi docs/11-m1/verifica-base-oci.md e docs/11-m1/base-b3.md.
 #
 # STATUS ammessi:
 #   PENDING_OWNER_DECISION  nessuna base approvata: la CI rifiuta ogni build
-#   APPROVED                base approvata dal proprietario (BASE_IMAGE obbligatorio, fissato per digest)
+#   APPROVED                base approvata dal proprietario
 #
-# Modificare questo file solo dopo una decisione esplicita del proprietario.
-#
-# ECCEZIONE A1 (2026-11-05): immagine NON firmata, ammessa esclusivamente per il
-# prototipo in macchina virtuale. Non è una base definitiva né autentica e non è
-# adatta all'installazione fisica. Prima di M3 serve una base con provenienza
-# verificabile (direzione preferita: A3, non ancora autorizzata).
+# BASE_KIND=ostree-b3: base OCI derivata da un commit OSTree ufficiale Fedora,
+# verificato con GPG (decisione del proprietario B3, 2026-11-06). La base A1
+# (quay.io/fedora/fedora-kinoite@sha256:0e0649d7...) non è più autorizzata.
 STATUS=APPROVED
-BASE_IMAGE=quay.io/fedora/fedora-kinoite@sha256:0e0649d7c3bc07cfd42c2daa0a0b81c3291a09721179f6f0355cbb70618925ee
-BASE_VERSION=45.20261105.0
-BASE_SIGNED=false
+BASE_KIND=ostree-b3
+OSTREE_REMOTE_URL=https://kojipkgs.fedoraproject.org/ostree/repo
+OSTREE_REF=fedora/45/x86_64/kinoite
+OSTREE_COMMIT=5a4ff74fe7c41650bde359ab7b1e30fc7f80ad3eac97e492ed45d067cf19f06a
+OSTREE_VERSION=45.20261106.0
+# Chiave Fedora 45 primary: impronta concordante su src.fedoraproject.org
+# (fedora-repos), fedoraproject.org/fedora.gpg e fedoraproject.org/security.
+GPG_KEY_ID=655A4B02F577861E
+GPG_FINGERPRINT=4F50A6114CD5C6976A7F1179655A4B02F577861E
+GPG_KEY_URL=https://src.fedoraproject.org/rpms/fedora-repos/raw/rawhide/f/RPM-GPG-KEY-fedora-45-primary
+GPG_KEYRING_URL=https://fedoraproject.org/fedora.gpg
+# Digest del manifest OCI derivato (index.json dell'archivio): vuoto finché la
+# prima conversione verificata non viene esaminata e fissata qui.
+DERIVED_OCI_DIGEST=
+# Nome locale dell'immagine derivata nei job della CI (mai pubblicata).
+BASE_IMAGE=localhost/omni-base-b3:5a4ff74fe7c4
+BASE_SIGNED=gpg-ostree
 SCOPE=VM_ONLY
-APPROVED_BY=proprietario (andrew14420100), decisione M1-D1 = A1
-APPROVED_ON=2026-11-05
+APPROVED_BY=proprietario (andrew14420100), decisione B3
+APPROVED_ON=2026-11-06
