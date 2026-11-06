@@ -22,6 +22,10 @@ if [ "$need_vm" = 1 ]; then
   echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
   sudo udevadm control --reload-rules
   sudo udevadm trigger --name-match=kvm
+  sudo udevadm settle || true
+  # la regola udev si applica in modo asincrono: attesa breve prima del controllo
+  for _ in $(seq 1 20); do [ -w /dev/kvm ] && break; sleep 0.5; done
+  ls -l /dev/kvm
   test -w /dev/kvm || { echo "ERRORE: /dev/kvm non accessibile"; exit 1; }
   # chiave effimera: generata qui, mai salvata né pubblicata, distrutta con il runner
   ssh-keygen -q -t ed25519 -N '' -C omni-m1-ci-effimera -f "$RUNNER_TEMP/testkey"
