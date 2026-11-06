@@ -2,6 +2,7 @@
 
 - **Ultimo aggiornamento:** 2026-11-05.
 - **Inizializzazione:** completata il 2026-11-05 con l'**opzione 1**, autorizzata dal proprietario.
+- **M0 chiusa:** PR #1 unita in `main` il 2026-11-05.
 
 ## 1. Stato attuale
 
@@ -10,18 +11,16 @@
 | Repository | `andrew14420100/OMNI-OS` |
 | Visibilità | **Pubblico** (verificato con l'API GitHub) |
 | Branch predefinito | `main` |
-| `main` | Commit `25f607b4a69f762ddea6fb8a1e1f67b439aeed48` (`chore: inizializzazione del repository`): commit iniziale **vuoto**, nessun genitore, albero vuoto di Git `4b825dc642cb6eb9a060e54bf8d69288fbee4904`, **0 file** |
-| Branch di lavoro | `claude/zealous-ritchie-hnvev5`, pubblicato; contiene la documentazione M0 sopra `25f607b` |
-| Pull Request | **#1 in bozza**, `claude/zealous-ritchie-hnvev5` → `main`: https://github.com/andrew14420100/OMNI-OS/pull/1 |
-| Merge | **Nessuno**. `main` non contiene ancora la documentazione |
-| Contenuto della PR | **26 file**: `README.md` nella cartella principale + 25 documenti in `docs/` |
-| Controlli automatici | **Nessuno configurato**: il repository non ha workflow CI né altri controlli sulle PR; GitHub non riporta alcun check sulla PR #1. Le verifiche fatte finora sono manuali (rapporto M0 §4) |
+| `main` iniziale | Commit `25f607b4a69f762ddea6fb8a1e1f67b439aeed48` (`chore: inizializzazione del repository`): commit iniziale **vuoto**, nessun genitore, albero vuoto di Git `4b825dc642cb6eb9a060e54bf8d69288fbee4904`, **0 file** |
+| `main` dopo M0 | Merge commit `4198f0bef1872ac143afc14f273be5640152a771` (PR #1, 2026-11-05), contenuto identico al commit revisionato `5b0218f`: 26 file |
+| Branch di lavoro | `claude/zealous-ritchie-hnvev5`, ripartito da `main` (`4198f0b`) per M1 |
+| PR #1 (M0) | **Unita** il 2026-11-05 con merge commit, su approvazione del proprietario: https://github.com/andrew14420100/OMNI-OS/pull/1 |
+| Controlli automatici | Dal 2026-11-05 (M1): workflow `ci-statica` con soli controlli statici (`.github/workflows/ci.yml`). Nessuna build di immagini |
 | Licenza | **Nessuna** (decisione DA-07 aperta) |
 | Protezione di `main` | Non configurata: va impostata dal proprietario (§3) |
 
-Gli identificativi dei commit successivi a `25f607b` sul branch di lavoro sono
-visibili nella PR #1 (scheda *Commits*). Non sono elencati qui perché ogni
-commit che modifica questo file ne cambierebbe l'elenco.
+I commit della documentazione M0 sono visibili nella PR #1 (scheda *Commits*);
+quelli di M1 nella relativa PR.
 
 ## 2. Come è stata fatta l'inizializzazione (cronologia)
 

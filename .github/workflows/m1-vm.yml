@@ -1,0 +1,308 @@
+# OMNI OS — M1 (base B3): verifica del runner, build sperimentale (P1–P4), avvio in VM (P5–P7),
+# Secure Boot emulato solo in VM (P6b), aggiornamenti/rollback (P8) e firme di prova (P9).
+# Prototipo SOLO per macchina virtuale. Nessuna pubblicazione su registry,
+# nessuna release, nessuna ISO, nessun segreto, nessuna chiave definitiva.
+# Percorso approvato: docs/11-m1/percorso-build-vm.md (decisione M1-D2).
+name: m1-vm
+
+# Avvio solo manuale, per controllare il consumo delle risorse gratuite di Actions.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-vm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OMNI_VERSION: 0.1.0-m1-dev
+  IMAGE_REF: localhost/omni-os:m1-ci
+
+jobs:
+  base:
+    name: Base B3 (commit OSTree Fedora verificato con GPG)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Chiave della cache (commit fissato in base.lock)
+        id: key
+        run: echo "key=omni-base-b3-$(grep -E '^OSTREE_COMMIT=' image/base.lock | cut -d= -f2)-v1" >> "$GITHUB_OUTPUT"
+      - name: Ripristino della base dalla cache
+        id: cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
+      - name: Preparazione e verifica della provenienza (solo se non in cache)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          bash tests/vm/base_b3.sh prepare "$RUNNER_TEMP/base-b3"
+          sudo rm -rf "$RUNNER_TEMP/base-b3.work"
+      - name: Verifica del digest e caricamento di prova
+        run: |
+          bash tests/vm/base_b3.sh load "$RUNNER_TEMP/base-b3"
+          { echo "## Base B3"; echo; echo '```'; cat "$RUNNER_TEMP/base-b3/base-info.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Salvataggio nella cache del repository (non pubblica)
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
+      - name: Evidenze della provenienza (senza immagine)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-base-b3-evidenze
+          path: |
+            ${{ runner.temp }}/base-b3/base-info.txt
+            ${{ runner.temp }}/base-b3/tool-rpm-ostree.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+  runner-check:
+    name: Verifica del runner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      kvm: ${{ steps.check.outputs.kvm }}
+      free_gb: ${{ steps.check.outputs.free_gb }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Risorse prima della pulizia
+        run: MIN_FREE_GB=0 bash tests/vm/runner_check.sh
+      - name: Abilita /dev/kvm per l'utente del runner (se presente)
+        run: |
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            ls -l /dev/kvm
+          else
+            echo "/dev/kvm assente"
+          fi
+      - name: Verifica finale delle risorse
+        id: check
+        run: MIN_FREE_GB=0 bash tests/vm/runner_check.sh
+
+  build-p1-p4:
+    name: P1–P9 build e test in VM
+    needs: [runner-check, base]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Base approvata e fissata per digest
+        id: lock
+        run: |
+          set -euo pipefail
+          out=$(bash tests/static/check_image.sh)
+          echo "$out"
+          echo "$out" | grep -qx 'BUILD_ALLOWED=true' || { echo "Build non consentita"; exit 1; }
+          echo "base=$(grep -E '^BASE_IMAGE=' image/base.lock | cut -d= -f2-)" >> "$GITHUB_OUTPUT"
+
+      - name: Libera spazio sul runner
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          df -h / /mnt || true
+
+      - name: Risorse dopo la pulizia (minimo 30 GB)
+        id: res
+        run: MIN_FREE_GB=30 bash tests/vm/runner_check.sh
+
+      - name: Configura podman (storage predefinito, come richiesto da bootc install)
+        run: |
+          set -euo pipefail
+          echo "PODMAN=sudo podman" >> "$GITHUB_ENV"
+          sudo podman --version
+          df -h /var/lib
+
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+
+      - name: "P1: base B3 verificata (digest dell'OCI derivato) e caricata"
+        run: |
+          set -euo pipefail
+          bash tests/vm/base_b3.sh load "$RUNNER_TEMP/base-b3"
+          base='${{ steps.lock.outputs.base }}'
+          $PODMAN image inspect --format 'commit {{index .Labels "ostree.commit"}} versione {{index .Labels "org.opencontainers.image.version"}} bootc={{index .Labels "containers.bootc"}}' "$base"
+
+      - name: "P2: build dell'immagine OMNI (include bootc container lint)"
+        run: |
+          set -euo pipefail
+          $PODMAN info --format 'storage: {{.Store.GraphRoot}} driver={{.Store.GraphDriverName}} runroot={{.Store.RunRoot}}'
+          $PODMAN build \
+            --build-arg BASE_IMAGE='${{ steps.lock.outputs.base }}' \
+            --build-arg OMNI_VERSION="$OMNI_VERSION" \
+            --iidfile "$RUNNER_TEMP/omni.iid" \
+            -t "$IMAGE_REF" image/
+          iid=$(cat "$RUNNER_TEMP/omni.iid")
+          echo "ID immagine: $iid"
+          echo "--- immagini nello storage:"; $PODMAN images --all --no-trunc
+          if $PODMAN image exists "$IMAGE_REF"; then echo "trovata per nome: $IMAGE_REF"; else echo "NON trovata per nome: $IMAGE_REF"; fi
+          if $PODMAN image exists "$iid"; then echo "trovata per ID"; else echo "NON trovata per ID"; fi
+          # da qui in avanti si usa l'ID (immutabile); il tag viene riapplicato se mancante
+          $PODMAN image exists "$IMAGE_REF" || $PODMAN tag "$iid" "$IMAGE_REF"
+          $PODMAN image inspect --format 'ID {{.Id}}  creata {{.Created}}' "$IMAGE_REF"
+
+      - name: "P3: bootc container lint (esplicito)"
+        run: $PODMAN run --rm "$IMAGE_REF" bootc container lint
+
+      - name: "P4: verifica del contenuto"
+        run: |
+          $PODMAN run --rm -v "$PWD/tests/vm:/t:ro,Z" "$IMAGE_REF" \
+            bash /t/check_image_content.sh "$OMNI_VERSION"
+
+      # ---- P5–P7: eseguiti solo se P1–P4 sono superati (i passi falliti fermano il job) ----
+      - name: Prerequisiti VM (QEMU, OVMF) e chiave SSH effimera di prova
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-system-x86 ovmf >/dev/null
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo udevadm settle || true
+          for _ in $(seq 1 20); do [ -w /dev/kvm ] && break; sleep 0.5; done
+          ls -l /dev/kvm
+          test -w /dev/kvm || { echo "ERRORE: /dev/kvm non accessibile"; exit 1; }
+          qemu-system-x86_64 --version | head -1
+          ls /usr/share/OVMF/
+          # Chiave effimera: generata qui, mai salvata né pubblicata, distrutta con il runner.
+          ssh-keygen -q -t ed25519 -N '' -C omni-m1-ci-effimera -f "$RUNNER_TEMP/testkey"
+          echo "VMWORK=$RUNNER_TEMP/vm" >> "$GITHUB_ENV"
+          echo "TESTKEY=$RUNNER_TEMP/testkey" >> "$GITHUB_ENV"
+
+      - name: "P5: disco virtuale di prova (bootc install to-disk)"
+        run: |
+          set -euo pipefail
+          bash tests/vm/make_disk.sh "$IMAGE_REF" "$VMWORK" "$TESTKEY.pub"
+          sudo chown "$(id -u):$(id -g)" "$VMWORK/disk.raw"
+          # copia mai avviata, punto di partenza identico per P6b, P8 e P9
+          cp --sparse=always "$VMWORK/disk.raw" "$VMWORK/disk-pristine.raw"
+
+      - name: "P6: avvio UEFI in QEMU e controlli nel sistema avviato"
+        run: |
+          set -euo pipefail
+          bash tests/vm/boot_vm.sh "$VMWORK/disk.raw" "$VMWORK" uefi
+          bash tests/vm/wait_ssh.sh "$TESTKEY" "$VMWORK" 900
+          scp -i "$TESTKEY" -P 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+            tests/vm/vm_checks.sh root@127.0.0.1:/var/tmp/vm_checks.sh
+          # attende la fine dell'avvio (systemd) prima dei controlli, al massimo 10 minuti
+          t0=$(date +%s)
+          timeout 600 bash tests/vm/vm_ssh.sh "$TESTKEY" systemctl is-system-running --wait || true
+          echo "avvio completato (o scaduto) dopo $(( $(date +%s) - t0 )) s dalla risposta SSH"
+          bash tests/vm/vm_ssh.sh "$TESTKEY" bash /var/tmp/vm_checks.sh "$OMNI_VERSION"
+
+      - name: "P7: cattura della schermata di accesso"
+        id: p7
+        run: |
+          set -euo pipefail
+          sleep 30
+          python3 tests/vm/screenshot.py "$VMWORK/qmp.sock" "$VMWORK/p7-schermata.png"
+          ls -l "$VMWORK/p7-schermata.png"
+
+      - name: Arresto della VM di P6/P7
+        if: always()
+        run: |
+          if [ -f "${VMWORK:-/nonexistent}/qemu.pid" ]; then kill "$(cat "$VMWORK/qemu.pid")" 2>/dev/null || true; fi
+          sleep 3
+
+      - name: "P6b: avvio con Secure Boot emulato (OVMF con chiavi Microsoft, solo VM)"
+        if: ${{ !cancelled() && steps.p7.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          w="$VMWORK/p6b"; mkdir -p "$w"
+          cp --sparse=always "$VMWORK/disk-pristine.raw" "$w/disk.raw"
+          bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" secureboot
+          bash tests/vm/wait_ssh.sh "$TESTKEY" "$w" 900
+          # variabile EFI SecureBoot (GUID globale EFI): 5° byte = 1 se attivo
+          sb=$(bash tests/vm/vm_ssh.sh "$TESTKEY" "od -An -t u1 -j 4 -N 1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c" | tr -d ' ' || true)
+          echo "variabile EFI SecureBoot nella VM: '${sb}' (1 = attivo)"
+          kver=$(bash tests/vm/vm_ssh.sh "$TESTKEY" uname -r || true)
+          echo "kernel avviato con Secure Boot emulato: $kver"
+          kill "$(cat "$w/qemu.pid")" 2>/dev/null || true; sleep 3; rm -f "$w/disk.raw"
+          [ "$sb" = 1 ] || { echo "ERRORE: Secure Boot non risulta attivo nella VM"; exit 1; }
+
+      - name: "P8: aggiornamento, rollback ed errori — bootc e rpm-ostree (dischi separati)"
+        if: ${{ !cancelled() && steps.p7.outcome == 'success' }}
+        run: |
+          set -uo pipefail
+          $PODMAN build --build-arg BASE_IMAGE='${{ steps.lock.outputs.base }}' \
+            --build-arg OMNI_VERSION=0.1.1-m1-dev -t localhost/omni-os:m1-ci-n1 image/ > "$VMWORK/build-n1.log" 2>&1 \
+            || { tail -50 "$VMWORK/build-n1.log"; exit 1; }
+          $PODMAN save --format oci-archive -o "$VMWORK/omni-n1.tar" localhost/omni-os:m1-ci-n1
+          sudo chown "$(id -u):$(id -g)" "$VMWORK/omni-n1.tar"
+          rc=0
+          for c in bootc rpm-ostree; do
+            w="$VMWORK/p8-$c"; mkdir -p "$w"
+            cp --sparse=always "$VMWORK/disk-pristine.raw" "$w/disk.raw"
+            bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" uefi
+            if bash tests/vm/wait_ssh.sh "$TESTKEY" "$w" 900; then
+              bash tests/vm/update_test.sh "$c" "$TESTKEY" "$w" "$VMWORK/omni-n1.tar" 0.1.0-m1-dev 0.1.1-m1-dev || rc=1
+            else
+              rc=1
+            fi
+            cat "$w/update-$c.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+            kill "$(cat "$w/qemu.pid")" 2>/dev/null || true; sleep 3; rm -f "$w/disk.raw"
+          done
+          exit "$rc"
+
+      - name: "P9: firme con chiavi effimere (registro locale solo loopback)"
+        if: ${{ !cancelled() && steps.p7.outcome == 'success' }}
+        run: |
+          set -uo pipefail
+          $PODMAN build --build-arg BASE_IMAGE='${{ steps.lock.outputs.base }}' \
+            --build-arg OMNI_VERSION=0.1.2-m1-dev -t localhost/omni-os:m1-ci-n2 image/ > "$VMWORK/build-n2.log" 2>&1 \
+            || { tail -50 "$VMWORK/build-n2.log"; exit 1; }
+          curl -sSLf -o "$RUNNER_TEMP/cosign" https://github.com/sigstore/cosign/releases/download/v2.6.5/cosign-linux-amd64
+          echo "c3b4f5410e608af03a5eb0aaac84a4313d8da131248e08ff1759ac70c79d1644  $RUNNER_TEMP/cosign" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/cosign"
+          w="$VMWORK/p9"; mkdir -p "$w"
+          cp --sparse=always "$VMWORK/disk-pristine.raw" "$w/disk.raw"
+          bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" uefi
+          bash tests/vm/wait_ssh.sh "$TESTKEY" "$w" 900 || exit 1
+          rc=0
+          bash tests/vm/signature_test.sh "$PODMAN" localhost/omni-os:m1-ci-n1 localhost/omni-os:m1-ci-n2 \
+            "$TESTKEY" "$w" "$RUNNER_TEMP/cosign" 0.1.1-m1-dev || rc=1
+          cat "$w/p9-firma.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          kill "$(cat "$w/qemu.pid")" 2>/dev/null || true; sleep 3; rm -f "$w/disk.raw"
+          exit "$rc"
+
+      - name: Artefatti di diagnosi (schermata e console seriale, 3 giorni)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-vm-diagnosi
+          path: |
+            ${{ runner.temp }}/vm/p7-schermata.png
+            ${{ runner.temp }}/vm/**/serial.log
+            ${{ runner.temp }}/vm/**/*.md
+            ${{ runner.temp }}/vm/**/*.log
+            ${{ runner.temp }}/vm/**/*.json
+            !${{ runner.temp }}/vm/**/*.key
+            !${{ runner.temp }}/vm/**/keys/**
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Spazio usato
+        if: always()
+        run: df -h / /mnt || true

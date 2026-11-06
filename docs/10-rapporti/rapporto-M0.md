@@ -2,7 +2,7 @@
 
 - **Data:** 2026-11-05
 - **Autorizzazione:** M0 autorizzata dal proprietario il 2026-11-05, esclusivamente per documentazione tecnica.
-- **Stato M0:** documentazione completata, **in attesa di revisione e approvazione** (AC-M0-11).
+- **Stato M0:** **conclusa**. Documentazione approvata dal proprietario e PR #1 unita in `main` il 2026-11-05 (merge commit `4198f0b`, contenuto identico a `5b0218f`). Le righe seguenti descrivono lo stato al momento della revisione.
 - **M1:** **non avviata**; richiede approvazione esplicita.
 - **Repository:** pubblico; `main` = commit iniziale vuoto `25f607b` (0 file); documentazione nella **PR #1 in bozza**, nessun merge.
 - **Revisione 1 (2026-11-05):** correzioni richieste dal proprietario dopo l'esame della PR #1 (§9).
