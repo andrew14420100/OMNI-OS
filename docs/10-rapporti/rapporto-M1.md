@@ -2,7 +2,8 @@
 
 - **Data:** 2026-11-05
 - **Autorizzazione:** M1 preliminare autorizzata dal proprietario il 2026-11-05: Fedora Kinoite 45 come riferimento; opzione C dell'ADR-0002 preferita ma **non definitiva**; prototipo **solo in VM**.
-- **Stato attuale (avanzamento n. 2):** **prima immagine sperimentale OMNI OS costruita e avviata in VM**; tutti i passi P1–P9 superati nell'esecuzione 42099981099. M1 **non è conclusa**: alcuni criteri di accettazione sono parziali o non verificati (§8).
+- **Stato attuale (avanzamento n. 3, 2026-11-06):** **bloccato**: il digest della base A1 approvata è stato rimosso da quay.io; nessuna build possibile senza una nuova decisione del proprietario (§13).
+- **Avanzamento n. 2:** **prima immagine sperimentale OMNI OS costruita e avviata in VM**; tutti i passi P1–P9 superati nell'esecuzione 42099981099. M1 **non è conclusa**: alcuni criteri di accettazione sono parziali o non verificati (§8).
 - **Avanzamento n. 1:** sotto, invariato (stato al momento della richiesta di decisione sulla base).
 
 ## 1. Attività svolte
@@ -111,3 +112,24 @@ Provvisoriamente **rpm-ostree come gestore primario**, mantenendo la compatibili
 ## 12. Conformità ai limiti
 
 Nessuna modifica al PC, a Windows, ai dischi, al BIOS/UEFI o a Secure Boot reale (Secure Boot è stato **emulato** nel firmware virtuale della VM). Nessun installer fisico, ISO, release o immagine pubblicata: le immagini sono esistite solo nei runner effimeri; il registro di P9 era raggiungibile solo dal loopback del runner. Nessuna chiave definitiva: solo chiavi SSH e cosign effimere, distrutte con il job. M2 e M3 non avviate. Restano aperte: licenza, Secure Boot, custodia delle chiavi, firma definitiva, base definitiva (ADR-0002), gestore definitivo (ADR-0003), confusione con OmniOS.
+
+---
+
+# Avanzamento n. 3 — completamento di M1 (2026-11-06): bloccato
+
+## 13. Stato
+
+- Autorizzazione del 2026-11-06 al completamento dei test mancanti (AC-M1-03, 05, 07, 08 e T1–T3), solo in VM.
+- **Preparato** (commit `623f27e`, `fc535fd`): workflow `m1-completamento` con 10 job, script `desktop_test.sh`, `recovery_test.sh`, `managers_test.sh`, `timing_test.sh`, `repro_collect.sh`/`repro_compare.py`, `sbom_check.py`, libreria `lib.sh`. Controlli statici e lint superati; verifiche locali dei calcoli statistici, del confronto di riproducibilità e del controllo SBOM su dati sintetici (positivi e negativi).
+- **Eseguito**: nessun test in VM. La prima esecuzione (42183152118) si è fermata nella preparazione: il digest approvato `sha256:0e0649d7…` non esiste più su quay.io (dettagli in `../11-m1/risultati-test-vm.md` §6).
+- La condizione 4 dell'autorizzazione M1 vieta di sostituire la base automaticamente: **attendo una decisione**.
+
+## 14. Alternative per la base (decisione del proprietario)
+
+| # | Alternativa | Disponibilità verificata | Pro | Contro |
+|---|---|---|---|---|
+| B1 | A1 con il **nuovo** digest `45.20261106.0` (amd64 `sha256:5bd1be0e…`), conservato per la durata delle prove nella **cache di GitHub Actions** del repository (non è un registry e non è scaricabile dall'esterno) | Oggi sì; domani il digest sparirà da quay.io | Il più rapido; stessa fonte di P1–P9 | Ancora non firmata; la cache dura al massimo 7 giorni senza uso; la riproducibilità resta limitata alla cache; P1–P9 vanno ripetuti con la nuova base |
+| B2 | A2: `quay.io/fedora-ostree-desktops/kinoite` con tag datato e **verifica cosign** | Tag datati conservati circa 4 settimane | Firmata; tag datati | Dichiarata sperimentale e non ufficiale; richiede la chiave pubblica del SIG |
+| B3 | A3: base OCI costruita dal **commit ostree ufficiale firmato** (repository Fedora), con verifica GPG | Il commit di ieri è ancora presente con la firma | Ufficiale, verificabile, commit storici disponibili; è la direzione preferita prima di M3 | Più lavoro (incapsulamento OCI e verifica GPG); implementazione **non ancora autorizzata** |
+
+**Raccomandazione (non vincolante):** **B3**, perché risolve insieme provenienza e riproducibilità, e perché comunque servirà prima di M3. Se preferisci completare subito M1, **B1** come soluzione temporanea per le sole prove in VM, accettando che AC-M1-07 venga dimostrato solo sulla durata della cache.

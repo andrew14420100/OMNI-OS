@@ -35,12 +35,14 @@
 | R-26 | Assenza di licenza in un repository pubblico (ambiguità per terzi e contributori) | 3 | 2 | 6 | REQ-PUB-01/02; decisione DA-07 | Proprietario | M0 | Aperto |
 | R-27 | Nessun controllo automatico sulle PR (CI non configurata): errori di formato o segreti non intercettati automaticamente | 3 | 2 | 6 | Verifiche manuali documentate nel rapporto M0; CI proposta da M1 | Claude | M1 | **Mitigato** (CI con controlli statici dal 2026-11-05, M1) |
 
-| R-28 | Base OCI Kinoite 45 ufficiale non firmata e con solo tag mobili: provenienza non verificabile, build non ripetibile se il digest viene rimosso | 4 | 4 | 16 | Build bloccata da `image/base.lock` finché il proprietario non sceglie (A1–A5); eventuale eccezione solo per prototipo VM | Proprietario | M1 | Aperto |
+| R-28 | Base OCI Kinoite 45 ufficiale non firmata e con solo tag mobili: provenienza non verificabile, build non ripetibile se il digest viene rimosso | 5 | 4 | 20 | Build bloccata da `image/base.lock` finché il proprietario non sceglie (A1–A5); eventuale eccezione solo per prototipo VM | Proprietario | M1 | **Si è verificato** (2026-11-06: digest approvato rimosso da quay.io dopo lo spostamento giornaliero del tag; build bloccate) |
 | R-29 | Runner GitHub Actions senza KVM o con spazio disco insufficiente per build e VM | 3 | 3 | 9 | Verifica del runner a ogni esecuzione: KVM presente, 4 CPU, 15 GB, 86–99 GB liberi (2026-11-05) | Claude | M1 | **Mitigato** |
 | R-30 | Workflow CI in repository pubblico usato per eseguire codice da PR esterne | 2 | 3 | 6 | Solo `pull_request` (mai `pull_request_target`), `permissions: contents: read`, nessun segreto, azioni fissate per SHA | Claude | M1+ | Mitigato |
 
 | R-31 | Guasti di rete transitori del registry esterno (osservato: EOF dal CDN di quay.io) | 3 | 2 | 6 | Fino a 3 tentativi in P1, controllo del digest obbligatorio | Claude | M1 | Mitigato |
 | R-32 | Con bootc la verifica delle firme va richiesta esplicitamente; persistenza negli aggiornamenti successivi non verificata | 3 | 4 | 12 | Test T1 prima della scelta del gestore; raccomandazione provvisoria rpm-ostree | Claude | M1 | Aperto |
+
+| R-33 | Corsa fra regola udev e controllo di `/dev/kvm` nei job con VM | 3 | 2 | 6 | `udevadm settle` + attesa (commit `fc535fd`) | Claude | M1 | Mitigato (da verificare in CI) |
 
 ## Rischi principali (punteggio ≥ 15)
 

@@ -106,3 +106,20 @@ Differenza rilevata fra i gestori: con **bootc** la verifica della policy va ric
 - Ripetibilità statistica dei tempi (P8 eseguito con successo in 4 esecuzioni, ma i tempi riportati sono di una sola).
 - Causa dell'anomalia di P2 (immagine non trovata per nome in una esecuzione): non riprodotta né spiegata.
 - Persistenza dell'obbligo di firma con bootc dopo lo switch (T1).
+
+## 6. Completamento M1 — esecuzione 42183152118 (2026-11-06): interrotta, base non più disponibile
+
+Prima esecuzione del workflow `m1-completamento` (commit `623f27e`): **nessun test eseguito**. Tutti i 10 job si sono fermati nella preparazione:
+
+| Causa | Job colpiti | Esito |
+|---|---|---|
+| **Digest approvato rimosso da quay.io**: `quay.io/fedora/fedora-kinoite@sha256:0e0649d7…` risponde `manifest unknown` (HTTP 404, verificato anche con l'API del registro). Il tag `45` è stato spostato il 2026-11-06 01:16 UTC su `45.20261106.0` (amd64 `sha256:5bd1be0ef530421cb187759ed09dc5eb33118fe903d6d3d97c85637adf78d933`). La cronologia del tag mostra uno spostamento circa ogni 24 ore e i manifest precedenti non restano scaricabili | Tutti | **Bloccante**: rischio R-28 verificatosi |
+| `/dev/kvm` non ancora accessibile al momento del controllo: la regola udev si applica in modo asincrono | 4 job con VM, prima di arrivare al download | Corretto in `fc535fd` (`udevadm settle` + attesa); non ancora verificato in CI |
+
+Anche l'esecuzione di regressione `m1-vm` sullo stesso commit è stata annullata: avrebbe fallito al download della base.
+
+Conseguenze:
+
+- I risultati di P1–P9 restano validi **per la base `0e0649d7…`**, con cui sono stati ottenuti (esecuzioni 42099981099 e 42105279344), ma quella base non è più riproducibile.
+- AC-M1-07 (riproducibilità) **non può essere soddisfatto nel tempo** con una base A1: una build è ripetibile solo finché il manifest esiste, cioè circa un giorno.
+- Disponibilità verificata delle alternative (2026-11-06): il commit ostree ufficiale firmato di ieri (`83719586…`, 45.20261105.0) è ancora presente con la firma nel repository Fedora (A3); le immagini firmate del SIG (A2) conservano i tag datati dal 45.20261010.0 al 45.20261106.0 (circa 4 settimane).
