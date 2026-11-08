@@ -51,7 +51,9 @@ In CI la procedura controlla le prime due fonti a ogni preparazione e si ferma s
 | 3. Integrità del contenuto | `ostree fsck` | Ogni oggetto corrisponde alla sua impronta; il checksum del commit (firmato) copre l'intero albero (Merkle) | — |
 | 4. Conversione in OCI | `rpm-ostree compose container-encapsulate` in `quay.io/fedora/fedora:45` (rpm-ostree installato da dnf con verifica GPG dei pacchetti) | — | Il container dello strumento **non** è verificato crittograficamente; per questo il passo 5 non si fida della conversione |
 | 5. Verifica del risultato | `ostree checkout` del commit verificato e `podman image mount` dell'OCI, sul runner Ubuntu (strumenti diversi da quelli della conversione) | Ogni file del commit è presente nell'OCI con lo **stesso SHA-256**; elencati i file aggiunti dalla conversione | Non copre i metadati OCI (etichette, configurazione) oltre l'etichetta `ostree.commit`, che deve essere uguale al commit |
-| 6. Autenticazione dell'artefatto derivato | Digest del manifest OCI (`index.json`) | Dopo la revisione il digest viene **fissato in `base.lock`** (`DERIVED_OCI_DIGEST`); ogni job lo ricalcola e rifiuta un archivio diverso | La cache di Actions è scrivibile dai workflow del repository: per questo conta il digest fissato in git, non la cache |
+| 6. Autenticazione dell'artefatto derivato | Digest del manifest OCI (`index.json`) e sha256 di manifest, configurazione e ogni layer | Digest **fissato in `base.lock`** (`DERIVED_OCI_DIGEST`); ogni job lo ricalcola, verifica i blob e rifiuta un archivio diverso o manomesso (prove negative N1–N3) | La cache di Actions è scrivibile dai workflow del repository: per questo conta il digest fissato in git, non la cache |
+| 7. Verifica autorevole per l'installazione | Reimportazione con ostree-ext (`ostree container image pull`, lo stesso meccanismo di bootc/rpm-ostree) in un repository nuovo | Il repository contiene il commit verificato (fsck ok) e l'**albero del commit installabile** (commit di unione creato da ostree-ext) è identico a quello del commit verificato: checksum di ogni file e dei metadati di ogni cartella (permessi, proprietari, xattr) | Eseguita in ogni job base, anche dall'archivio in cache |
+| 8. Controllo nel sistema avviato | `vm_checks.sh` in P6 | Permessi di `grub.d`, `audit`, `nftables`, `selinux/targeted/active` e gruppo di `cups` in `/usr/etc` e `/etc` uguali al commit | — |
 
 **Cosa NON viene conservato:** la firma GPG di Fedora riguarda il commit OSTree, non l'immagine OCI. L'OCI derivata **non porta una firma di Fedora**. È autenticata indirettamente (passi 5 e 6): contenuto identico a un commit firmato e digest fissato in git da una revisione. Non ha firma cosign di progetto, perché in M1 le chiavi definitive non sono autorizzate.
 
@@ -62,4 +64,20 @@ In CI la procedura controlla le prime due fonti a ogni preparazione e si ferma s
 
 ## 6. Esiti in CI
 
-_Da completare con le esecuzioni: digest derivato, equivalenza dei contenuti, tempi, differenze rispetto ad A1._
+| Run | Data | Esito | Evidenze principali |
+|---|---|---|---|
+| 42185110369 | 2026-11-06 | Fallita (solo equivalenza, errore dello script) | Firma Good, fsck ok, conversione riuscita, digest `sha256:34ee4c0b…` |
+| 42468076171 | 2026-11-08 | Riuscita | Firma Good (key ID 655A4B02F577861E), fsck ok, **stesso digest**, 134 517/134 517 file con contenuto identico, pull in 757 s |
+| 42470569732 | 2026-11-08 | Fallita (nuovo controllo dei metadati) | Conversione da zero: **stesso digest per la terza volta**. File, contenuti, tipi e 40 721 collegamenti identici; nella **vista container** dell'OCI 456 cartelle sotto `etc/` appaiono 755/root (es. `etc/grub.d` 700, `etc/audit` 750, gruppo 7 di `etc/cups`) |
+| 42472526145 | 2026-11-08 | Riuscita | Reimportazione ostree-ext: commit verificato presente, fsck ok; prove negative 3/3 sull'archivio reale |
+| 42473035782 | 2026-11-08 | Riuscita | Albero del commit installabile (`68f8b9cc…`) **identico** all'albero del commit verificato: 190 155 voci con checksum di contenuto e metadati |
+
+### Interpretazione della differenza nella vista container
+
+`podman image mount` mostra l'OCI come filesystem del container: è la vista usata dai passi `RUN` del Containerfile durante la build. In questa vista 456 cartelle sotto `etc/` hanno permessi e proprietario predefiniti. Il sistema installato invece viene ricostruito da ostree-ext dagli oggetti ostree inclusi nell'immagine, e la run 42473035782 dimostra che quell'albero coincide con il commit firmato.
+
+**Rischio residuo (registrato):** un passo del Containerfile che scrive dentro una di quelle cartelle di `/etc` potrebbe riportare nel layer derivato i permessi della vista container. Per questo i permessi di quelle cartelle sono controllati nel sistema avviato (passo 8) e il Containerfile non deve modificarle senza verifica.
+
+### Riesecuzione completa
+
+La modalità `base-riverifica` ripete la procedura completa senza cache: chiave, pull con GPG, fsck, conversione, confronto, reimportazione e prove negative. Sono già state fatte tre conversioni indipendenti con lo stesso digest; la riesecuzione con tutte le regole attuali in un'unica run resta disponibile e va lanciata alla scadenza della cache o a ogni modifica di `base_b3.sh`.
