@@ -40,9 +40,10 @@
 | R-30 | Workflow CI in repository pubblico usato per eseguire codice da PR esterne | 2 | 3 | 6 | Solo `pull_request` (mai `pull_request_target`), `permissions: contents: read`, nessun segreto, azioni fissate per SHA | Claude | M1+ | Mitigato |
 
 | R-31 | Guasti di rete transitori del registry esterno (osservato: EOF dal CDN di quay.io) | 3 | 2 | 6 | Fino a 3 tentativi in P1, controllo del digest obbligatorio | Claude | M1 | Mitigato |
-| R-32 | Con bootc la verifica delle firme va richiesta esplicitamente; persistenza negli aggiornamenti successivi non verificata | 3 | 4 | 12 | Test T1 prima della scelta del gestore; raccomandazione provvisoria rpm-ostree | Claude | M1 | Aperto |
+| R-32 | Con bootc la verifica delle firme va richiesta esplicitamente (`--enforce-container-sigpolicy`) | 2 | 4 | 8 | T1 verificato il 2026-11-08 (run 42493088051 bootc, 42480227200 rpm-ostree): dopo il passaggio verificato l'obbligo resta in vigore negli aggiornamenti manuali e automatici con entrambi i gestori | Claude | M1 | Mitigato |
 
-| R-33 | Corsa fra regola udev e controllo di `/dev/kvm` nei job con VM | 3 | 2 | 6 | `udevadm settle` + attesa (commit `fc535fd`) | Claude | M1 | Mitigato (da verificare in CI) |
+| R-33 | Corsa fra regola udev e controllo di `/dev/kvm` nei job con VM | 3 | 2 | 6 | `udevadm settle` + attesa (commit `fc535fd`) | Claude | M1 | Mitigato (verificato: tutti i job con VM del 2026-11-08 hanno trovato `/dev/kvm`) |
+| R-34 | Finalizzazione intermittente del deployment preparato con bootc (`ostree-finalize-staged` fallito, 1 caso su 2 esecuzioni di T1/T2) | 2 | 3 | 6 | Il sistema resta avviabile sulla versione precedente; journal dell'avvio precedente raccolto automaticamente (`check_booted`); da riprodurre e analizzare prima della scelta del gestore | Claude | M1–M2 | Aperto |
 
 ## Rischi principali (punteggio ≥ 15)
 

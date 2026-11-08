@@ -174,3 +174,26 @@ Stessa sequenza, superata con **bootc** e con **rpm-ostree**:
 - R3.1–R3.2: aggiornamento dal registro temporaneo (solo loopback) e ritorno alla 0.1.1 per digest.
 
 Dopo ogni riavvio il gestore di accesso risulta attivo.
+
+## 9. Gruppo B sulla base B3 (2026-11-08)
+
+### T1/T2 — firma negli aggiornamenti successivi e aggiornamenti automatici
+
+| Gestore | Run | Esito |
+|---|---|---|
+| rpm-ostree | 42480227200 | **Superato**: T1.1 passaggio verificato a 0.1.1; T1.2 immagine non firmata rifiutata; T1.4 immagine firmata accettata (0.1.2); T2.1 aggiornamento automatico non firmato rifiutato, sistema invariato; T2.2 registro irraggiungibile gestito; T2.3 aggiornamento automatico firmato preparato (politica `stage`) e avviato (0.1.3) |
+| bootc | 42480227200 | **Fallito**: `bootc switch --enforce-container-sigpolicy` ha preparato la 0.1.1 ("Queued for next boot"), ma allo spegnimento `ostree-finalize-staged.service` è terminato con esito `failed` (console seriale) e il sistema è ripartito sulla 0.1.0. I passi successivi sono falliti di conseguenza |
+| bootc | 42493088051 | **Superato**: stessi passi di rpm-ostree; in T2.3 `bootc-fetch-apply-updates.service` ha applicato l'aggiornamento firmato con riavvio automatico (0.1.3) |
+
+**Problema aperto (R-34, intermittente):** 1 fallimento della finalizzazione con bootc su 2 esecuzioni di T1/T2. Altre esecuzioni con lo stesso meccanismo sono riuscite: P9 S6 (run 42473555885), P8 bootc, R2/R3 bootc. La causa non è determinata, perché il journal dell'avvio precedente non veniva ancora raccolto. Ora `check_booted` lo raccoglie automaticamente (commit `7d3e960`). In ogni caso il sistema è rimasto **avviabile e coerente** sulla versione precedente: è un mancato aggiornamento, non una corruzione.
+
+### T3 — tempi (run 42480227200), 4 ripetizioni di aggiornamento e rollback per gestore: SUPERATO
+
+| Fase (s) | bootc media ± dev. std (min–max) | rpm-ostree media ± dev. std (min–max) |
+|---|---|---|
+| preparazione dell'aggiornamento | 47,9 ± 11,1 (38,6–61,1) | 47,0 ± 11,8 (36,7–58,1) |
+| riavvio dopo l'aggiornamento | 32,5 ± 7,0 (22–36) | 37,0 ± 0,8 (36–38) |
+| comando di rollback | 4,8 ± 1,6 (3,6–7,1) | 6,8 ± 0,9 (5,5–7,5) |
+| riavvio dopo il rollback | 22,8 ± 0,5 (22–23) | 26,0 ± 6,7 (22–36) |
+
+Con 4 ripetizioni su runner condivisi le differenze tra i gestori stanno dentro la variabilità misurata: **nessuna differenza di prestazioni significativa**. La scelta del gestore resta una decisione del proprietario (ADR-0003). Questi dati non la prendono.
