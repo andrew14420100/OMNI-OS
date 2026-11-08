@@ -1,0 +1,22 @@
+[
+  { "t": 800,   "move": "dock:files", "dur": 700 },
+  { "t": 1800,  "sweep": ["dock:launcher", "dock:settings"], "dur": 2800 },
+  { "t": 5200,  "click": "dock:terminal", "dur": 600 },
+  { "t": 9200,  "click": "dock:launcher", "dur": 600 },
+  { "t": 10600, "keys": ["k", "o", "n", "s"] },
+  { "t": 12400, "keys": ["backspace", "backspace", "backspace", "backspace"] },
+  { "t": 13200, "click": "launcher:cat:sistema", "dur": 700 },
+  { "t": 15000, "key": "esc" },
+  { "t": 15800, "click": "topbar:tray", "dur": 700 },
+  { "t": 17400, "click": "qs:dark", "dur": 600 },
+  { "t": 19000, "click": "qs:accent1", "dur": 500 },
+  { "t": 20200, "click": "qs:accent3", "dur": 400 },
+  { "t": 21400, "click": "qs:accent0", "dur": 400 },
+  { "t": 22600, "click": "qs:dark", "dur": 500 },
+  { "t": 24000, "key": "esc" },
+  { "t": 24800, "click": "topbar:bell", "dur": 700 },
+  { "t": 26400, "click": "nc:expand:update", "dur": 600 },
+  { "t": 28400, "drag": "nc:card:performance:0", "dx": 320, "dur": 700 },
+  { "t": 30400, "key": "esc" },
+  { "t": 31200, "move": "dock:files", "dur": 800 }
+]
