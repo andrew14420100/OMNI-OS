@@ -297,7 +297,11 @@ jobs:
           set -euo pipefail
           . tests/vm/lib.sh
           build_image 0.1.0-m1-dev localhost/omni-os:repro
-          build_image 0.1.0-m1-dev localhost/omni-os:repro-ts --timestamp 0
+          build_image 0.1.0-m1-dev localhost/omni-os:repro-ts --no-cache --timestamp 0
+          # la variante --timestamp 0 deve essere una build vera, non l'immagine in cache
+          i1=$($PODMAN image inspect --format '{{.Id}}' localhost/omni-os:repro); i2=$($PODMAN image inspect --format '{{.Id}}' localhost/omni-os:repro-ts)
+          echo "ID predefinita: $i1 — ID --timestamp 0: $i2 (creata: $($PODMAN image inspect --format '{{.Created}}' localhost/omni-os:repro-ts))"
+          [ "$i1" != "$i2" ] || { echo "ERRORE: la build --timestamp 0 coincide con quella predefinita (cache)"; exit 1; }
           bash tests/vm/repro_collect.sh localhost/omni-os:repro "$RUNNER_TEMP/repro-${{ matrix.build }}/predefinita"
           bash tests/vm/repro_collect.sh localhost/omni-os:repro-ts "$RUNNER_TEMP/repro-${{ matrix.build }}/timestamp0"
           echo "runner: $(lscpu | sed -n 's/^Model name:[[:space:]]*//p'), $(date -u +%FT%TZ)" > "$RUNNER_TEMP/repro-${{ matrix.build }}/runner.txt"
