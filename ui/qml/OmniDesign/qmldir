@@ -1,0 +1,12 @@
+module OmniDesign
+singleton Theme 1.0 Theme.qml
+singleton Icons 1.0 Icons.qml
+OmniIcon 1.0 OmniIcon.qml
+OmniAppTile 1.0 OmniAppTile.qml
+OmniButton 1.0 OmniButton.qml
+OmniIconButton 1.0 OmniIconButton.qml
+OmniSurface 1.0 OmniSurface.qml
+OmniToggleTile 1.0 OmniToggleTile.qml
+OmniSlider 1.0 OmniSlider.qml
+OmniSearchField 1.0 OmniSearchField.qml
+PrototypeBadge 1.0 PrototypeBadge.qml

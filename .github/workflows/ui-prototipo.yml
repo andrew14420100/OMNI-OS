@@ -1,0 +1,51 @@
+# OMNI Shell — prototipo anticipato dell'interfaccia (non M4).
+# Compila, esegue i test (C++ e QML) e cattura schermate reali del prototipo.
+# Nessun segreto, permessi in sola lettura, nessuna pubblicazione.
+name: ui-prototipo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/omni-ui-prototipo"]
+    paths: ["ui/**", ".github/workflows/ui-prototipo.yml"]
+  pull_request:
+    paths: ["ui/**", ".github/workflows/ui-prototipo.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build, test e schermate del prototipo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Dipendenze Qt 6 (archivio Ubuntu)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools \
+            qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+            qml6-module-qtquick-shapes qml6-module-qtquick-window qml6-module-qtqml-workerscript \
+            qml6-module-qtquick-templates qml6-module-qttest qml6-module-qtqml qml6-module-qtqml-models \
+            cmake g++ fonts-inter >/dev/null
+      - name: Build
+        run: cmake -S ui -B ui/build -DCMAKE_BUILD_TYPE=Release && cmake --build ui/build -j4
+      - name: Test (C++ e QML)
+        run: ctest --test-dir ui/build --output-on-failure
+      - name: Schermate reali del prototipo
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          mkdir -p shots
+          for spec in "desktop dark" "launcher dark" "notifications dark" "quicksettings dark" "desktop light" "quicksettings light" "launcher light"; do
+            set -- $spec
+            ui/build/omni-shell-prototipo --demo-apps --scene "$1" --theme "$2" --screenshot "shots/prototipo-$1-$2.png" --delay 1800
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ui-prototipo-schermate
+          path: shots/*.png
+          retention-days: 14

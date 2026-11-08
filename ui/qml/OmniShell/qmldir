@@ -1,0 +1,9 @@
+module OmniShell
+NotificationStore 1.0 NotificationStore.qml
+Wallpaper 1.0 Wallpaper.qml
+Panel 1.0 Panel.qml
+Launcher 1.0 Launcher.qml
+NotificationCenter 1.0 NotificationCenter.qml
+QuickSettings 1.0 QuickSettings.qml
+Toast 1.0 Toast.qml
+Shell 1.0 Shell.qml
