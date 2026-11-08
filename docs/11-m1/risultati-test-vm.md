@@ -123,3 +123,21 @@ Conseguenze:
 - I risultati di P1–P9 restano validi **per la base `0e0649d7…`**, con cui sono stati ottenuti (esecuzioni 42099981099 e 42105279344), ma quella base non è più riproducibile.
 - AC-M1-07 (riproducibilità) **non può essere soddisfatto nel tempo** con una base A1: una build è ripetibile solo finché il manifest esiste, cioè circa un giorno.
 - Disponibilità verificata delle alternative (2026-11-06): il commit ostree ufficiale firmato di ieri (`83719586…`, 45.20261105.0) è ancora presente con la firma nel repository Fedora (A3); le immagini firmate del SIG (A2) conservano i tag datati dal 45.20261010.0 al 45.20261106.0 (circa 4 settimane).
+
+## 7. P1–P9 sulla base B3 — esecuzione 42473555885 (2026-11-08): SUPERATI
+
+Commit `4dbfab9`, base B3 caricata dalla cache e verificata: digest `sha256:34ee4c0b…` uguale a quello fissato e sha256 di manifest, configurazione e 65 layer controllati. Durata: 31 minuti.
+
+| Passo | Esito | Evidenze |
+|---|---|---|
+| P1 base | Superato | Digest fissato e blob verificati; commit `5a4ff74f…` |
+| P2 build, P3 `bootc container lint`, P4 contenuto | Superati | Fedora 45 Kinoite, kernel 7.2.15-300.fc45, plasma-workspace 6.8.2, kwin 6.8.2, plasmalogin (plasma-login-manager 6.8.2) |
+| P5 disco (`bootc install to-disk`) | Superato | — |
+| P6 avvio UEFI e controlli | Superato | UEFI, ostree, `graphical.target`, gestore di accesso attivo, rete; unità fallite solo `mcelog` (attesa in VM). **Permessi sensibili di `/etc` uguali al commit verificato** (`grub.d` 700, `audit` 750, `nftables` 700, `selinux/targeted/active` 700, gruppo 7 di `cups`, sia in `/usr/etc` sia in `/etc`) |
+| P6b Secure Boot emulato | Superato | Kernel 7.2.15 avviato con Secure Boot attivo (variabile EFI) |
+| P7 schermata | Superato | Configurazione iniziale di KDE. La schermata è **identica byte per byte** a quella ottenuta con la base A1 (sha256 `273f264c…`): nessuna regressione visibile al primo avvio |
+| P8 bootc | Superato | E1 archivio corrotto rifiutato, deployment invariati; E2 spegnimento forzato durante l'aggiornamento con sistema coerente; U1 da 0.1.0 a 0.1.1; R1 rollback a 0.1.0 con gestore di accesso attivo |
+| P8 rpm-ostree | Superato | Stessi passi E1, E2, U1, R1 |
+| P9 firme (chiavi effimere) | Superato | S1–S4: immagini non firmate o con chiave sconosciuta rifiutate da entrambi i gestori; S5–S6: immagine firmata accettata, avvio sulla 0.1.1 |
+
+**Confronto con A1 (run 42105279344):** stessi passi superati e stessa schermata P7. In più, solo con B3, il controllo dei permessi di `/etc`. Nessuna regressione rilevata.
