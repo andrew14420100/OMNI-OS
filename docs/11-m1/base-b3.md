@@ -74,6 +74,9 @@ In CI la procedura controlla le prime due fonti a ogni preparazione e si ferma s
 
 ### Interpretazione della differenza nella vista container
 
+Aggiornamento (run 42501784476, nuova derivazione sul branch d'integrazione, stesso digest): le cartelle con valori predefiniti nella vista container sono 458, cioè 452 sotto `etc/` e 6 sotto `usr/` (`usr/lib/bootupd/updates`, `usr/lib/containers/storage/overlay-images` e `overlay-layers`, `usr/lib/efi/grub2/…/EFI/fedora`, `usr/libexec/initscripts/legacy-actions/auditd`, `usr/libexec/utempter` con gruppo 35). Si tratta sempre e solo di cartelle. La tolleranza vale ora per le cartelle in qualunque percorso, sempre a condizione che la reimportazione dia metadati identici (in quella run: sì, 190 155 voci). In VM si controllano anche `utempter` e `legacy-actions/auditd`.
+
+
 `podman image mount` mostra l'OCI come filesystem del container: è la vista usata dai passi `RUN` del Containerfile durante la build. In questa vista 456 cartelle sotto `etc/` hanno permessi e proprietario predefiniti. Il sistema installato invece viene ricostruito da ostree-ext dagli oggetti ostree inclusi nell'immagine, e la run 42473035782 dimostra che quell'albero coincide con il commit firmato.
 
 **Rischio residuo (registrato):** un passo del Containerfile che scrive dentro una di quelle cartelle di `/etc` potrebbe riportare nel layer derivato i permessi della vista container. Per questo i permessi di quelle cartelle sono controllati nel sistema avviato (passo 8) e il Containerfile non deve modificarle senza verifica.

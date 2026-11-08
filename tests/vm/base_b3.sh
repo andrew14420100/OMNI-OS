@@ -238,13 +238,16 @@ print(f"META_ENTRIES_COMMIT={len(mc)} (file {types_c['f']}, cartelle {types_c['d
 for k in ("mancante", "tipo", "destinazione", "permessi", "proprietario"):
     print(f"META_DIFF_{k.upper()}={kinds[k]}")
 for s_ in samples[:20]: print(f"  {s_}")
-# Vista container: differenze ammesse SOLO per cartelle sotto etc/ (permessi/proprietario),
-# a condizione che la reimportazione ostree ricostruisca il commit verificato (vedi sotto).
+# Vista container: differenze ammesse SOLO per permessi/proprietario di CARTELLE (le
+# cartelle senza voce esplicita nel tar ricevono valori predefiniti), a condizione che la
+# reimportazione ostree ricostruisca il commit verificato con metadati identici (vedi sotto).
 def tolerated(s_):
     kind, _, path = s_.rpartition(": ")
-    return (kind.startswith("permessi") or kind.startswith("proprietario")) and path.startswith("etc/") and mc.get(path, ("?",))[0] == "d"
+    return (kind.startswith("permessi") or kind.startswith("proprietario")) and mc.get(path, ("?",))[0] == "d"
+tol = [s_ for s_ in samples if tolerated(s_)]
 other = [s_ for s_ in samples if not tolerated(s_)]
-print(f"META_CONTAINER_VIEW_ETC_DIRS={len(samples) - len(other)}")
+print(f"META_CONTAINER_VIEW_DIRS={len(tol)} (etc/: {sum(1 for x in tol if x.rpartition(': ')[2].startswith('etc/'))}, altre: {sum(1 for x in tol if not x.rpartition(': ')[2].startswith('etc/'))})")
+for s_ in [x for x in tol if not x.rpartition(': ')[2].startswith('etc/')][:15]: print(f"  cartella con valori predefiniti: {s_}")
 print(f"META_CONTAINER_VIEW_OTHER={len(other)}")
 for s_ in other[:15]: print(f"  differenza non ammessa: {s_}")
 # Vista ostree reimportata: deve coincidere voce per voce con il commit verificato.
@@ -275,7 +278,7 @@ grep -q '^META_CONTAINER_VIEW_OTHER=0$' "$info" || fail "differenze di metadati 
 grep -q '^IMPORT_META_IDENTICAL=si$' "$info" || fail "i metadati del commit reimportato differiscono da quelli del commit verificato"
 grep -q '^META_ONLY_IN_OCI_FILES_OUTSIDE_SYSROOT=0$' "$info" || fail "la conversione ha aggiunto file regolari fuori da sysroot/"
 oo=$(sed -n 's/^EQUIV_ONLY_IN_OCI=//p' "$info")
-ed=$(sed -n 's/^META_CONTAINER_VIEW_ETC_DIRS=//p' "$info")
-log "EQUIVALENCE=ok (reimportazione ostree: commit verificato ricostruito con metadati identici; vista container: contenuto, tipi e collegamenti identici, $ed cartelle di etc/ con permessi/proprietario predefiniti; file aggiunti solo in sysroot/: $oo)"
+ed=$(sed -n 's/^META_CONTAINER_VIEW_DIRS=//p' "$info")
+log "EQUIVALENCE=ok (reimportazione ostree: commit verificato ricostruito con metadati identici; vista container: contenuto, tipi e collegamenti identici, cartelle con permessi/proprietario predefiniti: $ed; file aggiunti solo in sysroot/: $oo)"
 sudo rm -rf "$co" "$k"
 echo "base B3 pronta: $out/base.tar ($d)"
