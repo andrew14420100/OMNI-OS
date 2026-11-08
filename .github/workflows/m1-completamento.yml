@@ -13,7 +13,7 @@ on:
         description: "base = solo base B3; base-riverifica = rideriva B3 senza cache; A = desktop + R2/R3 (A-desktop / A-ripristino = solo una parte); B = T1/T2 + T3; C = riproducibilità + SBOM"
         required: true
         type: choice
-        options: [base, base-riverifica, A, A-desktop, A-ripristino, B, B-T12-bootc, C]
+        options: [base, base-riverifica, A, A-desktop, A-ripristino, B, B-T12-bootc, C, C-riproducibilita]
 
 permissions:
   contents: read
@@ -275,7 +275,7 @@ jobs:
   repro-build:
     name: AC-M1-07 build indipendente ${{ matrix.build }}
     needs: base
-    if: inputs.gruppo == 'C'
+    if: inputs.gruppo == 'C' || inputs.gruppo == 'C-riproducibilita'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -310,7 +310,7 @@ jobs:
   repro-compare:
     name: AC-M1-07 confronto
     needs: repro-build
-    if: inputs.gruppo == 'C'
+    if: inputs.gruppo == 'C' || inputs.gruppo == 'C-riproducibilita'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

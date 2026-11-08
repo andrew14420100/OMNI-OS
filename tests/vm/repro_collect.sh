@@ -11,6 +11,7 @@ mnt=$(sudo podman image mount "$img")
 # metadati: percorso, tipo, permessi, proprietario, gruppo, dimensione, destinazione del link
 sudo find "$mnt" -xdev -printf '%P\t%y\t%m\t%U\t%G\t%s\t%l\n' | LC_ALL=C sort > "$out/meta.tsv"
 sudo find "$mnt" -xdev -printf '%P\t%T@\n' | LC_ALL=C sort > "$out/mtime.tsv"
-(cd "$mnt" && sudo find . -xdev -type f -print0 | sudo xargs -0 -n 2000 sha256sum) | sed 's#  \./#  #' | LC_ALL=C sort -k2 > "$out/sha256.txt"
+# il punto di montaggio è leggibile solo da root: anche il "cd" deve avvenire con sudo
+sudo bash -c 'cd "$1" && find . -xdev -type f -print0 | xargs -0 -n 2000 sha256sum' _ "$mnt" | sed 's#  \./#  #' | LC_ALL=C sort -k2 > "$out/sha256.txt"
 sudo podman image umount "$img" >/dev/null
 wc -l "$out"/*.txt "$out"/*.tsv
