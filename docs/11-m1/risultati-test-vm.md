@@ -197,3 +197,18 @@ Dopo ogni riavvio il gestore di accesso risulta attivo.
 | riavvio dopo il rollback | 22,8 ± 0,5 (22–23) | 26,0 ± 6,7 (22–36) |
 
 Con 4 ripetizioni su runner condivisi le differenze tra i gestori stanno dentro la variabilità misurata: **nessuna differenza di prestazioni significativa**. La scelta del gestore resta una decisione del proprietario (ADR-0003). Questi dati non la prendono.
+
+## 10. Gruppo C sulla base B3 (2026-11-08)
+
+### AC-M1-08 — SBOM (run 42495967226): SUPERATO
+SPDX 2.3 e CycloneDX 1.7 generati con syft 1.55.0 (checksum fissato): 1746 pacchetti RPM in entrambi, 0 installati e mancanti, 0 in eccesso rispetto a `rpm -qa`; 7569 componenti in totale.
+
+### AC-M1-07 — riproducibilità: SUPERATO
+
+| Esecuzione | Build predefinita, A contro B | Build `--timestamp 0`, A contro B |
+|---|---|---|
+| 42495967226 | fallita prima del confronto (`cd` senza sudo nel punto di montaggio, corretto in `a21c52d`) | — |
+| 42498047150 | funzionalmente identiche; 2 layer su 67 diversi | **non valida**: stesso ID della build predefinita (cache di podman); corretta in `4afa83e` con `--no-cache` e controllo degli ID |
+| 42500407639 | funzionalmente identiche; 1 layer su 67 diverso; ID diversi | **identità binaria**: ID `1b7dff69…` uguale, 67 layer su 67 identici, data di creazione 1970-01-01 |
+
+In tutti i confronti validi: 1746 pacchetti (NEVRA) identici, 472 244 voci del filesystem e 402 151 file con contenuto e metadati identici. Le date di modifica diverse nella vista montata (circa 12 400) non sono contenute nei layer, che sono identici per digest.
