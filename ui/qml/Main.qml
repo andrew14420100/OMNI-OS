@@ -6,7 +6,7 @@ import OmniShell
 Item {
     id: root
     width: 1600; height: 1000
-    Component.onCompleted: { Theme.dark = initialDark; Theme.reducedMotion = initialReducedMotion; Theme.accentIndex = initialAccent }
+    Component.onCompleted: { Theme.dark = initialDark; Theme.reducedMotion = initialReducedMotion; Theme.accentIndex = initialAccent; Theme.lowPower = initialLowPower }
     Loader {
         anchors.fill: parent
         focus: true
