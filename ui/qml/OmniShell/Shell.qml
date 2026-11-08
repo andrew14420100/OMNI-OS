@@ -25,10 +25,14 @@ FocusScope {
     }
     // preferiti iniziali: una per tipo, nell'ordine indicato, poi le prime disponibili
     function defaultFavorites(list) {
-        const wanted = ["files", "browser", "terminal", "store", "media", "office", "gaming", "settings", "developer"]
+        const wanted = ["files", "browser", "terminal", "store", "media", "office", "gaming", "settings", "developer",
+                        "texteditor", "photos", "music", "mail", "calculator", "archive", "performance", "help"]
+        // strumenti di diagnostica e utilità minori non entrano nel dock predefinito
+        const skip = ["bug", "logs", "chars", "generic"]
         const out = []
-        wanted.forEach(g => { const e = list.find(x => x.glyph === g && out.indexOf(x.desktopId) < 0); if (e) out.push(e.desktopId) })
-        for (let i = 0; i < list.length && out.length < 8; ++i) if (out.indexOf(list[i].desktopId) < 0) out.push(list[i].desktopId)
+        wanted.forEach(g => { const e = list.find(x => x.glyph === g && out.indexOf(x.desktopId) < 0); if (e && out.length < 8) out.push(e.desktopId) })
+        for (let i = 0; i < list.length && out.length < 8; ++i)
+            if (out.indexOf(list[i].desktopId) < 0 && skip.indexOf(list[i].glyph) < 0) out.push(list[i].desktopId)
         return out.slice(0, 8)
     }
     readonly property var dockItems: {

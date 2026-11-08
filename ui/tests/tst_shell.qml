@@ -32,6 +32,11 @@ Item {
             compare(shell.dockItems.length, 5)
             compare(shell.dockItems[0].glyph, "files")
         }
+        function test_defaultFavoritesSkipDiagnostics() {
+            const list = [ { desktopId: "a", glyph: "bug" }, { desktopId: "b", glyph: "files" }, { desktopId: "c", glyph: "chars" },
+                           { desktopId: "d", glyph: "archive" }, { desktopId: "e", glyph: "logs" } ]
+            compare(shell.defaultFavorites(list), ["b", "d"])
+        }
         function test_scenesToggle() {
             shell.scene = "desktop"
             shell.toggle("launcher"); compare(shell.scene, "launcher")
