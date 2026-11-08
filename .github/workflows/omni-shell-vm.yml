@@ -6,6 +6,10 @@ name: omni-shell-vm
 
 on:
   workflow_dispatch:
+  # registrazione del workflow: solo su questo branch e solo se cambia il workflow stesso
+  push:
+    branches: ["claude/omni-shell-vm-integrazione"]
+    paths: [".github/workflows/omni-shell-vm.yml"]
 
 permissions:
   contents: read
