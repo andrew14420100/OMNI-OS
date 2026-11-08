@@ -52,6 +52,8 @@ for spec in "grub.d 700" "audit 750" "nftables 700" "selinux/targeted/active 700
   done
 done
 check "gruppo di /usr/etc/cups = 7 (lp, come nel commit verificato)" test "$(stat -c %g /usr/etc/cups)" = 7
+check "gruppo di /usr/libexec/utempter = 35 (utmp, come nel commit verificato)" test "$(stat -c %g /usr/libexec/utempter)" = 35
+check "permessi /usr/libexec/initscripts/legacy-actions/auditd = 750 (come nel commit verificato)" test "$(stat -c %a /usr/libexec/initscripts/legacy-actions/auditd)" = 750
 check "NetworkManager attivo" systemctl is-active NetworkManager
 check "rete: indirizzo IPv4 assegnato" bash -c 'ip -4 -o addr show scope global | grep -q inet'
 echo "INFO kernel: $(uname -r)"

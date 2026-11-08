@@ -84,7 +84,7 @@ M2 e M3 non avviate.
 | AC-M1-04 Upgrade N → N+1 | **Soddisfatto** | P8 U1 con bootc e rpm-ostree |
 | AC-M1-05 Rollback R1, R2, R3 | **Parziale** | R1 (deployment precedente) superato con entrambi; **R2** (deployment fissato) e **R3** (ritorno a un tag precedente nel registry) **non provati** |
 | AC-M1-06 Rifiuto immagini non firmate o con firma errata | **Soddisfatto** (chiavi effimere) | P9 S1–S4; accettazione della firma valida S5–S6 |
-| AC-M1-07 Ricostruzione equivalente dallo stesso commit | **Non verificato** | — |
+| AC-M1-07 Ricostruzione equivalente (elenco pacchetti identico) | **Superato**, con **identità binaria** in modalità `--timestamp 0` | 42498047150, 42500407639 | Due build da zero su runner diversi: 1746 pacchetti, 472 244 voci del filesystem e 402 151 file identici. Build predefinita: 1 layer su 67 diverso (date). Build con `--timestamp 0` e senza cache: **stesso ID immagine `1b7dff69…` e 67 layer su 67 identici**. Le date di modifica che risultano diverse nella vista montata (12 403) non compaiono nei layer, identici per digest: sono un effetto del montaggio, non del contenuto |
 | AC-M1-08 SBOM | **Non realizzato** | — |
 | AC-M1-09 Confronto rpm-ostree / bootc | **Soddisfatto** | `risultati-test-vm.md` §3, §3.1 |
 | AC-M1-10 NVIDIA dichiarato non verificato | **Soddisfatto** | Nessun driver NVIDIA in VM |
@@ -162,6 +162,6 @@ Base **B3**, approvata dal proprietario: commit OSTree Fedora 45 Kinoite `5a4ff7
 - **10 criteri su 10 superati in VM**, con i limiti indicati.
 - **Aperti, ma non bloccanti per i criteri:**
   - R-34: finalizzazione intermittente con bootc;
-  - variante `--timestamp 0` di AC-M1-07, in ripetizione per misurare l'identità binaria. La riproducibilità funzionale, che è quanto chiede il criterio, è già dimostrata.
+  - AC-M1-07: l'identità binaria è dimostrata solo con `--timestamp 0`. Va adottata nella build ufficiale (proposta, non decisione).
 - **Non verificato e fuori ambito M1:** hardware reale, NVIDIA, Secure Boot reale, installer, dati utente.
 - M1 si conclude formalmente solo con l'approvazione del proprietario e il merge della PR #2, che **non** è stato fatto.
