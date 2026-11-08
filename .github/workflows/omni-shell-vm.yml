@@ -22,19 +22,36 @@ jobs:
   integrazione:
     name: OMNI Shell V2 nella sessione Plasma Wayland (VM)
     runs-on: ubuntu-24.04
-    timeout-minutes: 100
+    timeout-minutes: 170
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with: { persist-credentials: false }
       - name: Chiave della cache della base B3
         id: key
         run: echo "key=omni-base-b3-$(grep -E '^OSTREE_COMMIT=' image/base.lock | cut -d= -f2)-v1" >> "$GITHUB_OUTPUT"
-      - name: Ripristino della base B3 dalla cache (verificata al caricamento)
+      - name: Ripristino della base B3 dalla cache di questo branch (se presente)
+        id: cache
         uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ${{ runner.temp }}/base-b3
           key: ${{ steps.key.outputs.key }}
-          fail-on-cache-miss: true
+      # La cache del branch M1 non è leggibile da altri branch: se manca, la base B3 viene
+      # derivata di nuovo con la stessa procedura verificata (GPG, fsck, conversione,
+      # equivalenza) e deve dare lo stesso DERIVED_OCI_DIGEST fissato in base.lock.
+      - name: Preparazione e verifica della base B3 (solo se non in cache)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          bash tests/vm/base_b3.sh prepare "$RUNNER_TEMP/base-b3"
+          bash tests/vm/base_b3.sh import "$RUNNER_TEMP/base-b3"
+          bash tests/vm/base_b3_negative.sh "$RUNNER_TEMP/base-b3"
+          sudo rm -rf "$RUNNER_TEMP/base-b3.work"
+      - name: Salvataggio della base nella cache di questo branch (non pubblica)
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
       - name: Preparazione (base B3 verificata, KVM, QEMU)
         run: bash tests/vm/ci_prepare.sh
       - name: Immagine OMNI e disco di prova
