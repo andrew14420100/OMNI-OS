@@ -20,6 +20,6 @@ add_executable(tst_desktopentries tests/tst_desktopentries.cpp)
 target_link_libraries(tst_desktopentries PRIVATE omni_desktopentries Qt6::Test)
 add_test(NAME desktopentries COMMAND tst_desktopentries)
 
-find_program(QMLTESTRUNNER qmltestrunner HINTS /usr/lib/qt6/bin /usr/lib/x86_64-linux-gnu/qt6/bin)
+find_program(QMLTESTRUNNER qmltestrunner HINTS /usr/lib/qt6/bin /usr/lib64/qt6/bin /usr/lib/x86_64-linux-gnu/qt6/bin)
 add_test(NAME qml COMMAND ${QMLTESTRUNNER} -import ${CMAKE_CURRENT_SOURCE_DIR}/qml -input ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 set_tests_properties(qml desktopentries PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

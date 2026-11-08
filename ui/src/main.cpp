@@ -8,10 +8,16 @@
 #include "recorder.h"
 #include <QFile>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <QQuickItem>
+#include <functional>
 #include <QCommandLineParser>
 #include <QDir>
 #include <QFont>
 #include <QGuiApplication>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickView>
@@ -21,6 +27,19 @@
 #ifndef OMNI_QML_DIR
 #define OMNI_QML_DIR "qml"
 #endif
+
+// Nome del renderer OpenGL in uso (es. "llvmpipe" = rendering software, senza GPU).
+// Stringa vuota se OpenGL non è disponibile (es. piattaforma offscreen senza contesto).
+static QString glRendererName() {
+    QOffscreenSurface surface;
+    surface.create();
+    QOpenGLContext ctx;
+    if (!ctx.create() || !ctx.makeCurrent(&surface)) return {};
+    const auto *s = reinterpret_cast<const char *>(ctx.functions()->glGetString(GL_RENDERER));
+    const QString name = s ? QString::fromLatin1(s) : QString();
+    ctx.doneCurrent();
+    return name;
+}
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -43,9 +62,23 @@ int main(int argc, char *argv[]) {
     QCommandLineOption delay("delay", "Attesa prima della schermata (ms)", "ms", "1500");
     QCommandLineOption record("record", "Registra un video reale delle interazioni (MP4, richiede ffmpeg)", "file");
     QCommandLineOption script("script", "Script JSON delle interazioni per --record", "file");
+    QCommandLineOption lowPower("low-power", "Risparmio risorse: sfondo statico (attivo da solo con rendering software)");
+    QCommandLineOption fullscreen("fullscreen", "Finestra a schermo intero (prova nella sessione Plasma)");
+    QCommandLineOption geometry("dump-geometry", "Scrive in JSON il centro degli elementi con objectName e termina", "file");
     QCommandLineOption accent("accent", "Colore d'accento (0 Aurora, 1 Iris, 2 Corallo, 3 Giada)", "n", "0");
-    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script});
+    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower});
     p.process(app);
+
+    // piattaforma grafica effettiva (es. "wayland" nella sessione Plasma) e versione di Qt in uso
+    qInfo("piattaforma: %s; Qt in esecuzione: %s (compilato con %s)", qPrintable(QGuiApplication::platformName()), qVersion(), QT_VERSION_STR);
+
+    // Rendering software (nessuna GPU, es. VM senza accelerazione): si attiva il risparmio
+    // risorse per mantenere l'interfaccia fluida. Rilevazione solo in lettura.
+    const QString renderer = QGuiApplication::platformName() == QLatin1String("offscreen") ? QString() : glRendererName();
+    const bool softwareGl = renderer.contains(QLatin1String("llvmpipe"), Qt::CaseInsensitive)
+                         || renderer.contains(QLatin1String("softpipe"), Qt::CaseInsensitive)
+                         || renderer.contains(QLatin1String("SwiftShader"), Qt::CaseInsensitive);
+    qInfo("renderer OpenGL: %s%s", renderer.isEmpty() ? "non rilevato" : qPrintable(renderer), softwareGl ? " (rendering software: risparmio risorse automatico)" : "");
 
     DesktopEntryModel apps;
     int n = 0;
@@ -61,6 +94,9 @@ int main(int argc, char *argv[]) {
     view.rootContext()->setContextProperty("initialDark", p.value(theme) != QLatin1String("light"));
     view.rootContext()->setContextProperty("initialReducedMotion", p.isSet(reduced));
     view.rootContext()->setContextProperty("initialAccent", p.value(accent).toInt());
+    view.rootContext()->setContextProperty("initialLowPower", p.isSet(lowPower) || softwareGl);
+    view.rootContext()->setContextProperty("rendererName", renderer.isEmpty() ? QStringLiteral("non rilevato") : renderer);
+    view.rootContext()->setContextProperty("softwareRendering", softwareGl);
     // nome dell'utente della sessione (solo lettura, mostrato nelle Impostazioni rapide)
     view.rootContext()->setContextProperty("currentUser", qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME")));
     view.setResizeMode(QQuickView::SizeRootObjectToView);
@@ -72,7 +108,26 @@ int main(int argc, char *argv[]) {
         for (const auto &e : view.errors()) qCritical("%s", qPrintable(e.toString()));
         return 1;
     }
-    view.show();
+    if (p.isSet(fullscreen)) view.showFullScreen(); else view.show();
+
+    if (p.isSet(geometry)) {
+        const QString file = p.value(geometry);
+        QTimer::singleShot(p.value(delay).toInt(), &view, [&view, file]() {
+            QJsonObject out;
+            std::function<void(QQuickItem *)> walk = [&](QQuickItem *it) {
+                if (!it->objectName().isEmpty() && it->isVisible()) {
+                    const QPointF c = it->mapToScene(QPointF(it->width() / 2, it->height() / 2));
+                    out[it->objectName()] = QJsonObject{{"x", c.x()}, {"y", c.y()}};
+                }
+                for (QQuickItem *k : it->childItems()) walk(k);
+            };
+            walk(view.contentItem());
+            QFile f(file);
+            const bool ok = f.open(QIODevice::WriteOnly) && f.write(QJsonDocument(out).toJson()) > 0;
+            qInfo("geometria %s: %s (%lld elementi)", ok ? "salvata" : "NON salvata", qPrintable(file), qint64(out.size()));
+            QCoreApplication::exit(ok ? 0 : 2);
+        });
+    }
 
     if (p.isSet(record)) {
         QFile f(p.value(script));

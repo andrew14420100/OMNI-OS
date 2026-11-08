@@ -66,6 +66,7 @@ ColumnLayout {
                     { k: qsTr("Applicazioni"), v: root.appsFromSystem ? qsTr("file .desktop del sistema (sola lettura)") : qsTr("elenco dimostrativo"), ok: true },
                     { k: qsTr("Tema e accento"), v: (Theme.dark ? qsTr("scuro") : qsTr("chiaro")) + " · " + Theme.currentAccent.name, ok: true },
                     { k: qsTr("Movimento ridotto"), v: Theme.reducedMotion ? qsTr("attivo") : qsTr("disattivo"), ok: true },
+                    { k: qsTr("Rendering"), v: (typeof softwareRendering !== "undefined" && softwareRendering) ? qsTr("software · risparmio risorse") : (Theme.lowPower ? qsTr("risparmio risorse") : qsTr("accelerato")), ok: true },
                     { k: qsTr("Notifiche"), v: qsTr("%n interne al prototipo", "", root.store ? root.store.count : 0), ok: true },
                     { k: qsTr("Avvio app, rete, audio, spazi di lavoro"), v: qsTr("non collegati"), ok: false }
                 ]
