@@ -1,0 +1,111 @@
+# Build dimostrativa portabile di OMNI Shell V2.1 per Windows 11 (nuova versione: non
+# sostituisce la demo V2 del branch preview/omni-shell-v2-windows-portable).
+# Non e' OMNI OS: nessun installer, permesso amministratore o modifica dei dischi.
+# Snapshot indipendente dal branch di sviluppo Claude; nessun merge.
+name: omni-shell-windows-portable-v2.1
+
+on:
+  push:
+    branches: ["preview/omni-shell-v2.1-windows-portable"]
+    paths:
+      - ".github/workflows/omni-shell-windows-portable-v2.1.yml"
+      - "ui/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omni-shell-windows-portable-v21-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-portable:
+    name: Build OMNI Shell V2.1 portabile per Windows 11
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Qt 6 UCRT64, CMake e compilatore
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2, commit fissato
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-qt6-declarative
+            mingw-w64-ucrt-x86_64-qt6-svg
+            mingw-w64-ucrt-x86_64-qt6-tools
+
+      - name: Compilazione Qt/QML e test C++
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          cmake -S ui -B build-windows -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-windows --parallel 4
+          ctest --test-dir build-windows -R '^desktopentries$' --output-on-failure
+
+      - name: Preparazione della cartella portabile
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          d="dist/OMNI-Shell-V2.1-Windows-Portable"
+          mkdir -p "$d"
+          cp build-windows/omni-shell-prototipo.exe "$d/"
+          cp -R ui/qml "$d/qml"
+          if command -v windeployqt6 >/dev/null 2>&1; then
+            deploy=windeployqt6
+          elif command -v windeployqt >/dev/null 2>&1; then
+            deploy=windeployqt
+          else
+            echo "ERRORE: windeployqt non disponibile" >&2
+            exit 1
+          fi
+          "$deploy" --release --qmldir "$PWD/ui/qml" --dir "$PWD/$d" "$PWD/$d/omni-shell-prototipo.exe"
+          for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
+            if test -f "/ucrt64/bin/$dll"; then cp "/ucrt64/bin/$dll" "$d/"; fi
+          done
+          cat > "$d/Avvia-OMNI-Shell.bat" <<'BAT'
+          @echo off
+          cd /d "%~dp0"
+          set "OMNI_QML_DIR=%~dp0qml"
+          start "" "%~dp0omni-shell-prototipo.exe" --demo-apps --size 1440x900
+          BAT
+          cat > "$d/LEGGIMI.txt" <<'INFO'
+          OMNI Shell V2.1 - Anteprima interattiva per Windows 11
+
+          Novita rispetto alla V2: 6 nuove icone (guida, archivio, registri, caratteri,
+          diagnostica, telefono), date in italiano, risparmio risorse automatico
+          con rendering software e opzione --low-power.
+          Puo convivere con la cartella della V2: estrarla in una cartella diversa.
+
+          1. Estrarre TUTTA la cartella ZIP in una cartella locale.
+          2. Avviare Avvia-OMNI-Shell.bat senza permessi amministratore.
+          3. Provare dock, launcher, temi, accento, impostazioni e notifiche.
+          4. Per uscire, chiudere la finestra. Per cancellarla, eliminare la cartella.
+
+          Questa e' una DEMO Qt/QML e non un sistema operativo da installare.
+          Applicazioni, rete, audio, notifiche di sistema e agente IA sono simulati.
+          Non modificare protezioni Windows o SmartScreen per forzare l'avvio.
+          Questa build e' una fotografia del codice al momento del commit:
+          gli sviluppi successivi di Claude richiedono una nuova build.
+          INFO
+          test -f "$d/Qt6Core.dll"
+          test -f "$d/platforms/qwindows.dll"
+          test -f "$d/Avvia-OMNI-Shell.bat"
+          find "$d" -type f | wc -l
+
+      - name: Pubblica artefatto ZIP portabile (14 giorni)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-Shell-V2.1-Windows-Portable
+          path: dist/OMNI-Shell-V2.1-Windows-Portable/
+          if-no-files-found: error
+          retention-days: 14
