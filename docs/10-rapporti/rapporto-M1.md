@@ -133,3 +133,35 @@ Nessuna modifica al PC, a Windows, ai dischi, al BIOS/UEFI o a Secure Boot reale
 | B3 | A3: base OCI costruita dal **commit ostree ufficiale firmato** (repository Fedora), con verifica GPG | Il commit di ieri è ancora presente con la firma | Ufficiale, verificabile, commit storici disponibili; è la direzione preferita prima di M3 | Più lavoro (incapsulamento OCI e verifica GPG); implementazione **non ancora autorizzata** |
 
 **Raccomandazione (non vincolante):** **B3**, perché risolve insieme provenienza e riproducibilità, e perché comunque servirà prima di M3. Se preferisci completare subito M1, **B1** come soluzione temporanea per le sole prove in VM, accettando che AC-M1-07 venga dimostrato solo sulla durata della cache.
+
+---
+
+# Avanzamento n. 4 — rapporto finale di M1 sulla base B3 (2026-11-08)
+
+## 15. Base
+
+Base **B3**, approvata dal proprietario: commit OSTree Fedora 45 Kinoite `5a4ff74f…` (45.20261106.0), con firma GPG Fedora verificata, convertito in OCI con digest fissato `sha256:34ee4c0b…`. La provenienza e le verifiche (equivalenza dei contenuti, reimportazione ostree, metadati, prove negative) sono in `../11-m1/base-b3.md`.
+
+## 16. Criteri di accettazione M1 — valutazione finale
+
+| Criterio | Esito | Esecuzioni GitHub di riferimento | Problemi e limiti |
+|---|---|---|---|
+| AC-M1-01 Build da commit con base fissata per digest | **Superato** | m1-vm 42473555885 (P1–P4); m1-completamento 42476148840, 42478499478, 42480227200, 42493088051, 42495967226, 42498047150 | La base è un artefatto derivato: la firma Fedora copre il commit OSTree, non l'OCI (catena di fiducia in `base-b3.md` §4) |
+| AC-M1-02 Avvio UEFI con Secure Boot emulato | **Superato** | 42473555885 (P6, P6b) | Secure Boot **emulato** in OVMF con le chiavi Microsoft predefinite; nessuna prova su firmware reale (M3) |
+| AC-M1-03 Accesso, desktop Plasma Wayland, rete | **Superato** | 42478499478 (20/20 controlli); rete in 42473555885 P6 | Il criterio cita SDDM; Fedora Kinoite 45 usa **plasmalogin** (plasma-login-manager 6.8.2), verificato come gestore di accesso reale. Prima esecuzione 42476148840 fallita per un errore del test (socket `wayland-0` presunto) |
+| AC-M1-04 Aggiornamento N → N+1 | **Superato** | 42473555885 (P8 U1, bootc e rpm-ostree); 42476148840 (R2.1, R2.3) | — |
+| AC-M1-05 Rollback R1, R2, R3 | **Superato** | R1: 42473555885 (P8); R2/R3: 42476148840 (bootc e rpm-ostree) | R3 provato con un registro temporaneo solo loopback, non con un registro pubblico |
+| AC-M1-06 Rifiuto di immagini non firmate o con firma errata | **Superato** (chiavi di prova) | 42473555885 (P9 S1–S6); 42480227200 e 42493088051 (T1/T2) | Chiavi cosign **effimere**, nessun registro di trasparenza; custodia e firma definitive restano decisioni aperte |
+| AC-M1-07 Ricostruzione equivalente (elenco pacchetti identico) | **Superato** (riproducibilità funzionale) | 42498047150 | Due build su runner diversi: 1746 pacchetti, 472 244 voci del filesystem e 402 151 file con contenuto e metadati identici. **Identità binaria non raggiunta**: 2 layer su 67 diversi, 12 413 date di modifica diverse. La variante `--timestamp 0` è in ripetizione senza cache (vedi §17) |
+| AC-M1-08 SBOM | **Superato** | 42495967226 | SPDX 2.3 e CycloneDX 1.7 (syft 1.55.0): 1746 RPM in entrambi, 0 pacchetti installati mancanti, 0 in eccesso. Licenze non ancora riesaminate (M9) |
+| AC-M1-09 Confronto rpm-ostree / bootc documentato | **Superato** | 42473555885, 42476148840, 42480227200, 42493088051 | Tempi (T3) senza differenze significative. Finalizzazione intermittente con bootc (R-34, 1 caso su 2 esecuzioni di T1/T2). La scelta del gestore resta del proprietario |
+| AC-M1-10 NVIDIA dichiarato non verificato | **Superato** | — | **Dichiarazione:** nessun driver o hardware NVIDIA è stato provato. Le VM usano grafica virtuale QEMU; RTX 5070 Ti, driver open, MOK e Secure Boot reale restano per M3 |
+
+## 17. Valutazione
+
+- **10 criteri su 10 superati in VM**, con i limiti indicati.
+- **Aperti, ma non bloccanti per i criteri:**
+  - R-34: finalizzazione intermittente con bootc;
+  - variante `--timestamp 0` di AC-M1-07, in ripetizione per misurare l'identità binaria. La riproducibilità funzionale, che è quanto chiede il criterio, è già dimostrata.
+- **Non verificato e fuori ambito M1:** hardware reale, NVIDIA, Secure Boot reale, installer, dati utente.
+- M1 si conclude formalmente solo con l'approvazione del proprietario e il merge della PR #2, che **non** è stato fatto.
