@@ -3,7 +3,8 @@
 #
 #   base_b3.sh prepare <dir>   verifica la provenienza, converte in OCI, verifica il
 #                              risultato e scrive <dir>/base.tar e <dir>/base-info.txt
-#   base_b3.sh load <dir>      verifica il digest dell'archivio e lo carica in podman
+#   base_b3.sh load <dir>      verifica digest e blob dell'archivio e lo carica in podman
+#   base_b3.sh import <dir>    reimporta l'archivio con ostree-ext e verifica il commit
 #
 # Catena di fiducia (prepare):
 #   1. chiave Fedora 45: impronta = GPG_FINGERPRINT (base.lock) su DUE fonti ufficiali
@@ -53,6 +54,38 @@ for layer in m["layers"]: check(layer["digest"])
 print(f"BLOBS_VERIFIED=manifest+config+{len(m['layers'])} layer")
 PY
 }
+
+# run_import <archivio> <cartella risultati>: verifica autorevole. Reimporta l'OCI con
+# ostree-ext (lo stesso meccanismo usato da bootc e rpm-ostree all'installazione) in un
+# repository ostree nuovo e controlla che contenga il commit verificato: gli oggetti
+# ostree sono indirizzati per contenuto, quindi un commit con lo stesso checksum e un
+# fsck superato implicano file, cartelle, permessi, proprietari e xattr identici.
+run_import() {
+  local arc=$1 res=$2 tool=quay.io/fedora/fedora:45
+  mkdir -p "$res"
+  sudo podman pull -q "$tool" >/dev/null
+  sudo podman run --rm --privileged --security-opt label=disable -v "$(dirname "$arc")":/in:ro -v "$res":/res "$tool" bash -euo pipefail -c "
+    dnf -y -q install rpm-ostree >/dev/null
+    mkdir -p /tmp/imp && ostree --repo=/tmp/imp init --mode=bare
+    ostree container image pull /tmp/imp ostree-unverified-image:oci-archive:/in/$(basename "$arc") > /res/import.log 2>&1 || { tail -20 /res/import.log; exit 1; }
+    ref=\$(ostree --repo=/tmp/imp refs | grep '^ostree/container/image/' | head -1)
+    { echo \"IMPORT_REF_COMMIT=\$(ostree --repo=/tmp/imp rev-parse \"\$ref\")\"
+      echo \"IMPORT_HAS_VERIFIED_COMMIT=\$(ostree --repo=/tmp/imp rev-parse $COMMIT 2>/dev/null || echo no)\"
+      if ostree --repo=/tmp/imp fsck >/dev/null 2>&1; then echo IMPORT_FSCK=ok; else echo IMPORT_FSCK=fallito; fi
+    } > /res/import-result.txt
+    ostree --repo=/tmp/imp ls -R $COMMIT / > /res/meta-imported.txt 2>/dev/null || true"
+  sudo chown -R "$(id -u):$(id -g)" "$res"
+  cat "$res/import-result.txt"
+  grep -q "^IMPORT_FSCK=ok$" "$res/import-result.txt" || fail "fsck del repository reimportato fallito"
+  grep -q "^IMPORT_HAS_VERIFIED_COMMIT=$COMMIT$" "$res/import-result.txt" || fail "la reimportazione non contiene il commit verificato $COMMIT"
+  echo "IMPORT=ok (l'OCI derivata ricostruisce il commit verificato $COMMIT)"
+}
+
+if [ "$mode" = import ]; then
+  [ -f "$out/base.tar" ] || fail "archivio della base assente in $out"
+  run_import "$out/base.tar" "${B3_WORK:-$out.work}/import"
+  exit 0
+fi
 
 if [ "$mode" = load ]; then
   [ -f "$out/base.tar" ] || fail "archivio della base assente in $out (cache non ripristinata?)"
@@ -120,6 +153,9 @@ sudo podman run --rm --security-opt label=disable -v "$repo":/repo:ro -v "$out":
     $COMMIT oci-archive:/out/base.tar"
 sudo chown -R "$(id -u):$(id -g)" "$out" "$work"
 log "tool_rpm_ostree=$(tr '\n' ' ' < "$out/tool-rpm-ostree.txt")"
+run_import "$out/base.tar" "$work/import" | while read -r ln; do log "$ln"; done
+grep -q '^IMPORT=ok' "$info" || fail "verifica di reimportazione non superata"
+cp "$work/import/meta-imported.txt" "$work/meta-imported.txt"
 d=$(oci_digest "$out/base.tar")
 log "DERIVED_OCI_DIGEST=$d"
 if [ -n "$PINNED" ] && [ "$d" != "$PINNED" ]; then fail "la conversione ha prodotto $d, diverso dal digest fissato $PINNED"; fi
@@ -195,6 +231,23 @@ print(f"META_ENTRIES_COMMIT={len(mc)} (file {types_c['f']}, cartelle {types_c['d
 for k in ("mancante", "tipo", "destinazione", "permessi", "proprietario"):
     print(f"META_DIFF_{k.upper()}={kinds[k]}")
 for s_ in samples[:20]: print(f"  {s_}")
+# Vista container: differenze ammesse SOLO per cartelle sotto etc/ (permessi/proprietario),
+# a condizione che la reimportazione ostree ricostruisca il commit verificato (vedi sotto).
+def tolerated(s_):
+    kind, _, path = s_.rpartition(": ")
+    return (kind.startswith("permessi") or kind.startswith("proprietario")) and path.startswith("etc/") and mc.get(path, ("?",))[0] == "d"
+other = [s_ for s_ in samples if not tolerated(s_)]
+print(f"META_CONTAINER_VIEW_ETC_DIRS={len(samples) - len(other)}")
+print(f"META_CONTAINER_VIEW_OTHER={len(other)}")
+for s_ in other[:15]: print(f"  differenza non ammessa: {s_}")
+# Vista ostree reimportata: deve coincidere voce per voce con il commit verificato.
+imp = d / "meta-imported.txt"
+if imp.exists() and imp.stat().st_size > 0:
+    a = (d / "meta-commit.txt").read_text().splitlines(); b = imp.read_text().splitlines()
+    print(f"IMPORT_META_ENTRIES={len(b)}")
+    print(f"IMPORT_META_IDENTICAL={'si' if a == b else 'no'}")
+else:
+    print("IMPORT_META_IDENTICAL=no (metadati non disponibili)")
 # --- voci presenti solo nell'OCI, per cartella di primo livello ---
 extra = [p for p in mo if p not in mc]
 top = Counter(p.split("/", 1)[0] for p in extra)
@@ -208,11 +261,14 @@ for label, items in (("solo nel commit", only_c), ("contenuto diverso", diff)):
 PY
 grep -q '^EQUIV_DIFFERENT_CONTENT=0$' "$info" || fail "file con contenuto diverso fra commit verificato e OCI derivata"
 grep -q '^EQUIV_ONLY_IN_COMMIT=0$' "$info" || fail "file del commit verificato assenti dall'OCI derivata"
-for k in MANCANTE TIPO DESTINAZIONE PERMESSI PROPRIETARIO; do
+for k in MANCANTE TIPO DESTINAZIONE; do
   grep -q "^META_DIFF_$k=0$" "$info" || fail "metadati diversi fra commit verificato e OCI derivata ($k)"
 done
+grep -q '^META_CONTAINER_VIEW_OTHER=0$' "$info" || fail "differenze di metadati non ammesse nella vista container dell'OCI"
+grep -q '^IMPORT_META_IDENTICAL=si$' "$info" || fail "i metadati del commit reimportato differiscono da quelli del commit verificato"
 grep -q '^META_ONLY_IN_OCI_FILES_OUTSIDE_SYSROOT=0$' "$info" || fail "la conversione ha aggiunto file regolari fuori da sysroot/"
 oo=$(sed -n 's/^EQUIV_ONLY_IN_OCI=//p' "$info")
-log "EQUIVALENCE=ok (contenuto, tipo, permessi, proprietari e collegamenti identici per tutte le voci del commit; file aggiunti dalla conversione solo in sysroot/: $oo)"
+ed=$(sed -n 's/^META_CONTAINER_VIEW_ETC_DIRS=//p' "$info")
+log "EQUIVALENCE=ok (reimportazione ostree: commit verificato ricostruito con metadati identici; vista container: contenuto, tipi e collegamenti identici, $ed cartelle di etc/ con permessi/proprietario predefiniti; file aggiunti solo in sysroot/: $oo)"
 sudo rm -rf "$co" "$k"
 echo "base B3 pronta: $out/base.tar ($d)"

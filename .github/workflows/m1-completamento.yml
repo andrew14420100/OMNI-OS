@@ -53,6 +53,11 @@ jobs:
         run: |
           bash tests/vm/base_b3.sh load "$RUNNER_TEMP/base-b3"
           { echo "## Base B3"; echo; echo '```'; cat "$RUNNER_TEMP/base-b3/base-info.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verifica autorevole (reimportazione ostree = commit verificato)
+        run: |
+          bash tests/vm/base_b3.sh import "$RUNNER_TEMP/base-b3" | tee "$RUNNER_TEMP/import-out.txt"
+          { echo "## Reimportazione ostree"; echo; echo '```'; cat "$RUNNER_TEMP/import-out.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          sudo rm -rf "$RUNNER_TEMP/base-b3.work"
       - name: Prove negative (digest diverso, archivio manomesso)
         run: bash tests/vm/base_b3_negative.sh "$RUNNER_TEMP/base-b3" | tee -a "$RUNNER_TEMP/base-b3/base-info.txt"
       - name: Salvataggio nella cache del repository (non pubblica)

@@ -41,6 +41,17 @@ check "graphical.target attivo" systemctl is-active graphical.target
 dm=$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null || true)
 echo "INFO gestore di accesso configurato: ${dm:-nessuno}"
 check "display-manager attivo (schermata di accesso)" systemctl is-active display-manager
+# Metadati di /etc dal commit Fedora verificato (base B3). La vista "container" dell'OCI
+# derivata mostra queste cartelle come 755/root: nel sistema installato devono essere
+# quelle del commit (ricostruito da ostree-ext), sia nei predefiniti /usr/etc sia in /etc.
+for spec in "grub.d 700" "audit 750" "nftables 700" "selinux/targeted/active 700"; do
+  # shellcheck disable=SC2086 # divisione voluta in nome e permessi
+  set -- $spec
+  for root in /usr/etc /etc; do
+    check "permessi $root/$1 = $2 (come nel commit verificato)" test "$(stat -c %a "$root/$1")" = "$2"
+  done
+done
+check "gruppo di /usr/etc/cups = 7 (lp, come nel commit verificato)" test "$(stat -c %g /usr/etc/cups)" = 7
 check "NetworkManager attivo" systemctl is-active NetworkManager
 check "rete: indirizzo IPv4 assegnato" bash -c 'ip -4 -o addr show scope global | grep -q inet'
 echo "INFO kernel: $(uname -r)"
