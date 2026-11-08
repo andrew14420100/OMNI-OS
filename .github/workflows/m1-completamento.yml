@@ -10,10 +10,10 @@ on:
   workflow_dispatch:
     inputs:
       gruppo:
-        description: "base = solo base B3; base-riverifica = rideriva B3 senza cache; A = desktop + R2/R3; B = T1/T2 + T3; C = riproducibilità + SBOM"
+        description: "base = solo base B3; base-riverifica = rideriva B3 senza cache; A = desktop + R2/R3 (A-desktop / A-ripristino = solo una parte); B = T1/T2 + T3; C = riproducibilità + SBOM"
         required: true
         type: choice
-        options: [base, base-riverifica, A, B, C]
+        options: [base, base-riverifica, A, A-desktop, A-ripristino, B, C]
 
 permissions:
   contents: read
@@ -79,7 +79,7 @@ jobs:
   desktop:
     name: AC-M1-03 accesso e sessione Plasma Wayland
     needs: base
-    if: inputs.gruppo == 'A'
+    if: inputs.gruppo == 'A' || inputs.gruppo == 'A-desktop'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -118,7 +118,7 @@ jobs:
   recovery:
     name: AC-M1-05 R2/R3 (${{ matrix.client }})
     needs: base
-    if: inputs.gruppo == 'A'
+    if: inputs.gruppo == 'A' || inputs.gruppo == 'A-ripristino'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
