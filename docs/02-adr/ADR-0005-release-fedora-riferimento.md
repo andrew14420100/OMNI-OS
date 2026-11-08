@@ -62,7 +62,7 @@ superamento di questa checklist prima dell'avvio di M1:
 | # | Verifica | Esito |
 |---|---|---|
 | F45-01 | Annuncio ufficiale di rilascio su canali Fedora | **Superata** (2026-11-05, Fedora Magazine + fedoraproject.org) |
-| F45-02 | Immagine OCI ufficiale Kinoite 45 disponibile sul registry Fedora (tag e digest) | Da verificare |
+| F45-02 | Immagine OCI ufficiale Kinoite 45 disponibile sul registry Fedora (tag e digest) | **Verificata con riserve** (2026-11-05): `quay.io/fedora/fedora-kinoite:45` esiste (versione 45.20261105.0, digest registrati) ma **non è firmata** e ha solo tag mobili; stato di supporto non confermato. Dettagli e alternative in `../11-m1/verifica-base-oci.md` |
 | F45-03 | Data di fine supporto sul calendario Fedora | Parziale: "circa 13 mesi" (fedoraproject.org); data esatta da verificare |
 | F45-04 | Pacchetti NVIDIA RPM Fusion disponibili per F45 e per il kernel corrente | Da verificare |
 | F45-05 | Problemi noti (Common Issues) di Kinoite 45 rilevanti per NVIDIA, KDE, Wayland, bootc | Da verificare |

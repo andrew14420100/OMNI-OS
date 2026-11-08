@@ -126,6 +126,10 @@ Elementi aggiuntivi proposti:
 - Ricostruzione della stessa immagine da commit Git e confronto contenuto (riproducibilità funzionale).
 - Confronto rpm-ostree vs bootc su: upgrade, rollback, rifiuto firma, tempi.
 
+## Risultati M1 (2026-11-05, solo VM)
+
+Test reali in `../11-m1/risultati-test-vm.md`: aggiornamento, rollback R1, archivio corrotto, spegnimento forzato e verifica delle firme superati sia con rpm-ostree sia con bootc. R2 e R3 non ancora provati. Raccomandazione provvisoria: rpm-ostree primario, compatibilità con bootc mantenuta (rapporto M1 §10).
+
 ## Decisione del proprietario
 
 _In attesa. Restano aperte: client di aggiornamento (rpm-ostree/bootc) e metodo di firma (F1/F2)._

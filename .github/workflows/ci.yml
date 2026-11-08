@@ -1,0 +1,55 @@
+# OMNI OS — CI M1 (solo controlli statici).
+# Nessuna build di immagini, nessuna VM, nessun segreto, nessuna pubblicazione.
+# La build sarà aggiunta solo dopo l'approvazione della base OCI e del percorso
+# di build (docs/11-m1/percorso-build-vm.md).
+name: ci-statica
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  controlli-statici:
+    name: Controlli statici
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Documentazione, segreti, blocco della base
+        run: bash tests/run_static.sh
+
+      - name: Prove negative della base B3 (archivi sintetici)
+        run: bash tests/vm/base_b3_negative.sh
+
+      - name: Strumenti di lint (versioni e checksum fissati)
+        run: |
+          set -euo pipefail
+          bash tests/ci/fetch_tool.sh hadolint
+          bash tests/ci/fetch_tool.sh shellcheck
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Prova del ripiego verificabile (registry ufficiali per digest)
+        run: |
+          set -euo pipefail
+          for t in hadolint shellcheck cosign syft; do
+            FETCH_FORCE_FALLBACK=1 RUNNER_TEMP="$RUNNER_TEMP/ripiego" bash tests/ci/fetch_tool.sh "$t"
+          done
+
+      - name: Lint Containerfile
+        run: hadolint image/Containerfile
+
+      - name: Lint script shell
+        run: shellcheck tests/run_static.sh tests/static/*.sh tests/vm/*.sh tests/ci/*.sh

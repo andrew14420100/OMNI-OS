@@ -35,7 +35,7 @@
 | D-05 | Licenze dei componenti distribuiti | `../05-licenze/analisi-licenze.md` | Preliminare |
 | D-06 | Base: Kinoite ufficiale vs Universal Blue | ADR-0002 | Attende decisione |
 | D-07 | Opzione Secure Boot | ADR-0004 | Attende decisione |
-| D-08 | Repository Git inizializzato con branch di base | `../09-repository/inizializzazione-repository.md` | **Completato** (opzione 1, 2026-11-05): `main` = commit vuoto `25f607b`, PR #1 in bozza |
+| D-08 | Repository Git inizializzato con branch di base (PR #1 unita il 2026-11-05, `main` = `4198f0b`) | `../09-repository/inizializzazione-repository.md` | **Completato** (opzione 1, 2026-11-05): `main` = commit vuoto `25f607b`, PR #1 in bozza |
 
 ## 3. Requisiti di compatibilità applicativa (dal proprietario)
 

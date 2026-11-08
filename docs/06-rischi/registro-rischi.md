@@ -19,7 +19,7 @@
 | R-11 | Vulnerabilità delle estensioni | 3 | 4 | 12 | SEC-EXT-01..05 | Claude | M8 | Aperto |
 | R-12 | Dipendenza da API e servizi esterni | 3 | 2 | 6 | Integrazioni facoltative; modalità offline (RF-08) | Claude | M6–M8 | Aperto |
 | R-13 | Licenze e redistribuzione | 3 | 4 | 12 | Analisi licenze; SBOM; restare in D0/D1 fino a M9 | Proprietario | M9 | Aperto |
-| R-14 | **Conflitto con marchio "OMNI OS"** | 3 | 3 | 9 | REQ-TM-01a…d prima di ogni ulteriore passo pubblico; nomi tecnici centralizzati | Proprietario | Subito / prima di D2 | Aperto |
+| R-14 | **Conflitto con marchio "OMNI OS"**; esiste già il sistema operativo **OmniOS** (illumos) | 4 | 3 | 12 | REQ-TM-01a…d prima di ogni ulteriore passo pubblico; nomi tecnici centralizzati | Proprietario | Subito / prima di D2 | Aperto |
 | R-15 | Dipendenza da immagini Universal Blue che possono essere ridotte o rimosse | 3 | 3 | 9 | ADR-0002 opzione C; Universal Blue solo come riferimento o banco di prova | Claude | M1 | Aperto |
 | R-16 | Fedora 45 appena rilasciata (3/11/2026, confermato): regressioni iniziali, supporto NVIDIA per il kernel della release da confermare | 3 | 3 | 9 | Checklist F45-02..06; F44 come riserva | Claude | Pre-M1 | Aperto |
 | R-17 | Instabilità di specifiche versioni del driver NVIDIA open su RTX 50 (segnalazioni Xid su 580.x) | 3 | 4 | 12 | Fissare versione driver; test di stabilità prolungati in M3; rollback di immagine | Claude | M3 | Aperto |
@@ -33,8 +33,18 @@
 | R-24 | Pubblicazione accidentale di segreti o dati personali nel repository pubblico | 2 | 4 | 8 | REQ-PUB-03/04/06; dati sensibili solo in locale; scansione prima di ogni push | Claude + proprietario | Tutte | Aperto |
 | R-25 | Furto di segreti CI tramite PR da fork in un repository pubblico | 2 | 5 | 10 | SEC-KEY-04: firma solo su push a `main`/tag, environment protetto, mai su `pull_request_target` | Claude | M1+ | Aperto |
 | R-26 | Assenza di licenza in un repository pubblico (ambiguità per terzi e contributori) | 3 | 2 | 6 | REQ-PUB-01/02; decisione DA-07 | Proprietario | M0 | Aperto |
-| R-27 | Nessun controllo automatico sulle PR (CI non configurata): errori di formato o segreti non intercettati automaticamente | 3 | 2 | 6 | Verifiche manuali documentate nel rapporto M0; CI proposta da M1 | Claude | M1 | Aperto |
+| R-27 | Nessun controllo automatico sulle PR (CI non configurata): errori di formato o segreti non intercettati automaticamente | 3 | 2 | 6 | Verifiche manuali documentate nel rapporto M0; CI proposta da M1 | Claude | M1 | **Mitigato** (CI con controlli statici dal 2026-11-05, M1) |
+
+| R-28 | Base OCI Kinoite 45 ufficiale non firmata e con solo tag mobili: provenienza non verificabile, build non ripetibile se il digest viene rimosso | 5 | 4 | 20 | Build bloccata da `image/base.lock` finché il proprietario non sceglie (A1–A5); eventuale eccezione solo per prototipo VM | Proprietario | M1 | **Si è verificato** (2026-11-06: digest approvato rimosso da quay.io dopo lo spostamento giornaliero del tag; build bloccate) |
+| R-29 | Runner GitHub Actions senza KVM o con spazio disco insufficiente per build e VM | 3 | 3 | 9 | Verifica del runner a ogni esecuzione: KVM presente, 4 CPU, 15 GB, 86–99 GB liberi (2026-11-05) | Claude | M1 | **Mitigato** |
+| R-30 | Workflow CI in repository pubblico usato per eseguire codice da PR esterne | 2 | 3 | 6 | Solo `pull_request` (mai `pull_request_target`), `permissions: contents: read`, nessun segreto, azioni fissate per SHA | Claude | M1+ | Mitigato |
+
+| R-31 | Guasti di rete transitori del registry esterno (osservato: EOF dal CDN di quay.io) | 3 | 2 | 6 | Fino a 3 tentativi in P1, controllo del digest obbligatorio | Claude | M1 | Mitigato |
+| R-32 | Con bootc la verifica delle firme va richiesta esplicitamente (`--enforce-container-sigpolicy`) | 2 | 4 | 8 | T1 verificato il 2026-11-08 (run 42493088051 bootc, 42480227200 rpm-ostree): dopo il passaggio verificato l'obbligo resta in vigore negli aggiornamenti manuali e automatici con entrambi i gestori | Claude | M1 | Mitigato |
+
+| R-33 | Corsa fra regola udev e controllo di `/dev/kvm` nei job con VM | 3 | 2 | 6 | `udevadm settle` + attesa (commit `fc535fd`) | Claude | M1 | Mitigato (verificato: tutti i job con VM del 2026-11-08 hanno trovato `/dev/kvm`) |
+| R-34 | Finalizzazione intermittente del deployment preparato con bootc (`ostree-finalize-staged` fallito, 1 caso su 2 esecuzioni di T1/T2) | 2 | 3 | 6 | Il sistema resta avviabile sulla versione precedente; journal dell'avvio precedente raccolto automaticamente (`check_booted`); da riprodurre e analizzare prima della scelta del gestore | Claude | M1–M2 | Aperto |
 
 ## Rischi principali (punteggio ≥ 15)
 
-R-01, R-02, R-03, R-09: vanno riesaminati a ogni rapporto di milestone.
+R-01, R-02, R-03, R-09, R-28: vanno riesaminati a ogni rapporto di milestone.

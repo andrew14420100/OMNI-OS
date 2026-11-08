@@ -1,0 +1,392 @@
+# OMNI OS — completamento di M1 (solo macchine virtuali sul runner effimero).
+# AC-M1-03 desktop, AC-M1-05 R2/R3, AC-M1-07 riproducibilità, AC-M1-08 SBOM,
+# T1/T2 firma e aggiornamenti automatici, T3 tempi.
+# Nessuna pubblicazione su registry esterni, nessuna release, nessuna ISO,
+# nessun segreto, nessuna chiave definitiva. Base B3 (commit OSTree Fedora verificato), solo VM.
+name: m1-completamento
+
+# Avvio solo manuale, un gruppo alla volta, per limitare il consumo delle risorse gratuite.
+on:
+  workflow_dispatch:
+    inputs:
+      gruppo:
+        description: "base = solo base B3; base-riverifica = rideriva B3 senza cache; A = desktop + R2/R3 (A-desktop / A-ripristino = solo una parte); B = T1/T2 + T3; C = riproducibilità + SBOM"
+        required: true
+        type: choice
+        options: [base, base-riverifica, A, A-desktop, A-ripristino, B, B-T12-bootc, C, C-riproducibilita]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-completamento-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  base:
+    name: Base B3 (commit OSTree Fedora verificato con GPG)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Chiave della cache (commit fissato in base.lock)
+        id: key
+        run: echo "key=omni-base-b3-$(grep -E '^OSTREE_COMMIT=' image/base.lock | cut -d= -f2)-v1" >> "$GITHUB_OUTPUT"
+      - name: Ripristino della base dalla cache
+        id: cache
+        if: inputs.gruppo != 'base-riverifica'
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
+      - name: Preparazione e verifica della provenienza (solo se non in cache)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          bash tests/vm/base_b3.sh prepare "$RUNNER_TEMP/base-b3"
+          sudo rm -rf "$RUNNER_TEMP/base-b3.work"
+      - name: Verifica del digest e caricamento di prova
+        run: |
+          bash tests/vm/base_b3.sh load "$RUNNER_TEMP/base-b3"
+          { echo "## Base B3"; echo; echo '```'; cat "$RUNNER_TEMP/base-b3/base-info.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verifica autorevole (reimportazione ostree = commit verificato)
+        run: |
+          bash tests/vm/base_b3.sh import "$RUNNER_TEMP/base-b3" | tee "$RUNNER_TEMP/import-out.txt"
+          { echo "## Reimportazione ostree"; echo; echo '```'; cat "$RUNNER_TEMP/import-out.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          sudo rm -rf "$RUNNER_TEMP/base-b3.work"
+      - name: Prove negative (digest diverso, archivio manomesso)
+        run: bash tests/vm/base_b3_negative.sh "$RUNNER_TEMP/base-b3" | tee -a "$RUNNER_TEMP/base-b3/base-info.txt"
+      - name: Salvataggio nella cache del repository (non pubblica)
+        if: steps.cache.outputs.cache-hit != 'true' && inputs.gruppo != 'base-riverifica'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
+      - name: Evidenze della provenienza (senza immagine)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-base-b3-evidenze
+          path: |
+            ${{ runner.temp }}/base-b3/base-info.txt
+            ${{ runner.temp }}/base-b3/tool-rpm-ostree.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+  desktop:
+    name: AC-M1-03 accesso e sessione Plasma Wayland
+    needs: base
+    if: inputs.gruppo == 'A' || inputs.gruppo == 'A-desktop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
+        run: bash tests/vm/ci_prepare.sh
+      - name: Immagine e disco di prova
+        run: bash tests/vm/ci_make_disk.sh 0.1.0-m1-dev
+      - name: Test del desktop
+        run: |
+          set +e
+          bash tests/vm/desktop_test.sh "$VMWORK/desktop"; rc=$?
+          cat "$VMWORK/desktop/desktop.md" >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+      - name: Prove (schermate e evidenze, 7 giorni)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-desktop
+          path: |
+            ${{ runner.temp }}/vm/desktop/*.png
+            ${{ runner.temp }}/vm/desktop/*.md
+            ${{ runner.temp }}/vm/desktop/*.txt
+            ${{ runner.temp }}/vm/desktop/*.log
+            ${{ runner.temp }}/vm/desktop/serial.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  recovery:
+    name: AC-M1-05 R2/R3 (${{ matrix.client }})
+    needs: base
+    if: inputs.gruppo == 'A' || inputs.gruppo == 'A-ripristino'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        client: [bootc, rpm-ostree]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
+        run: bash tests/vm/ci_prepare.sh
+      - name: Immagini, disco di prova e registro temporaneo (solo loopback)
+        run: |
+          set -euo pipefail
+          . tests/vm/lib.sh
+          LOG=$VMWORK/registry.log
+          bash tests/vm/ci_make_disk.sh 0.1.0-m1-dev
+          build_image 0.1.1-m1-dev localhost/omni-os:v011
+          build_image 0.1.2-m1-dev localhost/omni-os:v012
+          registry_start
+          reg_push localhost/omni-os:m1-ci v0.1.0
+          reg_push localhost/omni-os:v011 v0.1.1 > "$VMWORK/d-0.1.1"
+          reg_push localhost/omni-os:v012 v0.1.2
+          echo "digest v0.1.1: $(cat "$VMWORK/d-0.1.1")"
+      - name: R2 e R3
+        run: |
+          set +e
+          bash tests/vm/recovery_test.sh ${{ matrix.client }} "$VMWORK/recovery"; rc=$?
+          cat "$VMWORK/recovery/recovery-${{ matrix.client }}.md" >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+      - name: Registri (7 giorni)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-recovery-${{ matrix.client }}
+          path: |
+            ${{ runner.temp }}/vm/recovery/*.md
+            ${{ runner.temp }}/vm/recovery/*.log
+            ${{ runner.temp }}/vm/recovery/*.json
+            ${{ runner.temp }}/vm/recovery/serial.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  managers:
+    name: T1/T2 firma e aggiornamenti automatici (${{ matrix.client }})
+    needs: base
+    if: inputs.gruppo == 'B' || inputs.gruppo == 'B-T12-bootc'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        client: ${{ fromJSON(inputs.gruppo == 'B-T12-bootc' && '["bootc"]' || '["bootc","rpm-ostree"]') }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
+        run: bash tests/vm/ci_prepare.sh
+      - name: Immagini, disco di prova, registro temporaneo e cosign
+        run: |
+          set -euo pipefail
+          . tests/vm/lib.sh
+          bash tests/vm/ci_make_disk.sh 0.1.0-m1-dev
+          build_image 0.1.1-m1-dev localhost/omni-os:v011
+          build_image 0.1.2-m1-dev localhost/omni-os:v012
+          build_image 0.1.3-m1-dev localhost/omni-os:v013
+          registry_start
+      - name: T1 e T2
+        run: |
+          set +e
+          . tests/vm/lib.sh
+          cosign_install
+          export COSIGN
+          bash tests/vm/managers_test.sh ${{ matrix.client }} "$VMWORK/managers"; rc=$?
+          cat "$VMWORK/managers/managers-${{ matrix.client }}.md" >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+      - name: Registri (7 giorni, senza chiavi)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-managers-${{ matrix.client }}
+          path: |
+            ${{ runner.temp }}/vm/managers/*.md
+            ${{ runner.temp }}/vm/managers/*.log
+            ${{ runner.temp }}/vm/managers/*.json
+            ${{ runner.temp }}/vm/managers/*.txt
+            ${{ runner.temp }}/vm/managers/serial.log
+            !${{ runner.temp }}/vm/managers/keys/**
+          retention-days: 7
+          if-no-files-found: ignore
+
+  timing:
+    name: T3 tempi (${{ matrix.client }})
+    needs: base
+    if: inputs.gruppo == 'B'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        client: [bootc, rpm-ostree]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
+        run: bash tests/vm/ci_prepare.sh
+      - name: Immagini, disco di prova e registro temporaneo (solo loopback)
+        run: |
+          set -euo pipefail
+          . tests/vm/lib.sh
+          LOG=$VMWORK/registry.log
+          bash tests/vm/ci_make_disk.sh 0.1.0-m1-dev
+          build_image 0.1.1-m1-dev localhost/omni-os:v011
+          build_image 0.1.2-m1-dev localhost/omni-os:v012
+          registry_start
+          reg_push localhost/omni-os:v011 v0.1.1
+          reg_push localhost/omni-os:v012 v0.1.2
+      - name: Misure (4 ripetizioni)
+        run: |
+          set +e
+          bash tests/vm/timing_test.sh ${{ matrix.client }} "$VMWORK/timing" 4; rc=$?
+          cat "$VMWORK/timing/timing-${{ matrix.client }}-condizioni.md" "$VMWORK/timing/timing-${{ matrix.client }}.md" >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+      - name: Misure (7 giorni)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-timing-${{ matrix.client }}
+          path: |
+            ${{ runner.temp }}/vm/timing/*.md
+            ${{ runner.temp }}/vm/timing/*.csv
+            ${{ runner.temp }}/vm/timing/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  repro-build:
+    name: AC-M1-07 build indipendente ${{ matrix.build }}
+    needs: base
+    if: inputs.gruppo == 'C' || inputs.gruppo == 'C-riproducibilita'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        build: [A, B]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (solo base B3 verificata)
+        run: NEED_VM=0 bash tests/vm/ci_prepare.sh
+      - name: Build predefinita e build con data fissata, raccolta dati
+        run: |
+          set -euo pipefail
+          . tests/vm/lib.sh
+          build_image 0.1.0-m1-dev localhost/omni-os:repro
+          build_image 0.1.0-m1-dev localhost/omni-os:repro-ts --no-cache --timestamp 0
+          # la variante --timestamp 0 deve essere una build vera, non l'immagine in cache
+          i1=$($PODMAN image inspect --format '{{.Id}}' localhost/omni-os:repro); i2=$($PODMAN image inspect --format '{{.Id}}' localhost/omni-os:repro-ts)
+          echo "ID predefinita: $i1 — ID --timestamp 0: $i2 (creata: $($PODMAN image inspect --format '{{.Created}}' localhost/omni-os:repro-ts))"
+          [ "$i1" != "$i2" ] || { echo "ERRORE: la build --timestamp 0 coincide con quella predefinita (cache)"; exit 1; }
+          bash tests/vm/repro_collect.sh localhost/omni-os:repro "$RUNNER_TEMP/repro-${{ matrix.build }}/predefinita"
+          bash tests/vm/repro_collect.sh localhost/omni-os:repro-ts "$RUNNER_TEMP/repro-${{ matrix.build }}/timestamp0"
+          echo "runner: $(lscpu | sed -n 's/^Model name:[[:space:]]*//p'), $(date -u +%FT%TZ)" > "$RUNNER_TEMP/repro-${{ matrix.build }}/runner.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-repro-${{ matrix.build }}
+          path: ${{ runner.temp }}/repro-${{ matrix.build }}
+          retention-days: 7
+
+  repro-compare:
+    name: AC-M1-07 confronto
+    needs: repro-build
+    if: inputs.gruppo == 'C' || inputs.gruppo == 'C-riproducibilita'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: m1-repro-*
+          path: ${{ runner.temp }}/repro
+      - name: Confronto
+        run: |
+          set -euo pipefail
+          r=$RUNNER_TEMP/repro
+          { echo "## AC-M1-07 — riproducibilità"; echo
+            echo "Build A: $(cat "$r/m1-repro-A/runner.txt")"; echo
+            echo "Build B: $(cat "$r/m1-repro-B/runner.txt")"; echo
+            python3 -I tests/vm/repro_compare.py "$r/m1-repro-A/predefinita" "$r/m1-repro-B/predefinita" "Build predefinita (A contro B)"
+            echo
+            python3 -I tests/vm/repro_compare.py "$r/m1-repro-A/timestamp0" "$r/m1-repro-B/timestamp0" "Build con --timestamp 0 (A contro B)"
+          } | tee "$RUNNER_TEMP/repro-confronto.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-repro-confronto
+          path: ${{ runner.temp }}/repro-confronto.md
+          retention-days: 7
+
+  sbom:
+    name: AC-M1-08 SBOM (SPDX e CycloneDX)
+    needs: base
+    if: inputs.gruppo == 'C'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Ripristino della base B3 dalla cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ needs.base.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (solo base B3 verificata)
+        run: NEED_VM=0 bash tests/vm/ci_prepare.sh
+      - name: Build, syft 1.55.0 (checksum fissato), generazione SBOM
+        run: |
+          set -euo pipefail
+          . tests/vm/lib.sh
+          build_image 0.1.0-m1-dev localhost/omni-os:m1-ci
+          o=$RUNNER_TEMP/sbom; mkdir -p "$o"
+          bash tests/ci/fetch_tool.sh syft
+          cp "$RUNNER_TEMP/bin/syft" "$RUNNER_TEMP/syft"
+          $PODMAN save --format oci-archive -o "$RUNNER_TEMP/omni.tar" localhost/omni-os:m1-ci
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/omni.tar"
+          SYFT_CHECK_FOR_APP_UPDATE=false "$RUNNER_TEMP/syft" scan "oci-archive:$RUNNER_TEMP/omni.tar" \
+            -o "spdx-json=$o/omni-os-0.1.0-m1-dev.spdx.json" -o "cyclonedx-json=$o/omni-os-0.1.0-m1-dev.cdx.json"
+          $PODMAN run --rm localhost/omni-os:m1-ci rpm -qa --qf '%{NAME}\t%{VERSION}-%{RELEASE}\n' | LC_ALL=C sort > "$o/rpm-installati.tsv"
+          ls -l "$o"
+      - name: Verifica automatica dello SBOM
+        run: |
+          set +e
+          o=$RUNNER_TEMP/sbom
+          { echo "## AC-M1-08 — SBOM"; echo
+            python3 -I tests/vm/sbom_check.py "$o/omni-os-0.1.0-m1-dev.spdx.json" "$o/omni-os-0.1.0-m1-dev.cdx.json" "$o/rpm-installati.tsv"; } > "$o/sbom-verifica.md"
+          rc=$?; cat "$o/sbom-verifica.md" >> "$GITHUB_STEP_SUMMARY"; cat "$o/sbom-verifica.md"; exit $rc
+      - name: SBOM (7 giorni; nessuna immagine)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-sbom
+          path: |
+            ${{ runner.temp }}/sbom/*.json
+            ${{ runner.temp }}/sbom/*.md
+            ${{ runner.temp }}/sbom/*.tsv
+          retention-days: 7
+          if-no-files-found: ignore

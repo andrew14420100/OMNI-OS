@@ -1,0 +1,4 @@
+OMNI_OS_NAME="OMNI OS (nome di lavoro provvisorio)"
+OMNI_OS_VERSION="@OMNI_VERSION@"
+OMNI_OS_STAGE="M1 prototipo, solo macchina virtuale"
+OMNI_OS_NOTICE="Non destinato agli utenti. Non installare su hardware reale."
