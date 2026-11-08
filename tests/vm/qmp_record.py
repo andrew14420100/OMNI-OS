@@ -66,6 +66,9 @@ t0 = time.monotonic()
 
 
 def shot():
+    # al massimo 20 fotogrammi al secondo (screendump è molto veloce: evita migliaia di file uguali)
+    if frames and (time.monotonic() - t0) - frames[-1] < 0.05:
+        time.sleep(0.05 - ((time.monotonic() - t0) - frames[-1]))
     n = len(frames)
     p = os.path.join(out, f"f{n:05d}.ppm")
     cmd({"execute": "screendump", "arguments": {"filename": p}})

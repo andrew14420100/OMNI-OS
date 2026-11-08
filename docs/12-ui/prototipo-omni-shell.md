@@ -61,7 +61,7 @@ Richiesta del proprietario: interfaccia più evoluta, moderna, elegante e origin
 | Area | v1 | v2 |
 |---|---|---|
 | Desktop | Sfondo a gradiente con archi, desktop vuoto | Sfondo "Aurora Flux" animato (nebulose, nastri, stelle, orizzonte), orologio grande, calendario, recenti, stato del prototipo, barra superiore |
-| Icone | Tessere con sigle (FM, TE, ST) | 29 icone vettoriali originali con associazione automatica alle app reali |
+| Icone | Tessere con sigle (FM, TE, ST) | 35 icone vettoriali originali con associazione automatica alle app reali |
 | Dock | Tessere con ingrandimento singolo | Ingrandimento progressivo, etichette, indicatori, rimbalzo, anteprima di apertura, dimensione adattiva, tastiera |
 | Launcher | Griglia con ricerca | Categorie, preferiti, recenti, pertinenza, stelle, navigazione da tastiera, suggerimenti dei tasti |
 | Impostazioni rapide | 6 riquadri e 2 cursori | Intestazione utente, connettività, 4 funzioni operative, cursori a pillola, colori d'accento, ingresso sfalsato |

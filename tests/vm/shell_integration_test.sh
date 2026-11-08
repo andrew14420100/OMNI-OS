@@ -62,7 +62,8 @@ if vm_ssh "test \"\$(stat -c %U /home/$user/.local/omni-shell/bin/omni-shell-pro
   rec OK "eseguibile di proprietà dell'utente, senza setuid"; else rec FAIL "proprietà o permessi dell'eseguibile"; fi
 
 app="/home/$user/.local/omni-shell/bin/omni-shell-prototipo"
-envs="$ubus XDG_RUNTIME_DIR=/run/user/$uid WAYLAND_DISPLAY=$wdisp QT_QPA_PLATFORM=wayland OMNI_QML_DIR=/home/$user/.local/omni-shell/qml"
+# QT_FORCE_STDERR_LOGGING: senza terminale Qt scrive nel journal; serve il registro nel file
+envs="$ubus XDG_RUNTIME_DIR=/run/user/$uid WAYLAND_DISPLAY=$wdisp QT_QPA_PLATFORM=wayland QT_FORCE_STDERR_LOGGING=1 OMNI_QML_DIR=/home/$user/.local/omni-shell/qml"
 # run_shell <nome-log> <argomenti...>: avvia l'app come utente nella sessione grafica
 run_shell() {
   local n=$1; shift
@@ -83,6 +84,7 @@ plat=$(grep -m1 '^piattaforma' "$w/avvio-geometria.log")
 echo "INFO $plat" | tee -a "$LOG" "$ev"
 if echo "$plat" | grep -q 'piattaforma: wayland'; then rec OK "OMNI Shell eseguita come client Wayland nativo"; else rec FAIL "piattaforma non wayland: $plat"; fi
 grep -m1 '^applicazioni' "$w/avvio-geometria.log" | sed 's/^/INFO /' | tee -a "$LOG" "$ev"
+grep -m1 '^renderer OpenGL' "$w/avvio-geometria.log" | sed 's/^/INFO /' | tee -a "$LOG" "$ev"
 
 # --- scene: schermate reali dello schermo della VM ---
 for spec in "desktop dark" "launcher dark" "quicksettings dark" "notifications dark" "desktop light" "launcher light"; do
