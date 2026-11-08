@@ -24,7 +24,7 @@
 | P4 | Contenuto dell'immagine | **Superato** | `build-info` 0.1.0-m1-dev; Fedora 45, variante kinoite; plasma-workspace 6.8.2, kwin 6.8.2, NetworkManager 1.58.1; gestore di accesso **plasmalogin** (non SDDM) |
 | P5 | Disco di prova con `bootc install to-disk --via-loopback` | **Superato** | Disco raw 30 GB (7,1 GB occupati), bootloader GRUB via bootupd, filesystem XFS |
 | P6 | Avvio UEFI e controlli nel sistema | **Superato** | SSH dopo 22 s; avvio UEFI; `/run/ostree-booted`; systemd `degraded` **solo** per `mcelog.service` (atteso in VM); `graphical.target` attivo; `plasmalogin` attivo; NetworkManager attivo con IPv4; `bootc status` e `rpm-ostree status` mostrano l'immagine OMNI 0.1.0-m1-dev |
-| P7 | Schermata via monitor QMP | **Superato** | PNG di 565 KB catturato (artefatto di diagnosi, 3 giorni). **Contenuto non verificato automaticamente**: il test prova che lo schermo è catturabile, non cosa mostra |
+| P7 | Schermata via monitor QMP | **Superato** (cattura) | PNG di 565 KB. **Esaminata a vista il 2026-11-08:** mostra la **procedura di primo avvio di KDE** ("Welcome to Plasma Desktop — Begin Setup", "Powered by Fedora Linux"), **non** una schermata di login né il desktop: sul disco di prova non esisteva alcun utente. Le due esecuzioni superate hanno prodotto la stessa immagine (SHA-256 `273f264c…`). Copia: `img/reale-p7-primo-avvio-run42105279344.png`; estratto della console di avvio: `img/reale-p6-console-avvio-run42105279344.txt` |
 | P6b | Avvio con Secure Boot emulato (OVMF, chiavi Microsoft) | **Superato** | Variabile EFI `SecureBoot` = 1 nella VM; kernel 7.2.15 avviato; SSH dopo 27 s |
 | P8 bootc | Aggiornamento, rollback, errori | **Superato** | Vedi §3 |
 | P8 rpm-ostree | Aggiornamento, rollback, errori | **Superato** | Vedi §3 |

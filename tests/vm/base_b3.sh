@@ -88,13 +88,14 @@ sudo podman pull -q "$tool" >/dev/null
 log "tool_image=$tool@$(sudo podman image inspect --format '{{.Digest}}' "$tool")"
 sudo podman run --rm --security-opt label=disable -v "$repo":/repo:ro -v "$out":/out "$tool" bash -euo pipefail -c "
   dnf -y -q install rpm-ostree >/dev/null
-  rpm -q --qf '%{NAME}-%{VERSION}-%{RELEASE} firma: %{SIGPGP:pgpsig}\n' rpm-ostree > /out/tool-rpm-ostree.txt
+  { rpm -q --qf '%{NAME}-%{VERSION}-%{RELEASE}\nSIGPGP: %{SIGPGP:pgpsig}\nRSAHEADER: %{RSAHEADER:pgpsig}\nOPENPGP: %{OPENPGP}\n' rpm-ostree 2>&1
+    echo \"dnf gpgcheck: \$(grep -hE '^gpgcheck' /etc/dnf/dnf.conf /etc/yum.repos.d/fedora*.repo 2>/dev/null | sort -u | tr '\n' ' ')\"; } > /out/tool-rpm-ostree.txt
   rpm-ostree compose container-encapsulate --repo=/repo \
     --label containers.bootc=1 --label ostree.bootable=true \
     --label org.opencontainers.image.version=$VERSION \
     $COMMIT oci-archive:/out/base.tar"
 sudo chown -R "$(id -u):$(id -g)" "$out" "$work"
-log "tool_rpm_ostree=$(cat "$out/tool-rpm-ostree.txt")"
+log "tool_rpm_ostree=$(tr '\n' ' ' < "$out/tool-rpm-ostree.txt")"
 d=$(oci_digest "$out/base.tar")
 log "DERIVED_OCI_DIGEST=$d"
 if [ -n "$PINNED" ] && [ "$d" != "$PINNED" ]; then fail "la conversione ha prodotto $d, diverso dal digest fissato $PINNED"; fi
@@ -109,11 +110,12 @@ log "label_ostree_commit=$lbl"
 co=$work/checkout; sudo rm -rf "$co"
 ostree --repo="$repo" checkout -U "$COMMIT" "$co"
 mnt=$(sudo podman image mount "$IMG")
-lists() { (cd "$1" && sudo find . -xdev -type f -print0 | sudo xargs -0 -n 2000 sha256sum) | sed 's#  \./#  #' | LC_ALL=C sort -k2; }
+# il punto di montaggio dell'immagine è leggibile solo da root: tutto il percorso gira con sudo
+lists() { sudo bash -c 'cd "$1" && find . -xdev -type f -print0 | xargs -0 -n 2000 sha256sum' _ "$1" | sed 's#  \./#  #' | LC_ALL=C sort -k2; }
 lists "$co" > "$work/sha-commit.txt"
 lists "$mnt" > "$work/sha-oci.txt"
-(cd "$co" && find . -xdev \( -type l -printf '%P -> %l\n' \)) | LC_ALL=C sort > "$work/links-commit.txt"
-(cd "$mnt" && sudo find . -xdev \( -type l -printf '%P -> %l\n' \)) | LC_ALL=C sort > "$work/links-oci.txt"
+sudo find "$co" -xdev -type l -printf '%P -> %l\n' | LC_ALL=C sort > "$work/links-commit.txt"
+sudo find "$mnt" -xdev -type l -printf '%P -> %l\n' | LC_ALL=C sort > "$work/links-oci.txt"
 sudo podman image umount "$IMG" >/dev/null
 python3 -I - "$work" <<'PY' | tee -a "$info"
 import sys

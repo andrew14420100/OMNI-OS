@@ -1,0 +1,30 @@
+Booting `Fedora Linux 45.20261105.0 (Kinoite) (ostree:0)'
+[    0.000000] Linux version 7.2.15-300.fc45.x86_64 (mockbuild@69690d2e64c349fdb5b440f819a290e2) (gcc (GCC) 16.2.1 20261029 (Red Hat 16.2.1-3), GNU ld version 2.47.20260726) #1 SMP PREEMPT_DYNAMIC Sun Nov  1 16:11:16 UTC 2026
+[    3.111531] systemd[1]: Reached target initrd-usr-fs.target - Initrd /usr File System.
+[  OK  ] Reached target initrd-usr-fs.target - Initrd /usr File System.
+[    3.115336] systemd[1]: Reached target slices.target - Slice Units.
+[  OK  ] Reached target slices.target - Slice Units.
+[    3.118488] systemd[1]: Reached target swap.target - Swaps.
+[  OK  ] Reached target swap.target - Swaps.
+[    3.121352] systemd[1]: Reached target timers.target - Timer Units.
+[  OK  ] Reached target timers.target - Timer Units.
+[    3.140344] systemd[1]: Reached target sockets.target - Socket Units.
+[  OK  ] Reached target sockets.target - Socket Units.
+[  OK  ] Reached target local-fs-pre.target…Preparation for Local File Systems.
+[  OK  ] Reached target local-fs.target - Local File Systems.
+[  OK  ] Reached target cryptsetup.target - Local Encrypted Volumes.
+[  OK  ] Reached target paths.target - Path Units.
+[  OK  ] Reached target initrd-root-device.target - Initrd Root Device.
+[  OK  ] Reached target remote-fs-pre.targe…reparation for Remote File Systems.
+[  OK  ] Reached target remote-cryptsetup.target - Remote Encrypted Volumes.
+[  OK  ] Reached target remote-fs.target - Remote File Systems.
+[  OK  ] Reached target sysinit.target - System Initialization.
+[  OK  ] Reached target basic.target - Basic System.
+[  OK  ] Reached target initrd-root-fs.target - Initrd Root File System.
+[  OK  ] Reached target initrd-fs.target - Initrd File Systems.
+[  OK  ] Reached target initrd.target - Initrd Default Target.
+[  OK  ] Reached target initrd-switch-root.target - Switch Root.
+Welcome to Fedora Linux 45.20261105.0 (Kinoite)!
+[  OK  ] Reached target clonesetup.target - Local dm-clone Devices.
+[  OK  ] Reached target imports.target - Image Downloads.
+[  OK  ] Reached target integritysetup.targ… Local Integrity Protected Volumes.

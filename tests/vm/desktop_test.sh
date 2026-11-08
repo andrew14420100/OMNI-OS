@@ -25,8 +25,17 @@ expect_ok "utente temporaneo '$user' creato" vm_ssh "useradd -m -c 'OMNI prova t
 if printf '%s:%s\n' "$user" "$pw" | vm_ssh chpasswd >> "$LOG" 2>&1; then rec OK "password temporanea impostata"; else rec FAIL "password temporanea"; fi
 uid=$(vm_ssh "id -u $user" 2>/dev/null)
 
-# Il gestore di accesso deve mostrare la schermata (si attende la sua stabilizzazione).
-sleep 20
+# Al primo avvio, senza utenti, KDE mostra la configurazione iniziale ("Welcome to
+# Plasma Desktop — Begin Setup", schermata reale delle esecuzioni P7). Creato l'utente
+# di prova, la configurazione iniziale viene disattivata SOLO su questa VM e il
+# gestore di accesso viene riavviato, così da mostrare il login vero.
+shot 00-configurazione-iniziale
+setup_units=$(vm_ssh "systemctl list-unit-files --no-legend 2>/dev/null | awk '{print \$1}' | grep -iE 'plasma-setup|initial-setup|kde-initial' || true" 2>/dev/null)
+echo "INFO unità di configurazione iniziale trovate: ${setup_units:-nessuna}" | tee -a "$LOG" "$ev"
+for u in $setup_units; do vm_ssh "systemctl disable --now $u; systemctl mask $u" >> "$LOG" 2>&1 || true; done
+vm_ssh "ls /etc/plasma-setup* /var/lib/plasma-setup* 2>/dev/null; true" >> "$ev" 2>&1
+expect_ok "gestore di accesso riavviato" vm_ssh "systemctl restart display-manager"
+sleep 25
 shot 01-schermata-accesso
 
 session_id() { vm_ssh "loginctl list-sessions --no-legend" 2>/dev/null | awk -v u="$user" '$3==u {print $1; exit}'; }
