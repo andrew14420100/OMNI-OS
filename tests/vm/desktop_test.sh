@@ -82,7 +82,11 @@ else
   for p in kwin_wayland plasmashell; do
     if echo "$procs" | grep -qE "(^|/| )$p( |$)"; then rec OK "$p in esecuzione"; else rec FAIL "$p non in esecuzione"; fi
   done
-  if vm_ssh "test -S /run/user/$uid/wayland-0"; then rec OK "socket Wayland /run/user/$uid/wayland-0 presente"; else rec FAIL "socket Wayland assente"; fi
+  # Nome reale del display Wayland, letto dall'ambiente di plasmashell (non si presume wayland-0).
+  wdisp=$(vm_ssh "pid=\$(pgrep -u $user -x plasmashell | head -1); tr '\\0' '\\n' < /proc/\$pid/environ | sed -n 's/^WAYLAND_DISPLAY=//p'" 2>/dev/null)
+  echo "INFO WAYLAND_DISPLAY di plasmashell: ${wdisp:-non trovato}; socket: $(vm_ssh "ls /run/user/$uid/ | grep -E '^wayland' | tr '\n' ' '" 2>/dev/null)" | tee -a "$LOG" "$ev"
+  wdisp=${wdisp:-wayland-0}
+  if vm_ssh "test -S /run/user/$uid/$wdisp"; then rec OK "socket Wayland /run/user/$uid/$wdisp presente"; else rec FAIL "socket Wayland /run/user/$uid/$wdisp assente"; fi
   pid_before=$(vm_ssh "pgrep -u $user -x plasmashell; pgrep -u $user -x kwin_wayland" 2>/dev/null | tr '\n' ' ')
   shot 03-desktop-plasma
 
@@ -92,7 +96,7 @@ else
   expect_ok "KWin risponde su D-Bus" vm_ssh "runuser -u $user -- env $ubus timeout 10 busctl --user call org.kde.KWin /KWin org.freedesktop.DBus.Peer Ping"
 
   # Interazione: apertura di un'applicazione (Impostazioni di sistema) nella sessione.
-  vm_ssh "runuser -u $user -- env $ubus XDG_RUNTIME_DIR=/run/user/$uid WAYLAND_DISPLAY=wayland-0 QT_QPA_PLATFORM=wayland setsid -f systemsettings >/dev/null 2>&1" >> "$LOG" 2>&1
+  vm_ssh "runuser -u $user -- env $ubus XDG_RUNTIME_DIR=/run/user/$uid WAYLAND_DISPLAY=$wdisp QT_QPA_PLATFORM=wayland setsid -f systemsettings >/dev/null 2>&1" >> "$LOG" 2>&1
   sleep 20
   if vm_ssh "pgrep -u $user -x systemsettings" >/dev/null 2>&1; then rec OK "applicazione 'systemsettings' aperta e in esecuzione dopo 20 s"; else rec FAIL "applicazione 'systemsettings' non in esecuzione"; fi
   shot 04-applicazione-aperta
