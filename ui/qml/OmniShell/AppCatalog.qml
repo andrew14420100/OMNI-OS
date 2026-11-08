@@ -26,7 +26,7 @@ QtObject {
         settings: "sistema", display: "sistema", audio: "sistema", accessibility: "sistema",
         browser: "internet", mail: "internet", chat: "internet",
         media: "multimedia", music: "multimedia", video: "multimedia",
-        photos: "grafica", drawing: "grafica", office: "ufficio", spreadsheet: "ufficio", presentation: "ufficio", calendar: "ufficio", texteditor: "utilita",
+        photos: "grafica", drawing: "grafica", help: "utilita", archive: "utilita", chars: "utilita", logs: "sistema", bug: "sistema", phone: "internet", office: "ufficio", spreadsheet: "ufficio", presentation: "ufficio", calendar: "ufficio", texteditor: "utilita",
         developer: "sviluppo", terminal: "sviluppo", gaming: "giochi"
     })
     function categoryOf(categories, glyph) {

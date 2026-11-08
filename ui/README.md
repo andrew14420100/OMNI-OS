@@ -9,7 +9,7 @@ Seconda versione dell'interfaccia originale OMNI in Qt 6/QML. È **codice reale 
 | Componente | Stato | Note |
 |---|---|---|
 | Sistema di design `OmniDesign` | Funzionante | Temi chiaro e scuro, 4 colori d'accento, scala tipografica Inter, superfici "vetro" con ombre leggere, contrasto WCAG verificato dai test per ogni tema e accento |
-| Icone applicative | Funzionante | 29 icone vettoriali originali (squircle con gradiente e glifo); associazione automatica da nome, id `.desktop`, icona e categorie freedesktop |
+| Icone applicative | Funzionante | 35 icone vettoriali originali (squircle con gradiente e glifo); associazione automatica da nome, id `.desktop`, icona e categorie freedesktop |
 | Sfondo "Aurora Flux" | Funzionante | Nebulose in lento movimento, nastri d'aurora, campo di stelle, orizzonte a griglia; animazione ferma con "Movimento ridotto" o "Risparmio risorse" |
 | Desktop | Funzionante | Orologio e data reali, calendario mensile navigabile, attività recenti della sessione, scheda onesta sullo stato del prototipo |
 | Barra superiore | Parziale | Data e ora reali; accesso a launcher, notifiche e impostazioni rapide. **Spazi di lavoro: prototipo** (non collegati a KWin) |

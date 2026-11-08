@@ -136,6 +136,30 @@ QtObject {
             { d: "M9 17a3 3 0 0 1 3-3h15a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3z", fill: w },
             { d: "M32 21.5l7-4v13l-7-4z", fill: w },
             { d: "circle:19.5,24,3.6", fill: "ink", opacity: 0.85 } ] },
+        "help": { c1: "#60A5FA", c2: "#7C3AED", ink: "#5B21B6", layers: [
+            { d: "circle:24,24,13", fill: w },
+            { d: "M19.5 19.5a4.5 4.5 0 1 1 6.6 4c-1.4.8-2.1 1.7-2.1 3.2v.8", stroke: "ink", w: 3 },
+            { d: "circle:24,32.6,1.9", fill: "ink" } ] },
+        "archive": { c1: "#FBBF24", c2: "#B45309", ink: "#92400E", layers: [
+            { d: "M10 15a2 2 0 0 1 2-2h24a2 2 0 0 1 2 2v5H10z", fill: w },
+            { d: "M12 21h24v14a3 3 0 0 1-3 3H15a3 3 0 0 1-3-3z", fill: w, opacity: 0.9 },
+            { d: "M24 13v4M24 21v3M24 27v3", stroke: "ink", w: 2.2 },
+            { d: "M20 33h8", stroke: "ink", w: 2.4 } ] },
+        "logs": { c1: "#94A3B8", c2: "#0F766E", ink: "#0F766E", layers: [
+            { d: "M15 9h18a3 3 0 0 1 3 3v24a3 3 0 0 1-3 3H15a3 3 0 0 1-3-3V12a3 3 0 0 1 3-3z", fill: w },
+            { d: "M16.5 16h3M22.5 16h9M16.5 22h3M22.5 22h9M16.5 28h3M22.5 28h6M16.5 34h3", stroke: "ink", w: 2.2 } ] },
+        "chars": { c1: "#FDE047", c2: "#F97316", ink: "#9A3412", layers: [
+            { d: "circle:24,24,13", fill: w },
+            { d: "circle:19.5,21,1.9", fill: "ink" }, { d: "circle:28.5,21,1.9", fill: "ink" },
+            { d: "M18 27.5c3 4.2 9 4.2 12 0", stroke: "ink", w: 2.4 } ] },
+        "bug": { c1: "#F87171", c2: "#9F1239", ink: "#9F1239", layers: [
+            { d: "M16 22h-5M16 29h-5M32 22h5M32 29h5M18 16l-3-3M30 16l3-3", stroke: w, w: 2.4 },
+            { d: "M24 15c5 0 8 4 8 10v3c0 5-3.6 9-8 9s-8-4-8-9v-3c0-6 3-10 8-10z", fill: w },
+            { d: "M24 18v17M17 25h14", stroke: "ink", w: 2 } ] },
+        "phone": { c1: "#34D399", c2: "#2563EB", ink: "#1E40AF", layers: [
+            { d: "M18 9h12a3 3 0 0 1 3 3v24a3 3 0 0 1-3 3H18a3 3 0 0 1-3-3V12a3 3 0 0 1 3-3z", fill: w },
+            { d: "M18 13h12v18H18z", fill: "ink", opacity: 0.85 },
+            { d: "circle:24,35,1.5", fill: "ink" } ] },
         "generic": { c1: "#94A3B8", c2: "#6366F1", ink: "#4F46E5", layers: [
             { d: "M24 10l12 6.5-12 6.5-12-6.5z", fill: w },
             { d: "M12 18.5l11 6v13l-11-6z", fill: w, opacity: 0.78 },
@@ -147,10 +171,16 @@ QtObject {
     // Regole di associazione (ordine = priorità): parole chiave su nome, id .desktop e nome icona.
     readonly property var rules: [
         ["update", ["update", "aggiorn"]],
+        ["help", ["help center", "khelpcenter", "guida", "manuale"]],
+        ["bug", ["crash", "drkonqi", "debug"]],
+        ["logs", ["journal", "ksystemlog", "log viewer", "registro eventi"]],
+        ["phone", ["kde connect", "kdeconnect", "phone", "telefono"]],
+        ["chars", ["emoji", "charselect", "caratteri speciali"]],
+        ["archive", [" ark ", "archiv", "compress", "zip "]],
         ["security", ["security", "sicurezza", "firewall", "kwallet", "password", "keepass"]],
         ["performance", ["perform", "system monitor", "systemmonitor", "monitor di sistema", "ksysguard", "htop"]],
         ["network", ["network", "rete", "nm-connection", "connessioni"]],
-        ["storage", ["storage", "disk", "partition", "filelight", "archiv"]],
+        ["storage", ["storage", "disk", "partition", "filelight"]],
         ["accessibility", ["accessib", "orca"]],
         ["photos", ["imagemagick", "gimp", "krita", "digikam", "gwenview"]],
         ["display", ["display", "schermo", "kscreen"]],

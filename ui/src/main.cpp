@@ -47,7 +47,9 @@ int main(int argc, char *argv[]) {
     QGuiApplication::setFont(QFont("Inter", 10));
     // I testi del prototipo sono in italiano: se la lingua di sistema non è disponibile
     // (es. "C" nella CI) si usa l'italiano anche per date e numeri.
-    if (QLocale::system().language() == QLocale::C) QLocale::setDefault(QLocale(QLocale::Italian, QLocale::Italy));
+    // I testi dell'interfaccia sono in italiano: date e numeri seguono la stessa lingua
+    // (prima: solo se la lingua di sistema era "C"; nella VM inglese le date erano in inglese).
+    QLocale::setDefault(QLocale(QLocale::Italian, QLocale::Italy));
 
     QCommandLineParser p;
     p.setApplicationDescription("OMNI Shell — prototipo anticipato dell'interfaccia");

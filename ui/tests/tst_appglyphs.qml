@@ -34,6 +34,18 @@ Item {
             compare(AppGlyphs.resolve("ImageMagick (color depth=q16)", "display-im6.q16.desktop", "display-im6.q16", ["Graphics"]), "photos")
             compare(AppGlyphs.resolve("Vim", "vim.desktop", "gvim", ["Utility", "TextEditor"]), "texteditor")
         }
+        function test_kdeAppsInTheVm() {
+            // nomi reali osservati nel launcher dentro la VM Fedora Kinoite 45
+            compare(AppGlyphs.resolve("Ark", "org.kde.ark.desktop", "ark", ["Qt", "KDE", "Utility", "Archiving"]), "archive")
+            compare(AppGlyphs.resolve("Help Center", "org.kde.khelpcenter.desktop", "help-browser", ["Qt", "KDE", "Core"]), "help")
+            compare(AppGlyphs.resolve("Journald Browser", "org.kde.kjournaldbrowser.desktop", "utilities-log-viewer", ["Qt", "KDE", "System"]), "logs")
+            compare(AppGlyphs.resolve("KDE Connect", "org.kde.kdeconnect.app.desktop", "kdeconnect", ["Qt", "KDE", "Network"]), "phone")
+            compare(AppGlyphs.resolve("Emoji Selector", "org.kde.plasma.emojier.desktop", "preferences-desktop-emoticons", ["Utility"]), "chars")
+            compare(AppGlyphs.resolve("KCharSelect", "org.kde.kcharselect.desktop", "accessories-character-map", ["Utility"]), "chars")
+            compare(AppGlyphs.resolve("Crashed Processes Viewer", "org.kde.drkonqi.coredump.gui.desktop", "tools-report-bug", ["Qt", "KDE", "System"]), "bug")
+            compare(AppGlyphs.resolve("KDebugSettings", "org.kde.kdebugsettings.desktop", "debug-run", ["Qt", "KDE", "Utility"]), "bug")
+            compare(AppGlyphs.resolve("Park", "x.desktop", "x", []), "generic")      // "ark" solo come parola intera
+        }
         function test_categoryFallback() {
             compare(AppGlyphs.resolve("Qualcosa", "x.desktop", "x", ["Game"]), "gaming")
             compare(AppGlyphs.resolve("Qualcosa", "x.desktop", "x", ["Graphics"]), "photos")
