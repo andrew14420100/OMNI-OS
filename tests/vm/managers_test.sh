@@ -30,6 +30,7 @@ vm_ssh "systemctl stop rpm-ostreed-automatic.timer bootc-fetch-apply-updates.tim
 # ---------------- T1 ----------------
 d=$(reg_push localhost/omni-os:v011 stable) && sign_digest "$K" "$d" && rec OK "T1.0 immagine $V1 firmata pubblicata come :stable"
 if mgr_switch "$c" "$R:stable" signed >> "$LOG" 2>&1; then rec OK "T1.1 passaggio a :stable con verifica della firma"; else rec FAIL "T1.1 passaggio con verifica della firma"; fi
+{ echo "--- prima del riavvio T1.1"; vm_ssh "ostree admin status; systemctl status ostree-finalize-staged.service --no-pager 2>&1 | head -8"; } >> "$LOG" 2>&1
 if vm_reboot "$w"; then rec OK "T1.1 riavvio"; else rec FAIL "T1.1 riavvio"; fi
 check_booted "$V1" "T1.1"
 mgr_status "$c" > "$w/managers-$c-status-T1.json" 2>&1

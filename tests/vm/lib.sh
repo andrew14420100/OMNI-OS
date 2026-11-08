@@ -53,7 +53,13 @@ vm_dm_active() { vm_ssh systemctl is-active display-manager >/dev/null 2>&1; }
 # check_booted <versione-attesa> <descrizione>
 check_booted() {
   local v; v=$(vm_version)
-  if [ "$v" = "$1" ]; then rec OK "$2: avviato su $v"; else rec FAIL "$2: versione '$v' invece di $1"; fi
+  if [ "$v" = "$1" ]; then rec OK "$2: avviato su $v"; else
+    rec FAIL "$2: versione '$v' invece di $1"
+    # Diagnosi: esito della finalizzazione del deployment preparato all'avvio precedente.
+    { echo "--- diagnosi $2: journal dell'avvio precedente (ostree-finalize-staged, bootc)"
+      vm_ssh "journalctl -b -1 --no-pager -o short-monotonic -u ostree-finalize-staged.service -u ostree-finalize-staged-hold.service -u bootc-publish-rhsm-facts.service 2>&1 | tail -60; echo '--- ostree admin status'; ostree admin status 2>&1" 2>&1
+    } | tee -a "${LOG:-/dev/null}" | grep -iE "error|fail|diagnosi|finaliz" | head -25
+  fi
   if vm_dm_active; then rec OK "$2: gestore di accesso attivo"; else rec FAIL "$2: gestore di accesso non attivo"; fi
 }
 
