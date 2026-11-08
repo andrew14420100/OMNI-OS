@@ -20,9 +20,11 @@ GPG_KEY_ID=655A4B02F577861E
 GPG_FINGERPRINT=4F50A6114CD5C6976A7F1179655A4B02F577861E
 GPG_KEY_URL=https://src.fedoraproject.org/rpms/fedora-repos/raw/rawhide/f/RPM-GPG-KEY-fedora-45-primary
 GPG_KEYRING_URL=https://fedoraproject.org/fedora.gpg
-# Digest del manifest OCI derivato (index.json dell'archivio): vuoto finché la
-# prima conversione verificata non viene esaminata e fissata qui.
-DERIVED_OCI_DIGEST=
+# Digest del manifest OCI derivato (index.json dell'archivio). Fissato il 2026-11-08
+# dopo due conversioni indipendenti con esito identico: run 42185110369 (2026-11-06)
+# e run 42468076171 (2026-11-08; firma GPG Good, fsck ok, 134517/134517 file identici).
+# Ogni nuova conversione o caricamento con digest diverso viene rifiutato.
+DERIVED_OCI_DIGEST=sha256:34ee4c0bbbe7bf1b2e6502332ae2b8311f8b521b10b2709b011805efcfc22848
 # Nome locale dell'immagine derivata nei job della CI (mai pubblicata).
 BASE_IMAGE=localhost/omni-base-b3:5a4ff74fe7c4
 BASE_SIGNED=gpg-ostree

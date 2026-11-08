@@ -31,6 +31,9 @@ jobs:
       - name: Documentazione, segreti, blocco della base
         run: bash tests/run_static.sh
 
+      - name: Prove negative della base B3 (archivi sintetici)
+        run: bash tests/vm/base_b3_negative.sh
+
       - name: Strumenti di lint (versioni e checksum fissati)
         run: |
           set -euo pipefail
