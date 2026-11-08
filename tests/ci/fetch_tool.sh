@@ -13,6 +13,8 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 dl() { curl -sSLf --retry 4 --retry-delay 5 --retry-all-errors "$@"; }
+# FETCH_FORCE_FALLBACK=1: salta GitHub Releases (per provare il ripiego)
+release() { [ "${FETCH_FORCE_FALLBACK:-0}" != 1 ] && dl "$@"; }
 
 # registry_blob REGISTRY REPO DIGEST OUT
 registry_blob() {
@@ -29,7 +31,7 @@ registry_blob() {
 case ${1:-} in
   hadolint)
     # v2.12.0
-    if dl -o "$tmp/hadolint" https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64; then
+    if release -o "$tmp/hadolint" https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64; then
       src="GitHub Releases"
     else
       echo "::warning::GitHub Releases non disponibile per hadolint: uso il layer dell'immagine ufficiale ghcr.io/hadolint/hadolint:v2.12.0 (indice sha256:30a8fd2e...)"
@@ -45,7 +47,7 @@ case ${1:-} in
     ;;
   shellcheck)
     # v0.10.0
-    if dl -o "$tmp/sc.tar.xz" https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz; then
+    if release -o "$tmp/sc.tar.xz" https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz; then
       echo "6c881ab0698e4e6ea235245f22832860544f17ba386442fe7e9d629f8cbedf87  $tmp/sc.tar.xz" | sha256sum -c -
       tar -xJf "$tmp/sc.tar.xz" -C "$tmp"
       mv "$tmp/shellcheck-v0.10.0/shellcheck" "$tmp/shellcheck"
@@ -62,6 +64,42 @@ case ${1:-} in
     install -m 0755 "$tmp/shellcheck" "$dest_dir/shellcheck"
     "$dest_dir/shellcheck" --version | grep -qx 'version: 0.10.0'
     ;;
-  *) echo "uso: $0 hadolint|shellcheck" >&2; exit 2 ;;
+  cosign)
+    # v2.6.5
+    if release -o "$tmp/cosign" https://github.com/sigstore/cosign/releases/download/v2.6.5/cosign-linux-amd64; then
+      echo "c3b4f5410e608af03a5eb0aaac84a4313d8da131248e08ff1759ac70c79d1644  $tmp/cosign" | sha256sum -c -
+      src="GitHub Releases"
+    else
+      # L'immagine ufficiale e' una build "ko" distinta del file di release (stessa versione,
+      # sha256 diverso): si fissa il digest del layer e il checksum di quel binario.
+      echo "::warning::GitHub Releases non disponibile per cosign: uso il layer dell'immagine ufficiale ghcr.io/sigstore/cosign/cosign:v2.6.5 (indice sha256:ad281047...)"
+      registry_blob ghcr.io sigstore/cosign/cosign \
+        sha256:40dddbc0739cf78507f5828a44c085ceec3858b3e4a51150be485227ed02ac1c "$tmp/layer.tgz"
+      tar -xzf "$tmp/layer.tgz" -C "$tmp" --transform "s,^/,," /ko-app/cosign
+      mv "$tmp/ko-app/cosign" "$tmp/cosign"
+      echo "8d5b7d0097b61a89161ef7ac4f169879bf6de798af1be431b595bb552b235d48  $tmp/cosign" | sha256sum -c -
+      src="ghcr.io (layer per digest)"
+    fi
+    install -m 0755 "$tmp/cosign" "$dest_dir/cosign"
+    "$dest_dir/cosign" version 2>&1 | grep -q 'GitVersion: *v2.6.5'
+    ;;
+  syft)
+    # v1.55.0
+    if release -o "$tmp/syft.tgz" https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz; then
+      echo "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d  $tmp/syft.tgz" | sha256sum -c -
+      tar -xzf "$tmp/syft.tgz" -C "$tmp" syft
+      src="GitHub Releases"
+    else
+      echo "::warning::GitHub Releases non disponibile per syft: uso il layer dell'immagine ufficiale ghcr.io/anchore/syft:v1.55.0 (indice sha256:4cc92b64..., identico su docker.io)"
+      registry_blob ghcr.io anchore/syft \
+        sha256:7d3a7750b643feab0f2426dd74d387da05b23b6277b9d3cc8cd790b3ef61bb3a "$tmp/layer.tgz"
+      tar -xzf "$tmp/layer.tgz" -C "$tmp" syft
+      echo "64c9631c3560336c55c549df0de08cd577d02399c9de807ac390960a4ed5c351  $tmp/syft" | sha256sum -c -
+      src="ghcr.io (layer per digest)"
+    fi
+    install -m 0755 "$tmp/syft" "$dest_dir/syft"
+    SYFT_CHECK_FOR_APP_UPDATE=false "$dest_dir/syft" version | grep -q '^Version: *1.55.0'
+    ;;
+  *) echo "uso: $0 hadolint|shellcheck|cosign|syft" >&2; exit 2 ;;
 esac
 echo "$1: installato da $src in $dest_dir"

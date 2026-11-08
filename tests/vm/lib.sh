@@ -155,8 +155,6 @@ sign_digest() {
 keys_destroy() { shred -u "$1"/*.key 2>/dev/null; rm -rf "$1"; unset COSIGN_PASSWORD; }
 # cosign_install: cosign 2.6.5 con checksum fissato
 cosign_install() {
-  COSIGN=$RUNNER_TEMP/cosign
-  curl -sSLf --retry 5 --retry-delay 5 --retry-all-errors -o "$COSIGN" https://github.com/sigstore/cosign/releases/download/v2.6.5/cosign-linux-amd64
-  echo "c3b4f5410e608af03a5eb0aaac84a4313d8da131248e08ff1759ac70c79d1644  $COSIGN" | sha256sum -c - >/dev/null
-  chmod +x "$COSIGN"
+  bash tests/ci/fetch_tool.sh cosign >/dev/null
+  COSIGN=$RUNNER_TEMP/bin/cosign
 }
