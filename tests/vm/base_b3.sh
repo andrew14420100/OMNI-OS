@@ -72,13 +72,20 @@ run_import() {
     { echo \"IMPORT_REF_COMMIT=\$(ostree --repo=/tmp/imp rev-parse \"\$ref\")\"
       echo \"IMPORT_HAS_VERIFIED_COMMIT=\$(ostree --repo=/tmp/imp rev-parse $COMMIT 2>/dev/null || echo no)\"
       if ostree --repo=/tmp/imp fsck >/dev/null 2>&1; then echo IMPORT_FSCK=ok; else echo IMPORT_FSCK=fallito; fi
+      # albero del commit di unione (quello che bootc installa) contro albero del commit verificato:
+      # ls -C riporta i checksum di ogni file e dei metadati di ogni cartella
+      ostree --repo=/tmp/imp ls -R -C \"\$ref\" / > /res/tree-ref.txt
+      ostree --repo=/tmp/imp ls -R -C $COMMIT / > /res/tree-verified.txt
+      echo \"IMPORT_TREE_ENTRIES=\$(wc -l < /res/tree-verified.txt)\"
+      if cmp -s /res/tree-ref.txt /res/tree-verified.txt; then echo IMPORT_TREE_IDENTICAL=si; else echo IMPORT_TREE_IDENTICAL=no; diff /res/tree-verified.txt /res/tree-ref.txt | head -20; fi
     } > /res/import-result.txt
     ostree --repo=/tmp/imp ls -R $COMMIT / > /res/meta-imported.txt 2>/dev/null || true"
   sudo chown -R "$(id -u):$(id -g)" "$res"
   cat "$res/import-result.txt"
   grep -q "^IMPORT_FSCK=ok$" "$res/import-result.txt" || fail "fsck del repository reimportato fallito"
   grep -q "^IMPORT_HAS_VERIFIED_COMMIT=$COMMIT$" "$res/import-result.txt" || fail "la reimportazione non contiene il commit verificato $COMMIT"
-  echo "IMPORT=ok (l'OCI derivata ricostruisce il commit verificato $COMMIT)"
+  grep -q "^IMPORT_TREE_IDENTICAL=si$" "$res/import-result.txt" || fail "l'albero del commit installabile differisce da quello del commit verificato"
+  echo "IMPORT=ok (l'OCI derivata ricostruisce il commit verificato $COMMIT; l'albero installabile è identico, metadati compresi)"
 }
 
 if [ "$mode" = import ]; then
