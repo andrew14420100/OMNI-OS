@@ -24,7 +24,8 @@
 | 42500867550 | Fallita prima della prova | La cache della base B3 è legata al branch M1. Aggiunta la derivazione verificata sul branch |
 | 42501784476 | Fallita prima della prova | Regola di tolleranza della vista container troppo stretta (6 cartelle in `usr/`). Corretta anche in M1 (`994ff7e`) |
 | 42505659202 | Fallita alla compilazione | Base B3 derivata sul branch con lo **stesso digest**. L'immagine Kinoite non contiene `dnf`: compilazione spostata in `fedora:45` |
-| **42509871593** | **Prova eseguita: 21 controlli OK, 1 FAIL** | Il FAIL riguarda il registro della piattaforma, vuoto perché Qt scriveva nel journal (corretto con `QT_FORCE_STDERR_LOGGING=1`) |
+| 42509871593 | Prova eseguita: 21 controlli OK, 1 FAIL | Il FAIL riguarda il registro della piattaforma, vuoto perché Qt scriveva nel journal (corretto con `QT_FORCE_STDERR_LOGGING=1`) |
+| **42511372396** | **SUPERATA: 22 controlli su 22 OK** | Include le nuove icone KDE e le date in italiano. Registro: `piattaforma: wayland; Qt in esecuzione: 6.11.2 (compilato con 6.11.2)`, `renderer OpenGL: llvmpipe (LLVM 23.1.2) → risparmio risorse automatico`, 28 applicazioni dai file `.desktop`, 0 avvisi QML |
 
 ### Run 42509871593 in dettaglio
 
@@ -47,6 +48,12 @@
 | ![](img/vm-reale-notifications-dark-run42509871593.png) | ![](img/vm-reale-desktop-light-run42509871593.png) | ![](img/vm-reale-launcher-light-run42509871593.png) |
 
 Sono schermate **reali dello schermo della VM**, non immagini generate. Il video delle interazioni (circa 49 s) è nell'artifact `omni-shell-vm` della run.
+
+### Run 42511372396 (versione con le nuove icone e le date in italiano)
+
+| Desktop | Launcher con le app reali della VM |
+|---|---|
+| ![](img/vm-reale-desktop-dark-run42511372396.png) | ![](img/vm-reale-launcher-dark-run42511372396.png) |
 
 ## 3. Cosa è reale e cosa è prototipo
 
