@@ -96,6 +96,35 @@ jobs:
           test -f "$d/Avvia-OMNI-Shell.bat"
           find "$d" -type f | wc -l
 
+      - name: Verifica l'avvio reale della demo sul runner Windows
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          d="$PWD/dist/OMNI-Shell-V2-Windows-Portable"
+          export OMNI_QML_DIR="$(cygpath -w "$d/qml")"
+          export QT_QPA_PLATFORM=offscreen
+          export QT_QUICK_BACKEND=software
+          (cd "$d" && ./omni-shell-prototipo.exe --demo-apps --help) > dist/windows-smoke.log 2>&1 || {
+            echo "La demo non parte con le librerie distribuite"; cat dist/windows-smoke.log; exit 1;
+          }
+          (cd "$d" && timeout 35s ./omni-shell-prototipo.exe --demo-apps --scene desktop --size 1280x800 --screenshot "$(cygpath -w "$PWD/dist/windows-smoke.png")" --delay 2000) >> dist/windows-smoke.log 2>&1 || {
+            echo "La demo non riesce a generare uno screenshot su Windows"; cat dist/windows-smoke.log; exit 1;
+          }
+          test -s dist/windows-smoke.png
+          ls -lh dist/windows-smoke.png
+          cat dist/windows-smoke.log
+
+      - name: Log e screenshot della prova Windows
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-Shell-Windows-Smoke-Test
+          path: |
+            dist/windows-smoke.png
+            dist/windows-smoke.log
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Pubblica artefatto ZIP portabile (14 giorni)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
