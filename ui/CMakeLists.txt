@@ -10,7 +10,7 @@ add_library(omni_desktopentries STATIC src/desktopentries.cpp src/desktopentries
 target_link_libraries(omni_desktopentries PUBLIC Qt6::Core)
 target_include_directories(omni_desktopentries PUBLIC src)
 
-add_executable(omni-shell-prototipo src/main.cpp)
+add_executable(omni-shell-prototipo src/main.cpp src/recorder.cpp src/recorder.h)
 target_link_libraries(omni-shell-prototipo PRIVATE omni_desktopentries Qt6::Gui Qt6::Quick)
 target_compile_definitions(omni-shell-prototipo PRIVATE OMNI_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
 target_compile_options(omni-shell-prototipo PRIVATE -Wall -Wextra)

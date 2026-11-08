@@ -9,7 +9,7 @@ Rectangle {
     implicitHeight: label.implicitHeight + Theme.s1 + 2
     radius: height / 2
     color: inverted ? Qt.rgba(0, 0, 0, 0.12) : Theme.prototypeSoft
-    border.color: inverted ? Theme.onAccent : Theme.prototype
+    border.color: inverted ? Theme.textOnAccent : Theme.prototype
     border.width: 1
     Accessible.role: Accessible.StaticText
     Accessible.name: root.text
@@ -17,7 +17,7 @@ Rectangle {
         id: label
         anchors.centerIn: parent
         text: root.text
-        color: root.inverted ? Theme.onAccent : Theme.prototype
+        color: root.inverted ? Theme.textOnAccent : Theme.prototype
         font.family: Theme.fontFamily
         font.pixelSize: 10
         font.weight: Font.DemiBold

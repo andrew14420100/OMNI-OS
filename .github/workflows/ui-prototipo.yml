@@ -29,7 +29,7 @@ jobs:
             qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
             qml6-module-qtquick-shapes qml6-module-qtquick-window qml6-module-qtqml-workerscript \
             qml6-module-qtquick-templates qml6-module-qttest qml6-module-qtqml qml6-module-qtqml-models \
-            cmake g++ fonts-inter >/dev/null
+            cmake g++ fonts-inter ffmpeg >/dev/null
       - name: Build
         run: cmake -S ui -B ui/build -DCMAKE_BUILD_TYPE=Release && cmake --build ui/build -j4
       - name: Test (C++ e QML)
@@ -40,12 +40,20 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p shots
-          for spec in "desktop dark" "launcher dark" "notifications dark" "quicksettings dark" "desktop light" "quicksettings light" "launcher light"; do
-            set -- $spec
-            ui/build/omni-shell-prototipo --demo-apps --scene "$1" --theme "$2" --screenshot "shots/prototipo-$1-$2.png" --delay 1800
+          for th in dark light; do
+            for sc in desktop launcher notifications quicksettings; do
+              ui/build/omni-shell-prototipo --demo-apps --scene "$sc" --theme "$th" --screenshot "shots/prototipo-v2-$sc-$th.png" --delay 2200
+            done
           done
+          ui/build/omni-shell-prototipo --scene gallery --size 1100x620 --screenshot shots/prototipo-v2-icone.png --delay 900
+      - name: Registrazione reale delle interazioni (eventi di input Qt, video MP4)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ui/build/omni-shell-prototipo --demo-apps --record shots/omni-shell-v2-interazioni.mp4 --script ui/demo/interazioni.json --delay 1200
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ui-prototipo-schermate
-          path: shots/*.png
+          path: |
+            shots/*.png
+            shots/*.mp4
           retention-days: 14

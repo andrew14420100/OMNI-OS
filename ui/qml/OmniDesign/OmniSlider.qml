@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Cursore OMNI (0–1), regolabile con mouse e frecce della tastiera.
+// Cursore OMNI a pillola (0–1): l'icona vive dentro la traccia riempita.
+// Mouse (clic e trascinamento), rotellina e frecce della tastiera.
 Item {
     id: root
     property string icon: "volume"
@@ -11,35 +12,45 @@ Item {
     implicitWidth: 340; implicitHeight: 44
     activeFocusOnTab: true
     Accessible.role: Accessible.Slider
-    Accessible.name: root.label
-    Keys.onLeftPressed: value = Math.max(0, value - 0.05)
-    Keys.onRightPressed: value = Math.min(1, value + 0.05)
+    Accessible.name: root.label + (root.prototype ? " (" + qsTr("prototipo") + ")" : "")
+    Keys.onLeftPressed: value = Math.max(0, Math.round((value - 0.05) * 100) / 100)
+    Keys.onRightPressed: value = Math.min(1, Math.round((value + 0.05) * 100) / 100)
 
     RowLayout {
         anchors.fill: parent; spacing: Theme.s3
-        OmniIcon { Layout.preferredWidth: 22; Layout.preferredHeight: 22; name: root.icon; color: Theme.textSecondary }
         Item {
-            id: track; Layout.fillWidth: true; Layout.preferredHeight: 28
-            Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 8; radius: 4; color: Theme.outline }
+            id: track; Layout.fillWidth: true; Layout.fillHeight: true
             Rectangle {
-                anchors.verticalCenter: parent.verticalCenter; height: 8; radius: 4
-                width: Math.max(8, parent.width * root.value)
-                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Theme.auroraCyan } GradientStop { position: 1; color: Theme.auroraViolet } }
+                anchors.fill: parent; radius: height / 2
+                color: Theme.hover
+                border.color: root.activeFocus ? Theme.accent : Theme.outline; border.width: root.activeFocus ? 2 : 1
             }
             Rectangle {
-                width: 20; height: 20; radius: 10; y: (parent.height - height) / 2
-                x: Math.max(0, Math.min(parent.width - width, parent.width * root.value - width / 2))
-                color: "#FFFFFF"; border.color: root.activeFocus ? Theme.accent : Theme.outline; border.width: 2
-                Behavior on x { enabled: !drag.pressed; NumberAnimation { duration: Theme.durationFast } }
+                id: fill
+                height: parent.height - 6; y: 3; x: 3; radius: height / 2
+                width: Math.max(height, (parent.width - 6) * root.value)
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: Theme.glow }
+                    GradientStop { position: 1; color: Theme.glowPair }
+                }
+                Behavior on width { enabled: !drag.pressed; NumberAnimation { duration: Theme.durationFast; easing.type: Theme.easing } }
+                Rectangle {   // impugnatura
+                    width: parent.height - 8; height: width; radius: width / 2
+                    anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter
+                    color: "#FFFFFF"; opacity: 0.95
+                }
             }
+            OmniIcon { x: 14; anchors.verticalCenter: parent.verticalCenter; width: 18; height: 18; name: root.icon; color: root.value > 0.12 ? "#06121A" : Theme.textSecondary }
             MouseArea {
                 id: drag; anchors.fill: parent
-                function setFrom(mx) { root.value = Math.max(0, Math.min(1, mx / width)) }
+                function setFrom(mx) { root.value = Math.max(0, Math.min(1, (mx - 3) / (width - 6))) }
                 onPressed: (m) => { root.forceActiveFocus(); setFrom(m.x) }
                 onPositionChanged: (m) => setFrom(m.x)
+                onWheel: (w) => { root.value = Math.max(0, Math.min(1, root.value + (w.angleDelta.y > 0 ? 0.05 : -0.05))) }
             }
         }
-        Text { text: Math.round(root.value * 100) + "%"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontCaption; Layout.preferredWidth: 36 }
+        Text { text: Math.round(root.value * 100) + "%"; color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontCaption; font.weight: Font.Medium; Layout.preferredWidth: 34; horizontalAlignment: Text.AlignRight }
         PrototypeBadge { visible: root.prototype }
     }
 }

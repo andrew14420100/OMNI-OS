@@ -1,6 +1,6 @@
 # OMNI Shell — prototipo anticipato dell'interfaccia
 
-- **Stato:** prototipo sperimentale, 2026-11-08. **Non è M4**: la milestone M4 non è avviata. Questo lavoro è separato dai criteri di accettazione di M1 e non li modifica.
+- **Stato:** prototipo sperimentale, versione 2 del 2026-11-08 (la v1 è nella cronologia del branch). **Non è M4**: la milestone M4 non è avviata. Questo lavoro è separato dai criteri di accettazione di M1 e non li modifica.
 - **Codice:** [`../../ui/`](../../ui/) (Qt 6 / QML, CMake). Istruzioni: [`../../ui/README.md`](../../ui/README.md).
 - **Schermate:** [`../../ui/screenshots/`](../../ui/screenshots/). Sono **schermate reali del prototipo in esecuzione** (Qt Quick con piattaforma `offscreen`, `QQuickWindow::grabWindow`), **non** schermate di OMNI OS installato e **non** immagini generate. Nessuna mostra il sistema operativo reale.
 
@@ -42,7 +42,8 @@ Modello C++ `DesktopEntryModel`: legge in sola lettura i file `.desktop` dalle c
 | Ricerca del launcher (maiuscole, accenti, più parole) | qmltestrunner | Superata |
 | Notifiche (aggiunta, rimozione, Non disturbare) | qmltestrunner | Superata |
 | Componenti (toggle, slider, tile con colori distinti) | qmltestrunner | Superata |
-| Schermate reali | `--screenshot` | 7 PNG generate |
+| Schermate reali | `--screenshot` | 9 PNG (v2) |
+| Registrazione reale | `--record` | MP4, 31 s |
 
 Il workflow [`ui-prototipo.yml`](../../.github/workflows/ui-prototipo.yml) ripete build, test e cattura su GitHub Actions (permessi in sola lettura, nessun segreto, nessuna pubblicazione).
 
@@ -52,3 +53,22 @@ Il workflow [`ui-prototipo.yml`](../../.github/workflows/ui-prototipo.yml) ripet
 - Icone delle applicazioni: monogrammi colorati, non le icone dei temi installati.
 - Il prototipo non sostituisce né modifica Plasma; non viene installato nell'immagine OMNI.
 - Nessuna decisione aperta (licenza DA-07, verifica del marchio REQ-TM-01) è risolta da questo lavoro. Il nome "OMNI" resta un nome di lavoro provvisorio.
+
+## 7. Versione 2 (2026-11-08)
+
+Richiesta del proprietario: interfaccia più evoluta, moderna, elegante e originale, non solo un cambio di colori.
+
+| Area | v1 | v2 |
+|---|---|---|
+| Desktop | Sfondo a gradiente con archi, desktop vuoto | Sfondo "Aurora Flux" animato (nebulose, nastri, stelle, orizzonte), orologio grande, calendario, recenti, stato del prototipo, barra superiore |
+| Icone | Tessere con sigle (FM, TE, ST) | 29 icone vettoriali originali con associazione automatica alle app reali |
+| Dock | Tessere con ingrandimento singolo | Ingrandimento progressivo, etichette, indicatori, rimbalzo, anteprima di apertura, dimensione adattiva, tastiera |
+| Launcher | Griglia con ricerca | Categorie, preferiti, recenti, pertinenza, stelle, navigazione da tastiera, suggerimenti dei tasti |
+| Impostazioni rapide | 6 riquadri e 2 cursori | Intestazione utente, connettività, 4 funzioni operative, cursori a pillola, colori d'accento, ingresso sfalsato |
+| Notifiche | Elenco semplice | Gruppi per app, pila espandibile, tempo relativo, rimozione con trascinamento |
+| Temi | Chiaro/scuro | Chiaro/scuro × 4 accenti, contrasto verificato per ogni combinazione |
+| Prestazioni | — | "Risparmio risorse" ferma le animazioni continue; nessun effetto grafico costoso |
+
+Difetto corretto: la proprietà di tema `onAccent` veniva interpretata da QML come gestore di segnale e valeva nero. Rinominata `textOnAccent`, con un test di regressione.
+
+Verifiche v2: 11 test C++ e 66 test QML superati, nessun avviso QML in esecuzione, 9 schermate reali e una registrazione reale delle interazioni (31 s, 773 fotogrammi), riprodotte anche dalla CI.

@@ -5,6 +5,9 @@
 //   --theme dark|light   --reduced-motion   --demo-apps   --apps-dir DIR
 //   --size 1600x1000     --screenshot FILE.png [--delay MS]
 #include "desktopentries.h"
+#include "recorder.h"
+#include <QFile>
+#include <QJsonDocument>
 #include <QCommandLineParser>
 #include <QDir>
 #include <QFont>
@@ -38,7 +41,10 @@ int main(int argc, char *argv[]) {
     QCommandLineOption size("size", "Dimensione della finestra", "LxA", "1600x1000");
     QCommandLineOption shot("screenshot", "Salva una schermata reale e termina", "file");
     QCommandLineOption delay("delay", "Attesa prima della schermata (ms)", "ms", "1500");
-    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay});
+    QCommandLineOption record("record", "Registra un video reale delle interazioni (MP4, richiede ffmpeg)", "file");
+    QCommandLineOption script("script", "Script JSON delle interazioni per --record", "file");
+    QCommandLineOption accent("accent", "Colore d'accento (0 Aurora, 1 Iris, 2 Corallo, 3 Giada)", "n", "0");
+    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script});
     p.process(app);
 
     DesktopEntryModel apps;
@@ -54,6 +60,9 @@ int main(int argc, char *argv[]) {
     view.rootContext()->setContextProperty("initialScene", p.value(scene));
     view.rootContext()->setContextProperty("initialDark", p.value(theme) != QLatin1String("light"));
     view.rootContext()->setContextProperty("initialReducedMotion", p.isSet(reduced));
+    view.rootContext()->setContextProperty("initialAccent", p.value(accent).toInt());
+    // nome dell'utente della sessione (solo lettura, mostrato nelle Impostazioni rapide)
+    view.rootContext()->setContextProperty("currentUser", qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME")));
     view.setResizeMode(QQuickView::SizeRootObjectToView);
     const QStringList wh = p.value(size).split('x');
     view.resize(wh.value(0).toInt() > 0 ? wh.value(0).toInt() : 1600, wh.value(1).toInt() > 0 ? wh.value(1).toInt() : 1000);
@@ -64,6 +73,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     view.show();
+
+    if (p.isSet(record)) {
+        QFile f(p.value(script));
+        if (!f.open(QIODevice::ReadOnly)) { qCritical("script delle interazioni non leggibile: %s", qPrintable(p.value(script))); return 1; }
+        const QJsonArray steps = QJsonDocument::fromJson(f.readAll()).array();
+        auto *rec = new Recorder(&view, steps, p.value(record), 25, &app);
+        QObject::connect(rec, &Recorder::done, &app, [](bool ok) { QCoreApplication::exit(ok ? 0 : 2); });
+        QTimer::singleShot(p.value(delay).toInt(), rec, [rec]() { if (!rec->start()) QCoreApplication::exit(2); });
+    }
 
     if (p.isSet(shot)) {
         const QString file = p.value(shot);
