@@ -353,7 +353,7 @@ jobs:
           . tests/vm/lib.sh
           build_image 0.1.0-m1-dev localhost/omni-os:m1-ci
           o=$RUNNER_TEMP/sbom; mkdir -p "$o"
-          curl -sSLf -o "$RUNNER_TEMP/syft.tgz" https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz
+          curl -sSLf --retry 5 --retry-delay 5 --retry-all-errors -o "$RUNNER_TEMP/syft.tgz" https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz
           echo "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d  $RUNNER_TEMP/syft.tgz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/syft.tgz" -C "$RUNNER_TEMP" syft
           $PODMAN save --format oci-archive -o "$RUNNER_TEMP/omni.tar" localhost/omni-os:m1-ci

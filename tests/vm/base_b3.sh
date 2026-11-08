@@ -54,8 +54,8 @@ log "ostree_tool=$(ostree --version | sed -n "s/^ Version: //p" | tr -d "'")"
 
 # 1. Chiave: due fonti ufficiali, stessa impronta attesa.
 k=$work/keys; mkdir -p "$k"
-curl -sSLf -o "$k/fedora-repos.asc" "$(get GPG_KEY_URL)"
-curl -sSLf -o "$k/fedora.gpg" "$(get GPG_KEYRING_URL)"
+curl -sSLf --retry 5 --retry-delay 5 --retry-all-errors -o "$k/fedora-repos.asc" "$(get GPG_KEY_URL)"
+curl -sSLf --retry 5 --retry-delay 5 --retry-all-errors -o "$k/fedora.gpg" "$(get GPG_KEYRING_URL)"
 f1=$(gpg --show-keys --with-colons "$k/fedora-repos.asc" | awk -F: '/^fpr/{print $10; exit}')
 f2=$(gpg --show-keys --with-colons "$k/fedora.gpg" | awk -F: '/^fpr/{print $10}' | grep -x "$FPR" || true)
 [ "$f1" = "$FPR" ] || fail "impronta della chiave da fedora-repos ($f1) diversa da $FPR"
