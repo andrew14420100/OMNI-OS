@@ -141,3 +141,36 @@ Commit `4dbfab9`, base B3 caricata dalla cache e verificata: digest `sha256:34ee
 | P9 firme (chiavi effimere) | Superato | S1–S4: immagini non firmate o con chiave sconosciuta rifiutate da entrambi i gestori; S5–S6: immagine firmata accettata, avvio sulla 0.1.1 |
 
 **Confronto con A1 (run 42105279344):** stessi passi superati e stessa schermata P7. In più, solo con B3, il controllo dei permessi di `/etc`. Nessuna regressione rilevata.
+
+## 8. Gruppo A sulla base B3 (2026-11-08)
+
+### AC-M1-03 — accesso reale e sessione Plasma Wayland: SUPERATO (run 42478499478)
+
+Prima esecuzione (run 42476148840): accesso riuscito, ma due controlli falliti per un errore del test, che presumeva il socket `wayland-0`. KWin in Plasma 6.8 usa `wayland-1`. Ora il test legge `WAYLAND_DISPLAY` dall'ambiente di plasmashell (commit `939c3ae`) e il test è stato ripetuto da solo (gruppo `A-desktop`).
+
+Esito della run 42478499478, 20 controlli su 20 OK:
+- utente temporaneo con password casuale mascherata;
+- accesso digitato sulla schermata plasmalogin (QMP) al primo tentativo;
+- sessione `wayland`, classe `user`, attiva, locale (servizio PAM `plasmalogin`, desktop KDE);
+- `kwin_wayland` e `plasmashell` in esecuzione e raggiungibili su D-Bus; socket `/run/user/1000/wayland-1`;
+- Impostazioni di sistema aperte nella sessione e ancora in esecuzione dopo 20 s;
+- stessi PID di plasmashell e KWin prima e dopo l'uso, nessun core dump;
+- utente e password eliminati al termine.
+
+Schermate reali catturate dallo schermo della VM con QMP:
+
+| Schermata di accesso | Desktop dopo l'accesso | Applicazione aperta |
+|---|---|---|
+| ![](img/reale-ac03-schermata-accesso-run42478499478.png) | ![](img/reale-ac03-desktop-plasma-run42478499478.png) | ![](img/reale-ac03-applicazione-aperta-run42478499478.png) |
+
+È il desktop **Fedora Kinoite/Plasma** dell'immagine M1, non l'interfaccia OMNI.
+
+### AC-M1-05 — R2 e R3: SUPERATI (run 42476148840)
+
+Stessa sequenza, superata con **bootc** e con **rpm-ostree**:
+- R2.1–R2.3: aggiornamenti 0.1.0 → 0.1.1 → 0.1.2, con 0.1.0 fissato (`ostree admin pin`), ancora presente dopo due aggiornamenti.
+- R2.4 controllo: la 0.1.1 non fissata viene eliminata, la 0.1.0 fissata resta.
+- R2.5: la 0.1.0 fissata impostata come predefinita (`set-default`) si avvia.
+- R3.1–R3.2: aggiornamento dal registro temporaneo (solo loopback) e ritorno alla 0.1.1 per digest.
+
+Dopo ogni riavvio il gestore di accesso risulta attivo.
