@@ -1,0 +1,16 @@
+# Bytecode Python
+__pycache__/
+*.py[cod]
+# Build e artefatti locali
+build/
+ui/build/
+*.o
+*.qcow2
+*.img
+*.raw
+*.iso
+# Editor e temporanei
+*~
+*.swp
+*.tmp
+.DS_Store
