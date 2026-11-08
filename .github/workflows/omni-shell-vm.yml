@@ -1,0 +1,69 @@
+# OMNI Shell V2 — prova di integrazione SPERIMENTALE (non M4) in una VM OMNI OS.
+# L'app gira come utente normale nella sessione KDE Plasma Wayland reale: Plasma, KWin e
+# il gestore di accesso NON vengono sostituiti; l'immagine di sistema non viene modificata.
+# Solo VM sul runner effimero; nessuna pubblicazione, nessun segreto, chiavi solo effimere.
+name: omni-shell-vm
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omni-shell-vm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integrazione:
+    name: OMNI Shell V2 nella sessione Plasma Wayland (VM)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with: { persist-credentials: false }
+      - name: Chiave della cache della base B3
+        id: key
+        run: echo "key=omni-base-b3-$(grep -E '^OSTREE_COMMIT=' image/base.lock | cut -d= -f2)-v1" >> "$GITHUB_OUTPUT"
+      - name: Ripristino della base B3 dalla cache (verificata al caricamento)
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/base-b3
+          key: ${{ steps.key.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Preparazione (base B3 verificata, KVM, QEMU)
+        run: bash tests/vm/ci_prepare.sh
+      - name: Immagine OMNI e disco di prova
+        run: bash tests/vm/ci_make_disk.sh 0.1.0-m1-dev
+      - name: Compilazione e test di OMNI Shell con il Qt di Fedora 45 (container usa e getta)
+        run: |
+          bash tests/vm/build_shell_bundle.sh localhost/omni-os:m1-ci "$RUNNER_TEMP/shell"
+          { echo "## Compilazione di OMNI Shell (Fedora 45)"; echo; echo '```'; cat "$RUNNER_TEMP/shell/qt-build.txt" "$RUNNER_TEMP/shell/qt-build-match.txt"; tail -4 "$RUNNER_TEMP/shell/test.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Prova nella sessione Plasma Wayland della VM
+        run: |
+          set +e
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          bash tests/vm/shell_integration_test.sh "$VMWORK/shell" "$RUNNER_TEMP/shell/omni-shell-f45.tar.gz"; rc=$?
+          cat "$VMWORK/shell/integrazione.md" >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+      - name: Video reale dello schermo della VM
+        if: always()
+        run: |
+          if [ -f "$VMWORK/shell/fotogrammi/tempi.txt" ]; then
+            python3 tests/vm/frames_to_video.py "$VMWORK/shell/fotogrammi" "$VMWORK/shell/schermate/omni-shell-vm-interazioni.mp4"
+          fi
+      - name: Prove (schermate, video, registri; 7 giorni)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: omni-shell-vm
+          path: |
+            ${{ runner.temp }}/vm/shell/schermate/
+            ${{ runner.temp }}/vm/shell/*.md
+            ${{ runner.temp }}/vm/shell/*.txt
+            ${{ runner.temp }}/vm/shell/*.log
+            ${{ runner.temp }}/vm/shell/*.json
+            ${{ runner.temp }}/shell/qt-build*.txt
+            ${{ runner.temp }}/shell/test.txt
+          retention-days: 7
+          if-no-files-found: ignore

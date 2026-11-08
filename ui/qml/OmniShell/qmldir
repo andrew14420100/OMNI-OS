@@ -1,0 +1,17 @@
+module OmniShell
+singleton AppCatalog 1.0 AppCatalog.qml
+SessionState 1.0 SessionState.qml
+NotificationStore 1.0 NotificationStore.qml
+NotificationCard 1.0 NotificationCard.qml
+Wallpaper 1.0 Wallpaper.qml
+TopBar 1.0 TopBar.qml
+Dock 1.0 Dock.qml
+ClockWidget 1.0 ClockWidget.qml
+CalendarWidget 1.0 CalendarWidget.qml
+DesktopCards 1.0 DesktopCards.qml
+Launcher 1.0 Launcher.qml
+NotificationCenter 1.0 NotificationCenter.qml
+QuickSettings 1.0 QuickSettings.qml
+Toast 1.0 Toast.qml
+LaunchPreview 1.0 LaunchPreview.qml
+Shell 1.0 Shell.qml

@@ -26,6 +26,11 @@ extra=()
 if [ "$mode" = secureboot ]; then
   extra+=(-global "driver=cfi.pflash01,property=secure,value=on")
 fi
+# Puntatore assoluto (tavoletta USB) per inviare movimenti e clic reali via QMP:
+# solo su richiesta (prova di integrazione dell'interfaccia), non nei test M1.
+if [ "${VM_TABLET:-0}" = 1 ]; then
+  extra+=(-device "qemu-xhci,id=xhci" -device "usb-tablet,bus=xhci.0")
+fi
 
 qemu-system-x86_64 \
   -name omni-m1-test -machine "$machine",accel="$accel" -cpu max \
