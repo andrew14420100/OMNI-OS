@@ -8,7 +8,7 @@ on:
   push:
     branches: ["preview/omni-shell-v2.1.1-windows-portable"]
     paths:
-      - ".github/workflows/omni-shell-windows-portable-v2.1.1.1.yml"
+      - ".github/workflows/omni-shell-windows-portable-v2.1.1.yml"
       - "ui/**"
   workflow_dispatch:
 
