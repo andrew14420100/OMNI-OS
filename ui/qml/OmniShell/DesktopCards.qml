@@ -70,7 +70,7 @@ ColumnLayout {
                     { k: qsTr("Rendering"), v: (typeof softwareRendering !== "undefined" && softwareRendering) ? qsTr("software · risparmio risorse") : (Theme.lowPower ? qsTr("risparmio risorse") : qsTr("accelerato")), ok: true },
                     { k: qsTr("Notifiche"), v: qsTr("%n interne al prototipo", "", root.store ? root.store.count : 0), ok: true },
                     { k: qsTr("Avvio delle applicazioni"), v: root.realLaunch ? qsTr("reale") : qsTr("simulato"), ok: root.realLaunch },
-                    { k: qsTr("Rete, audio, spazi di lavoro, AI"), v: qsTr("non collegati"), ok: false }
+                    { k: qsTr("Rete, audio, spazi di lavoro"), v: qsTr("non collegati (nella sessione OMNI sono reali)"), ok: false }
                 ]
                 RowLayout {
                     required property var modelData

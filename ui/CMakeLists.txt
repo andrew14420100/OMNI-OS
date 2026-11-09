@@ -43,3 +43,5 @@ find_program(QMLTESTRUNNER qmltestrunner HINTS /usr/lib/qt6/bin /usr/lib64/qt6/b
 add_test(NAME qml COMMAND ${QMLTESTRUNNER} -import ${CMAKE_CURRENT_SOURCE_DIR}/qml -input ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 set_tests_properties(qml desktopentries applauncher desktop PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 add_test(NAME cablaggio_avvio_reale COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/cablaggio_avvio_reale.sh $<TARGET_FILE:omni-shell-prototipo> ${CMAKE_CURRENT_SOURCE_DIR}/qml)
+# Nessuna funzione di intelligenza artificiale nell'interfaccia (richiesta per questa fase)
+add_test(NAME nessuna_ai COMMAND bash -c "! grep -rniE 'assistente|intelligenza artificiale|qsTr\\(\"AI' ${CMAKE_CURRENT_SOURCE_DIR}/qml/OmniDesktop ${CMAKE_CURRENT_SOURCE_DIR}/qml/DesktopSession.qml ${CMAKE_CURRENT_SOURCE_DIR}/qml/OmniShell/QuickSettings.qml ${CMAKE_CURRENT_SOURCE_DIR}/qml/OmniShell/TopBar.qml")
