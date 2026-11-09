@@ -51,6 +51,12 @@ public:
     Q_INVOKABLE void removeDesktop(const QString &id);
     // ricerca di sistema (file, impostazioni, calcoli) con KRunner
     Q_INVOKABLE void krunnerQuery(const QString &text);
+    // movimento ridotto per TUTTO il desktop (animazioni di KWin e delle app KDE):
+    // impostazione KDE AnimationDurationFactor (0 = nessuna animazione, 1 = normale)
+    Q_INVOKABLE void setSystemReducedMotion(bool reduced);
+    // rendering software (nessuna GPU): disattiva per questa sessione gli effetti più costosi
+    // di KWin (sfocatura e contrasto dello sfondo); nessuna modifica permanente
+    Q_INVOKABLE void optimizeForSoftwareRendering();
 signals:
     void failed(const QString &what, const QString &reason);
 };

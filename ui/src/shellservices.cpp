@@ -7,6 +7,7 @@
 #include <QDBusVariant>
 #include <QFileInfo>
 #include <QIcon>
+#include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QDir>
@@ -159,4 +160,30 @@ void ShellSettings::set(const char *key, const QVariant &v) {
     st.setValue(QLatin1String(key), v);
     st.sync();
     emit changed();
+}
+
+void KWinActions::setSystemReducedMotion(bool reduced) {
+    const QStringList args{QStringLiteral("--file"), QStringLiteral("kdeglobals"), QStringLiteral("--group"), QStringLiteral("KDE"),
+                           QStringLiteral("--key"), QStringLiteral("AnimationDurationFactor"), reduced ? QStringLiteral("0") : QStringLiteral("1")};
+    auto *p = new QProcess(this);
+    connect(p, &QProcess::finished, this, [this, p, reduced](int code, QProcess::ExitStatus) {
+        p->deleteLater();
+        if (code != 0) { emit failed(QStringLiteral("movimento ridotto"), QStringLiteral("kwriteconfig6 non riuscito")); return; }
+        // KWin rilegge la configurazione
+        kwinCall(this, QDBusMessage::createMethodCall(QStringLiteral("org.kde.KWin"), QStringLiteral("/KWin"),
+                                                      QStringLiteral("org.kde.KWin"), QStringLiteral("reconfigure")), QStringLiteral("riconfigurazione di KWin"));
+        qInfo("movimento ridotto di sistema: %s", reduced ? "attivo (animazioni di KWin disattivate)" : "disattivo");
+    });
+    connect(p, &QProcess::errorOccurred, this, [this, p](QProcess::ProcessError) { p->deleteLater(); emit failed(QStringLiteral("movimento ridotto"), QStringLiteral("kwriteconfig6 non disponibile")); });
+    p->start(QStringLiteral("kwriteconfig6"), args);
+}
+
+void KWinActions::optimizeForSoftwareRendering() {
+    for (const QString &effect : {QStringLiteral("blur"), QStringLiteral("contrast")}) {
+        auto m = QDBusMessage::createMethodCall(QStringLiteral("org.kde.KWin"), QStringLiteral("/Effects"),
+                                                QStringLiteral("org.kde.kwin.Effects"), QStringLiteral("unloadEffect"));
+        m << effect;
+        kwinCall(this, m, QStringLiteral("effetto ") + effect);
+    }
+    qInfo("kwin: rendering software, effetti sfocatura e contrasto disattivati per questa sessione");
 }

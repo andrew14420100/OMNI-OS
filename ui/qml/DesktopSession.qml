@@ -47,7 +47,8 @@ QtObject {
     function launchById(id) { const e = appIndex.find(id); if (e) launchEntry(e); else notificationServer.postLocal(qsTr("Applicazione non installata"), id, 1) }
     function noteLaunch(id) { console.info("avvio dalla shell: " + id + " t=" + shellPerf.epochMs()) }
     function setDark(d) { Theme.dark = d; prefs.dark = d }
-    function setReducedMotion(r) { Theme.reducedMotion = r; prefs.reducedMotion = r }
+    function setReducedMotion(r) { Theme.reducedMotion = r; prefs.reducedMotion = r; kwinActions.setSystemReducedMotion(r) }
+    function showMenuAt(items, x, y) { menuItems = items; menuX = x; menuY = y + 8; popup = "menu" }
 
     function urlFor(id) { return "applications:" + id }
     function isBarPinned(id) { return barPins.indexOf(urlFor(id)) >= 0 }
@@ -157,7 +158,19 @@ QtObject {
         color: Theme.background
         visible: true
         Wallpaper { anchors.fill: parent; animate: false }
-        MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton; onClicked: omni.close() }
+        // clic destro sul desktop: menu come in Windows (schermo, aspetto, impostazioni)
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: mouse => {
+                if (mouse.button !== Qt.RightButton) { omni.close(); return }
+                omni.showMenuAt([
+                    { label: qsTr("Impostazioni dello schermo"), icon: "display", act: () => { systemStatus.refreshDisplay(); omni.popup = "quick"; Qt.callLater(() => { if (omni.popupWin.quick.item) omni.popupWin.quick.item.page = "display" }) } },
+                    { label: Theme.dark ? qsTr("Tema chiaro") : qsTr("Tema scuro"), icon: Theme.dark ? "sun" : "moon", act: () => omni.setDark(!Theme.dark) },
+                    { label: qsTr("Impostazioni di sistema"), icon: "settings", act: () => systemStatus.openSettings("") }
+                ], mouse.x, mouse.y)
+            }
+        }
     }
 
     property var barWin: LayerWindow {
@@ -189,6 +202,7 @@ QtObject {
         width: Screen.width; height: Screen.height - 48
         visible: omni.popup !== ""
         property alias start: startLoader
+        property alias quick: quickLoader
         onVisibleChanged: if (visible) {
             if (omni.popup === "start" && startLoader.item) { startLoader.item.reset(); startLoader.item.focusSearch() }
             if (omni.popup === "quick" && quickLoader.item) quickLoader.item.reset()
@@ -248,6 +262,7 @@ QtObject {
 
     function afterFirstFrame() {
         panelsReady = true
+        if (softwareRendering) kwinActions.optimizeForSoftwareRendering()
         services.loadLate()
         systemStatus.refresh()
         sessionActions.refresh()
