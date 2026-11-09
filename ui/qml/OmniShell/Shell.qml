@@ -66,6 +66,8 @@ FocusScope {
     }
     Component.onCompleted: {
         rebuildCatalog()
+        // Riga di registro verificata dalla prova in VM: conferma che l'interfaccia (non solo il C++) usa l'avvio reale.
+        console.info("interfaccia: avvio delle applicazioni " + (realLaunch ? "REALE" : "simulato"))
         // Notifiche dimostrative del prototipo (non provengono dal sistema reale).
         notifications.add("OMNI Security Center", qsTr("Firma dell'immagine verificata"), qsTr("Esempio: il sistema accetta solo immagini con firma valida."), "", true, 52)
         notifications.add("OMNI Update Center", qsTr("Aggiornamento pronto"), qsTr("Esempio: il deployment 0.1.1 è pronto. Il ritorno alla versione precedente resta disponibile."), "", true, 34)
