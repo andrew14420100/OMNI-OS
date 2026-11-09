@@ -16,7 +16,8 @@ COPY files/ /
 
 RUN chmod 0755 /usr/bin/omni-shell /usr/lib/omni-shell/bin/omni-shell-prototipo && \
     mkdir -p /usr/share/fonts/omni-inter && \
-    cp /usr/lib/omni-shell/fonts/*.otf /usr/share/fonts/omni-inter/ && \
+    find /usr/lib/omni-shell/fonts -type f \( -name '*.otf' -o -name '*.ttf' -o -name '*.ttc' \) -exec cp {} /usr/share/fonts/omni-inter/ \; && \
+    test -n "$(ls -A /usr/share/fonts/omni-inter)" && \
     rm -rf /usr/lib/omni-shell/fonts && \
     fc-cache -f /usr/share/fonts/omni-inter >/dev/null && \
     bootc container lint
