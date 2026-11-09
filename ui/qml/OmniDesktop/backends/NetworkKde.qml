@@ -7,8 +7,8 @@ import org.kde.plasma.networkmanagement as PlasmaNM
 QtObject {
     id: root
     readonly property bool available: true
-    readonly property string status: status_.networkStatus
-    readonly property string activeConnections: status_.activeConnections
+    readonly property string status: status_.networkStatus || ""
+    readonly property string activeConnections: status_.activeConnections || ""
     readonly property bool wirelessAvailable: devices.wirelessDeviceAvailable
     readonly property bool wiredAvailable: devices.wiredDeviceAvailable
     readonly property bool wirelessEnabled: enabled.wirelessEnabled

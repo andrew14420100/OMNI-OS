@@ -177,6 +177,10 @@ vm_ssh "kill -SEGV $pid1" >/dev/null 2>&1
 # il salvataggio del core dump (processo di ~600 MB) ritarda il riavvio: si attende fino a 60 s
 pid2=""; for _ in $(seq 1 30); do sleep 2; pid2=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null); [ -n "$pid2" ] && [ "$pid2" != "$pid1" ] && break; done
 if [ -n "$pid2" ] && [ "$pid2" != "$pid1" ]; then rec OK "arresto anomalo: OMNI Shell riavviata da systemd ($pid1 -> $pid2)"; else rec FAIL "OMNI Shell non riavviata dopo l'arresto anomalo"; fi
+{ echo "--- diagnosi riavvio dopo arresto anomalo (pid $pid1 -> ${pid2:-nessuno})"
+  u_sh "systemctl --user status omni-shell.service --no-pager 2>&1 | head -15"
+  vm_ssh "journalctl -b _UID=$UID_ --no-pager -o short-monotonic | grep -E 'omni-shell|coredump|SEGV|Scheduled restart' | tail -25"
+  vm_ssh "journalctl -b -u systemd-coredump@* --no-pager -o short-monotonic | tail -8"; } >> "$ev" 2>&1
 for _ in 1 2 3 4; do p=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null); [ -n "$p" ] && vm_ssh "kill -SEGV $p" >/dev/null 2>&1; sleep 3; done
 sleep 15; shot 15-recupero
 if plasma_up; then rec OK "arresti ripetuti: desktop Plasma di riserva avviato automaticamente (mai senza interfaccia)"; else rec FAIL "nessuna interfaccia dopo arresti ripetuti"; fi
@@ -229,7 +233,7 @@ if sess_login; then
     b1=$(vm_ssh "cat /proc/sys/kernel/random/boot_id" 2>/dev/null)
     if [ -n "$b1" ] && [ "$b1" != "$b0" ]; then rec OK "Riavvia (menu OMNI): sistema riavviato e di nuovo pronto"; else rec FAIL "riavvio non avvenuto"; fi
   else rec FAIL "il sistema non è tornato dopo il riavvio"; fi
-else rec FAIL "accesso prima della prova di riavvio"; fi
+else rec FAIL "accesso prima della prova di riavvio"; shot 20-accesso-dopo-avvio; fi
 echo "INFO core dump registrati (quelli con SEGV sono provocati dalla prova di recupero): $(vm_ssh 'coredumpctl list --no-legend 2>/dev/null | wc -l')" >> "$ev"
 vm_ssh "coredumpctl list --no-legend 2>/dev/null" >> "$ev" 2>&1
 vm_ssh "userdel -r -f $U" >/dev/null 2>&1 || true

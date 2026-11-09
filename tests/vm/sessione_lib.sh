@@ -37,6 +37,7 @@ sess_login() {
   SID=""
   local strategy
   for strategy in pw user-tab-pw; do
+    qmp key shift; sleep 2        # risveglia la schermata di accesso (orologio) senza inserire caratteri
     LOGIN_T0=$(vm_up)
     case $strategy in pw) qmp type "$PW" ;; user-tab-pw) qmp type "$U"; qmp key tab; qmp type "$PW" ;; esac
     qmp key ret
