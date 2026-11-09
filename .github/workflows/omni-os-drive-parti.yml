@@ -1,0 +1,116 @@
+name: omni-os-0.2.0-transfer-drive-parts
+on:
+  push:
+    branches: ["transfer/omni-os-0.2.0-drive"]
+    paths: [".github/workflows/omni-os-drive-parti.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  parti:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Recupera archivio ufficiale verificato (run 42588200637)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          curl --fail --location --retry 4 --retry-all-errors --connect-timeout 30 --max-time 2400 -sS \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/andrew14420100/OMNI-OS/actions/artifacts/13661456376/zip" \
+            -o OMNI-OS-0.2.0-VM-personale.zip
+          test "$(stat -c %s OMNI-OS-0.2.0-VM-personale.zip)" -eq 3449711708
+          unzip -tq OMNI-OS-0.2.0-VM-personale.zip | tail -n 1
+          sha256sum OMNI-OS-0.2.0-VM-personale.zip | tee out/SHA256-ARCHIVIO.txt
+          split -b 400000000 -d -a 2 OMNI-OS-0.2.0-VM-personale.zip out/OMNI-OS-0.2.0-VM-personale.part-
+          test "$(find out -type f -name 'OMNI-OS-0.2.0-VM-personale.part-*' | wc -l)" -eq 9
+          for p in out/OMNI-OS-0.2.0-VM-personale.part-*; do test "$(stat -c %s "$p")" -le 400000000; done
+          ls -lh out/
+      - name: Guida e ricomposizione offline per Windows
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          Path("out/Ricostruisci-OMNI-OS.cmd").write_bytes("@echo off\r\nsetlocal\r\ncd /d \"%~dp0\"\r\necho Ricostruzione OMNI OS 0.2.0 (9 parti)...\r\ncopy /b \"OMNI-OS-0.2.0-VM-personale.part-00\"+\"OMNI-OS-0.2.0-VM-personale.part-01\"+\"OMNI-OS-0.2.0-VM-personale.part-02\"+\"OMNI-OS-0.2.0-VM-personale.part-03\"+\"OMNI-OS-0.2.0-VM-personale.part-04\"+\"OMNI-OS-0.2.0-VM-personale.part-05\"+\"OMNI-OS-0.2.0-VM-personale.part-06\"+\"OMNI-OS-0.2.0-VM-personale.part-07\"+\"OMNI-OS-0.2.0-VM-personale.part-08\" \"OMNI-OS-0.2.0-VM-personale.zip\" >nul\r\nif errorlevel 1 (echo ERRORE: impossibile ricostruire il file. & exit /b 1)\r\necho Archivio ricostruito. Verifica SHA-256:\r\ncertutil -hashfile \"OMNI-OS-0.2.0-VM-personale.zip\" SHA256\r\necho Confrontare con SHA256-ARCHIVIO.txt prima di estrarre il VMDK.\r\npause\r\n".encode("ascii"))
+          Path("out/LEGGIMI-RICOSTRUZIONE.txt").write_text("OMNI OS 0.2.0 - Download in 9 parti per Google Drive\n\n1. Scaricare TUTTE le 9 parti da Google Drive (parte 00 ... parte 08).\n2. Ogni parte arriva in un proprio file ZIP: estrarre il suo contenuto\n   nella STESSA cartella. Per la parte 00 estrarre anche i file CMD e TXT.\n3. Controllare che nella cartella compaiano 9 file con suffisso .part-00 fino .part-08.\n4. Sul PC PERSONALE Windows (non aziendale), avviare Ricostruisci-OMNI-OS.cmd.\n5. Confrontare SHA256 dell'archivio finale con SHA256-ARCHIVIO.txt.\n6. Estrarre l'archivio finale, leggere LEGGIMI.md, importare il VMDK in VirtualBox.\nMai installare il VMDK su dischi fisici. Nessun merge o installazione su Windows.\n\nQuesto metodo trasferisce il ZIP originale INALTERATO, senza ricompilare OMNI OS.\n", encoding="utf-8")
+          PY
+      - name: Pubblica parte 00
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-00
+          path: |
+            out/OMNI-OS-0.2.0-VM-personale.part-00
+            out/Ricostruisci-OMNI-OS.cmd
+            out/LEGGIMI-RICOSTRUZIONE.txt
+            out/SHA256-ARCHIVIO.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 01
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-01
+          path: out/OMNI-OS-0.2.0-VM-personale.part-01
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-02
+          path: out/OMNI-OS-0.2.0-VM-personale.part-02
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 03
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-03
+          path: out/OMNI-OS-0.2.0-VM-personale.part-03
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 04
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-04
+          path: out/OMNI-OS-0.2.0-VM-personale.part-04
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 05
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-05
+          path: out/OMNI-OS-0.2.0-VM-personale.part-05
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 06
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-06
+          path: out/OMNI-OS-0.2.0-VM-personale.part-06
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 07
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-07
+          path: out/OMNI-OS-0.2.0-VM-personale.part-07
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 08
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-08
+          path: out/OMNI-OS-0.2.0-VM-personale.part-08
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
