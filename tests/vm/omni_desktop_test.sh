@@ -20,7 +20,7 @@ W=${VM_RES%x*} H=${VM_RES#*x} SCALA=${SCALA:-2}
 
 vm_fresh "$w" || { rec FAIL "avvio della VM"; res_end; exit 1; }
 rec OK "VM avviata ($(vm_version), ${VM_RES})"
-expect_ok "sessione OMNI e modalità sicura installate" vm_ssh "test -f /usr/share/wayland-sessions/omni.desktop && test -f /usr/share/wayland-sessions/omni-sicura.desktop"
+expect_ok "sessione OMNI e modalità sicura installate" vm_ssh "test -f /usr/share/wayland-sessions/omni.desktop && test -f /usr/share/wayland-sessions/omnios-sicura.desktop"
 expect_ok "servizio utente OMNI Shell e recupero installati" vm_ssh "test -f /usr/lib/systemd/user/omni-shell.service && test -f /usr/lib/systemd/user/omni-shell-recupero.service && test -f /usr/lib/systemd/user/plasma-plasmashell.service.d/10-omni.conf"
 expect_ok "nessun avvio automatico residuo della versione 0.2" vm_ssh "! test -e /etc/xdg/autostart/org.omnios.Shell.desktop"
 expect_ok "nessun file setuid/setgid in OMNI Shell" vm_ssh "! find /usr/lib/omni-shell /usr/libexec/omni-os -perm /6000 | grep -q ."
@@ -189,7 +189,7 @@ if sess_login; then
 else rec FAIL "nuovo accesso dopo il recupero"; fi
 
 # --- 9. modalità sicura (Plasma originale), scelta come ultima sessione ---
-vm_ssh "mkdir -p /var/lib/plasmalogin; printf '[Last]\nSession=/usr/share/wayland-sessions/omni-sicura.desktop\nUser=$U\n' > /var/lib/plasmalogin/state.conf" >> "$LOG" 2>&1
+vm_ssh "mkdir -p /var/lib/plasmalogin; printf '[Last]\nSession=/usr/share/wayland-sessions/omnios-sicura.desktop\nUser=$U\n' > /var/lib/plasmalogin/state.conf" >> "$LOG" 2>&1
 sess_greeter
 if sess_login; then
   sess_env; for _ in $(seq 1 60); do plasma_up && break; sleep 2; done; sleep 10; shot 18-modalita-sicura
