@@ -91,7 +91,11 @@ if has start:search; then rec OK "menu Start aperto con un clic (unico menu dell
 qmp key esc; sleep 1
 if ! has start:search; then rec OK "Esc chiude il menu Start"; else rec FAIL "Esc non chiude il menu Start"; fi
 qmp key meta_l; sleep 2
-if has start:search; then rec OK "tasto Meta apre il menu Start di OMNI"; else rec FAIL "tasto Meta: menu Start non aperto"; fi
+if has start:search; then rec OK "tasto Meta apre il menu Start di OMNI"; else
+  rec FAIL "tasto Meta: menu Start non aperto"
+  { echo "--- diagnosi tasto Meta"; u_sh "kreadconfig6 --file kwinrc --group ModifierOnlyShortcuts --key Meta; gdbus call --session --dest org.kde.plasmashell --object-path /PlasmaShell --method org.kde.PlasmaShell.activateLauncherMenu"; } >> "$ev" 2>&1
+  sleep 2; if has start:search; then echo "INFO Meta: la chiamata D-Bus diretta apre Start (KWin non la invia)" >> "$ev"; else echo "INFO Meta: neanche la chiamata D-Bus diretta apre Start" >> "$ev"; fi
+fi
 qmp key esc; sleep 1
 
 # avvio reale dalla barra (app fissate) e dalla ricerca di Start; tempo clic -> finestra (ora di KWin)
@@ -169,8 +173,9 @@ if [ "${s1%%.*}" = "$SCALA" ]; then rec OK "scala 200% applicata e mantenuta (KS
 
 # --- 7. recupero: OMNI Shell si riavvia dopo un arresto anomalo; dopo arresti ripetuti parte Plasma ---
 pid1=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null)
-vm_ssh "kill -SEGV $pid1" >/dev/null 2>&1; sleep 8
-pid2=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null)
+vm_ssh "kill -SEGV $pid1" >/dev/null 2>&1
+# il salvataggio del core dump (processo di ~600 MB) ritarda il riavvio: si attende fino a 60 s
+pid2=""; for _ in $(seq 1 30); do sleep 2; pid2=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null); [ -n "$pid2" ] && [ "$pid2" != "$pid1" ] && break; done
 if [ -n "$pid2" ] && [ "$pid2" != "$pid1" ]; then rec OK "arresto anomalo: OMNI Shell riavviata da systemd ($pid1 -> $pid2)"; else rec FAIL "OMNI Shell non riavviata dopo l'arresto anomalo"; fi
 for _ in 1 2 3 4; do p=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null); [ -n "$p" ] && vm_ssh "kill -SEGV $p" >/dev/null 2>&1; sleep 3; done
 sleep 15; shot 15-recupero
@@ -180,6 +185,8 @@ if plasma_up; then rec OK "arresti ripetuti: desktop Plasma di riserva avviato a
 vm_ssh "loginctl terminate-session $SID" >/dev/null 2>&1; sleep 25
 if sess_login; then
   sess_env; for _ in $(seq 1 60); do shell_up && break; sleep 2; done; sleep 15
+  for _ in $(seq 1 30); do vm_ssh "pgrep -u $U -x ksplashqml" >/dev/null 2>&1 || break; sleep 2; done
+  if vm_ssh "pgrep -u $U -x ksplashqml" >/dev/null 2>&1; then rec FAIL "schermata di caricamento di Plasma ancora visibile dopo 60 s"; else rec OK "schermata di caricamento chiusa (OMNI Shell segnala il desktop pronto)"; fi
   if shell_up && ! plasma_up; then rec OK "nuovo accesso: di nuovo sessione OMNI (il recupero vale solo per la sessione precedente)"; else rec FAIL "nuovo accesso: sessione OMNI non ripristinata"; fi
   click bar:start 2; click start:power 1; shot 16-menu-energia
   click power:logout 1

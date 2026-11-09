@@ -261,6 +261,7 @@ QtObject {
     }
 
     function afterFirstFrame() {
+        kwinActions.splashDesktopReady()
         panelsReady = true
         if (softwareRendering) kwinActions.optimizeForSoftwareRendering()
         services.loadLate()

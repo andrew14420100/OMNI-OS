@@ -189,3 +189,11 @@ void KWinActions::optimizeForSoftwareRendering() {
     }
     qInfo("kwin: rendering software, effetti sfocatura e contrasto disattivati per questa sessione");
 }
+
+void KWinActions::splashDesktopReady() {
+    auto m = QDBusMessage::createMethodCall(QStringLiteral("org.kde.KSplash"), QStringLiteral("/KSplash"),
+                                            QStringLiteral("org.kde.KSplash"), QStringLiteral("setStage"));
+    m << QStringLiteral("desktop");
+    QDBusConnection::sessionBus().asyncCall(m);   // KSplash può non essere in esecuzione: nessun errore
+    qInfo("schermata di caricamento: stadio \"desktop\" inviato");
+}

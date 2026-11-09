@@ -57,6 +57,9 @@ public:
     // rendering software (nessuna GPU): disattiva per questa sessione gli effetti più costosi
     // di KWin (sfocatura e contrasto dello sfondo); nessuna modifica permanente
     Q_INVOKABLE void optimizeForSoftwareRendering();
+    // la schermata di caricamento di Plasma (KSplash) attende lo stadio "desktop", che nella
+    // sessione Plasma invia plasmashell: nella sessione OMNI lo invia OMNI Shell al primo fotogramma
+    Q_INVOKABLE void splashDesktopReady();
 signals:
     void failed(const QString &what, const QString &reason);
 };
