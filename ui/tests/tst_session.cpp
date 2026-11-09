@@ -113,6 +113,8 @@ private slots:
         QTRY_COMPARE(root->property("popup").toString(), QStringLiteral("start"));
         QQuickItem *search = pop->findChild<QQuickItem *>(QStringLiteral("start:search"));
         QTRY_VERIFY(search && search->isVisible());
+        pop->requestActivate();
+        QTRY_VERIFY(pop->isActive());
         QTest::keyClick(pop, Qt::Key_Escape);
         QTRY_COMPARE(root->property("popup").toString(), QString());
         // orologio -> centro notifiche

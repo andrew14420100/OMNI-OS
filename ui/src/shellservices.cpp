@@ -185,7 +185,13 @@ void KWinActions::optimizeForSoftwareRendering() {
         auto m = QDBusMessage::createMethodCall(QStringLiteral("org.kde.KWin"), QStringLiteral("/Effects"),
                                                 QStringLiteral("org.kde.kwin.Effects"), QStringLiteral("unloadEffect"));
         m << effect;
-        kwinCall(this, m, QStringLiteral("effetto ") + effect);
+        // ottimizzazione facoltativa: un esito negativo va solo nel registro, mai all'utente
+        auto *w = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(m), this);
+        connect(w, &QDBusPendingCallWatcher::finished, this, [w, effect]() {
+            QDBusPendingReply<> r = *w;
+            if (r.isError()) qInfo("kwin: effetto %s non disattivato (%s)", qPrintable(effect), qPrintable(r.error().message()));
+            w->deleteLater();
+        });
     }
     qInfo("kwin: rendering software, effetti sfocatura e contrasto disattivati per questa sessione");
 }
