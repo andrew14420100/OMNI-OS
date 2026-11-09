@@ -69,18 +69,22 @@ jobs:
           set -euo pipefail
           $PODMAN build --build-arg OMNI_IMAGE=localhost/omni-os:m1-ci -t localhost/omni-os:personale image/personale/ 2>&1 | tail -5
           $PODMAN image inspect --format '{{.Id}} {{.Created}}' localhost/omni-os:personale | tee "$RUNNER_TEMP/immagine-personale.txt"
-      - name: SBOM dell'immagine personale
+      - name: Inventario del software dell'immagine personale (RPM e file di OMNI Shell)
         run: |
           set -euo pipefail
-          # Prima dei passi con VM: disco e memoria del runner ancora liberi (la run
-          # 42583327356 è stata interrotta durante questo passo, eseguito alla fine).
-          df -h / "$RUNNER_TEMP" | tail -n +1; free -g
+          # syft fa arrestare il runner su questa immagine (run 42583327356 e 42586545257, con
+          # 95 GB e 13 GB liberi): lo SBOM SPDX della base M1 resta quello verificato nella run
+          # 42495967226; qui un inventario deterministico ricavato dall'immagine stessa.
           mkdir -p "$RUNNER_TEMP/out"
-          bash tests/ci/fetch_tool.sh syft
-          $PODMAN save --format oci-archive -o "$RUNNER_TEMP/personale.tar" localhost/omni-os:personale
-          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/personale.tar"
-          SYFT_CHECK_FOR_APP_UPDATE=false "$RUNNER_TEMP/bin/syft" scan "oci-archive:$RUNNER_TEMP/personale.tar" -q -o "spdx-json=$RUNNER_TEMP/out/omni-os-vm-personale.spdx.json"
-          rm -f "$RUNNER_TEMP/personale.tar"
+          o=$RUNNER_TEMP/out/inventario-software.txt
+          { echo "# OMNI OS 0.2.0-vm-personale: inventario del software"
+            echo "# immagine: $(cat "$RUNNER_TEMP/immagine-personale.txt")"
+            echo; echo "## Pacchetti RPM (nome, versione-rilascio, architettura)"
+            $PODMAN run --rm localhost/omni-os:personale rpm -qa --qf '%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\n' | LC_ALL=C sort
+            echo; echo "## File di OMNI Shell (non da RPM): SHA-256"
+            $PODMAN run --rm localhost/omni-os:personale sh -c 'cd / && find usr/lib/omni-shell usr/bin/omni-shell usr/share/fonts/omni-inter usr/share/applications/org.omnios.Shell.desktop etc/xdg/autostart/org.omnios.Shell.desktop usr/lib/omni-os -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum'
+          } > "$o"
+          echo "pacchetti RPM: $(grep -cP '^[^#\s].*\t' "$o")"; tail -5 "$o"
       - name: Disco di prova (stessa immagine + chiave effimera) e prova reale
         timeout-minutes: 45
         run: |
@@ -123,9 +127,9 @@ jobs:
             qemu-img convert -O vhdx -o subformat=dynamic "$RUNNER_TEMP/out/disk.raw" "$o/OMNI-OS-0.2.0-vm-personale.vhdx"
           fi
           rm -f "$RUNNER_TEMP/out/disk.raw"
-          cp "$RUNNER_TEMP/out/omni-os-vm-personale.spdx.json" docs/13-vm-personale/LEGGIMI.md "$o/"
+          cp "$RUNNER_TEMP/out/inventario-software.txt" docs/13-vm-personale/LEGGIMI.md "$o/"
           cp "$VMWORK/sicurezza/sicurezza.md" "$o/controlli-di-sicurezza.md"
-          (cd "$o" && sha256sum ./*.vmdk ./*.vhdx ./*.json ./*.md 2>/dev/null > SHA256SUMS.txt)
+          (cd "$o" && shopt -s nullglob && sha256sum ./*.vmdk ./*.vhdx ./*.txt ./*.md > "$RUNNER_TEMP/SHA256SUMS.txt") && mv "$RUNNER_TEMP/SHA256SUMS.txt" "$o/"
           cat "$o/SHA256SUMS.txt"; ls -lh "$o"
           { echo "## Pacchetto"; echo; echo '```'; cat "$o/SHA256SUMS.txt"; ls -lh "$o"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Pacchetto VM personale (14 giorni, solo per chi ha accesso al repository)

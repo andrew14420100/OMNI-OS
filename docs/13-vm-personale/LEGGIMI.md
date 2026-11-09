@@ -14,7 +14,7 @@ virtuale: non va installato su un disco fisico e non modifica Windows.
 | `OMNI-OS-0.2.0-vm-personale.vmdk` | disco virtuale (VMDK compresso, 30 GB massimi, cresce solo se serve) |
 | `SHA256SUMS.txt` | impronte SHA-256 dei file |
 | `controlli-di-sicurezza.md` | esito dei controlli fatti su questo stesso disco prima della pubblicazione dell'artifact |
-| `omni-os-vm-personale.spdx.json` | elenco del software contenuto (SBOM SPDX) |
+| `inventario-software.txt` | elenco dei pacchetti RPM e impronte dei file di OMNI Shell |
 | `LEGGIMI.md` | questo documento |
 
 ## 1. Scaricare e verificare

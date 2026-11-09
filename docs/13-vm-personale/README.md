@@ -14,7 +14,7 @@ di accesso. Le 55 decisioni approvate non cambiano.
 | OMNI Shell compilata con le **stesse** Qt dell'immagine, test inclusi | `tests/vm/build_shell_bundle.sh` |
 | Immagine personale = M1 + OMNI Shell in `/usr/lib/omni-shell`, `/usr/bin/omni-shell`, voce di menu, avvio automatico | `image/personale/` |
 | Disco personale senza chiavi, senza utenti, senza console seriale | `tests/vm/make_disk.sh … none` |
-| VMDK compresso + SHA256SUMS + SBOM + LEGGIMI | `.github/workflows/omni-vm-personale.yml` |
+| VMDK compresso + SHA256SUMS + inventario del software + LEGGIMI | `.github/workflows/omni-vm-personale.yml` |
 
 `--real-launch` è attivo solo nell'immagine personale e solo per i file `.desktop`
 effettivamente elencati dal modello delle applicazioni (nessuna shell, nessun comando
@@ -33,7 +33,9 @@ arbitrario): `gio launch <file.desktop>`, ripiego `kstart --application <id>`.
    755 root senza setuid.
 3. **Primo avvio** di una copia del disco consegnato: schermata della configurazione
    iniziale (creazione dell'account).
-4. **SBOM** SPDX dell'immagine personale.
+4. **Inventario del software** (RPM e impronte dei file di OMNI Shell). syft fa arrestare
+   il runner su questa immagine; lo SBOM SPDX/CycloneDX della base M1 resta quello
+   verificato (AC-M1-08, run 42495967226).
 
 Il disco di test e il disco consegnato derivano dalla stessa immagine; differiscono solo
 per le opzioni di `bootc install` (chiave e console), verificate dal punto 2.
