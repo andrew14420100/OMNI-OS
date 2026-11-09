@@ -43,7 +43,7 @@ QtObject {
     function entry(a) {
         const cats = a.categories ? Array.prototype.slice.call(a.categories) : []
         const glyph = AppGlyphs.resolve(a.name, a.desktopId || "", a.iconName || "", cats)
-        return { name: a.name, comment: a.comment || "", desktopId: a.desktopId || a.name,
+        return { name: a.name, comment: a.comment || "", desktopId: a.desktopId || a.name, filePath: a.filePath || "",
                  iconName: a.iconName || "", categories: cats, glyph: glyph, category: categoryOf(cats, glyph) }
     }
 }

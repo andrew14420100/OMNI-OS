@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OMNI Shell
+Comment=Interfaccia OMNI (anteprima sperimentale) a schermo intero
+Exec=omni-shell --fullscreen
+Icon=preferences-desktop-theme
+Categories=System;
+Terminal=false

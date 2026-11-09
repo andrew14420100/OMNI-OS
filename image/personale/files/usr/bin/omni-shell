@@ -1,0 +1,5 @@
+#!/bin/sh
+# OMNI Shell V2 — anteprima sperimentale (non M4). Gira come applicazione dell'utente.
+# --real-launch: avvia davvero le applicazioni installate (file .desktop del sistema).
+export OMNI_QML_DIR=/usr/lib/omni-shell/qml
+exec /usr/lib/omni-shell/bin/omni-shell-prototipo --real-launch "$@"

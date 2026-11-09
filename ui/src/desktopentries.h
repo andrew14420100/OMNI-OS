@@ -12,6 +12,7 @@ struct DesktopEntry {
     QString comment;
     QString icon;
     QStringList categories;
+    QString path;          // percorso del file .desktop (vuoto per l'elenco dimostrativo)
 };
 
 class DesktopEntryModel : public QAbstractListModel {
@@ -19,7 +20,7 @@ class DesktopEntryModel : public QAbstractListModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged)
     Q_PROPERTY(bool demo READ demo NOTIFY countChanged)
 public:
-    enum Roles { NameRole = Qt::UserRole + 1, CommentRole, IconRole, CategoriesRole, IdRole };
+    enum Roles { NameRole = Qt::UserRole + 1, CommentRole, IconRole, CategoriesRole, IdRole, PathRole };
     explicit DesktopEntryModel(QObject *parent = nullptr);
 
     int rowCount(const QModelIndex &parent = {}) const override;
@@ -28,6 +29,8 @@ public:
     int count() const { return int(m_entries.size()); }
     bool demo() const { return m_demo; }
     Q_INVOKABLE QVariantMap get(int row) const;
+    // true se il percorso è quello di una voce letta dal modello (usato da AppLauncher)
+    bool containsPath(const QString &path) const;
 
     // Carica dalle cartelle indicate (vuoto = cartelle XDG standard). Ritorna il numero di voci.
     int load(const QStringList &dirs = {}, const QString &locale = {});

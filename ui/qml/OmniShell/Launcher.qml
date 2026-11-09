@@ -13,6 +13,7 @@ Item {
     property var apps: null
     property var session: null
     property bool open: false
+    property bool realLaunch: false        // true: le applicazioni vengono avviate davvero
     property string query: ""
     property string category: "tutte"
     property var catalog: []          // tutte le voci normalizzate
@@ -126,7 +127,8 @@ Item {
                         }
                     }
                     Item { Layout.fillHeight: true }
-                    PrototypeBadge { text: qsTr("Prototipo · avvio disattivato") }
+                    PrototypeBadge { visible: !root.realLaunch; text: qsTr("Prototipo · avvio disattivato") }
+                    Text { visible: root.realLaunch; text: qsTr("Avvio reale delle applicazioni"); color: Theme.success; font.family: Theme.fontFamily; font.pixelSize: Theme.fontCaption; font.weight: Font.DemiBold }
                 }
             }
 

@@ -12,6 +12,7 @@ Item {
     property bool open: false
     property string userName: ""
     signal closeRequested()
+    signal quitRequested()
     visible: card.opacity > 0
 
     MouseArea { anchors.fill: parent; enabled: root.open; onClicked: root.closeRequested() }
@@ -55,6 +56,7 @@ Item {
                         Text { text: root.userName || qsTr("Utente"); color: Theme.textPrimary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
                         Text { text: qsTr("Sessione del prototipo"); color: Theme.textSecondary; font.family: Theme.fontFamily; font.pixelSize: Theme.fontCaption }
                     }
+                    OmniIconButton { objectName: "qs:quit"; icon: "close"; label: qsTr("Esci da OMNI Shell (torna a Plasma)"); round: true; onClicked: root.quitRequested() }
                     OmniIconButton { icon: "lock"; label: qsTr("Blocca (prototipo)"); round: true; enabled: false; opacity: 0.55 }
                     OmniIconButton { icon: "power"; label: qsTr("Spegni (prototipo)"); round: true; enabled: false; opacity: 0.55 }
                 }
