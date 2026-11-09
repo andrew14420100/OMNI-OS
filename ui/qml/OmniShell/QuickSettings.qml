@@ -122,7 +122,7 @@ Item {
                 }
             }
 
-            // Nessuna funzione di intelligenza artificiale in questa fase (rimossa su richiesta).
+            // (nessun riquadro per funzioni non previste in questa fase)
         }
     }
 }
