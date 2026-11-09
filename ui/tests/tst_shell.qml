@@ -16,6 +16,10 @@ Item {
         ListElement { name: "OMNI Gaming Hub"; comment: "" }
     }
     Shell { id: shell; anchors.fill: parent; apps: apps; focus: true }
+    // Avvio reale: un lanciatore finto registra le richieste
+    QtObject { id: fakeLauncher; property bool enabled: true; property var calls: []
+        function launch(p) { calls = calls.concat([p]); return p !== "rifiuta" } }
+    Shell { id: realShell; width: 1600; height: 1000; visible: false; apps: apps; appLauncher: fakeLauncher }
     TestCase {
         name: "Shell"
         when: windowShown
@@ -52,6 +56,18 @@ Item {
             tryVerify(() => preview.active, 1000)
             compare(preview.entry.name, "OMNI Terminal")
             tryVerify(() => !preview.active, 5000)      // si richiude da sola: nessuna app avviata
+        }
+        function test_realLaunchUsesLauncherNotPreview() {
+            verify(realShell.realLaunch); verify(!shell.realLaunch)
+            const e = Object.assign({}, realShell.catalog[0], { filePath: "/usr/share/applications/prova.desktop" })
+            realShell.launch(e, 10, 10)
+            compare(fakeLauncher.calls, ["/usr/share/applications/prova.desktop"])
+            const preview = findChild(realShell, "LaunchPreview")
+            wait(100); verify(!preview.active)                 // nessuna anteprima simulata
+            const e2 = Object.assign({}, realShell.catalog[1], { filePath: "rifiuta" })
+            realShell.launch(e2, 10, 10)                      // avvio fallito: non entra nei recenti
+            const bar = findChild(realShell, "DesktopCards")
+            verify(bar !== null)
         }
         function test_demoNotificationsPresent() {
             const store = findChild(shell, "NotificationStore")
