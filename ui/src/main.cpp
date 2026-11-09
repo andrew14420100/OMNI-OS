@@ -98,7 +98,9 @@ int main(int argc, char *argv[]) {
     const QString qmlDir = qEnvironmentVariableIsSet("OMNI_QML_DIR") ? qEnvironmentVariable("OMNI_QML_DIR") : QStringLiteral(OMNI_QML_DIR);
     view.engine()->addImportPath(qmlDir);
     view.rootContext()->setContextProperty("appModel", &apps);
-    view.rootContext()->setContextProperty("appLauncher", &launcher);
+    // Nome distinto dalla proprietà "appLauncher" di Shell: con lo stesso nome il binding
+    // in Main.qml risolverebbe la proprietà stessa (null) invece dell'oggetto C++.
+    view.rootContext()->setContextProperty("omniLauncher", &launcher);
     view.rootContext()->setContextProperty("initialScene", p.value(scene));
     view.rootContext()->setContextProperty("initialDark", p.value(theme) != QLatin1String("light"));
     view.rootContext()->setContextProperty("initialReducedMotion", p.isSet(reduced));
@@ -108,6 +110,8 @@ int main(int argc, char *argv[]) {
     view.rootContext()->setContextProperty("softwareRendering", softwareGl);
     // nome dell'utente della sessione (solo lettura, mostrato nelle Impostazioni rapide)
     view.rootContext()->setContextProperty("currentUser", qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME")));
+    // QQuickView non collega da solo Qt.quit() all'applicazione (a differenza di QQmlApplicationEngine).
+    QObject::connect(view.engine(), &QQmlEngine::quit, &app, &QCoreApplication::quit, Qt::QueuedConnection);
     view.setResizeMode(QQuickView::SizeRootObjectToView);
     const QStringList wh = p.value(size).split('x');
     view.resize(wh.value(0).toInt() > 0 ? wh.value(0).toInt() : 1600, wh.value(1).toInt() > 0 ? wh.value(1).toInt() : 1000);

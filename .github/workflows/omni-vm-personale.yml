@@ -70,6 +70,7 @@ jobs:
           $PODMAN build --build-arg OMNI_IMAGE=localhost/omni-os:m1-ci -t localhost/omni-os:personale image/personale/ 2>&1 | tail -5
           $PODMAN image inspect --format '{{.Id}} {{.Created}}' localhost/omni-os:personale | tee "$RUNNER_TEMP/immagine-personale.txt"
       - name: Disco di prova (stessa immagine + chiave effimera) e prova reale
+        timeout-minutes: 45
         run: |
           set +e
           bash tests/vm/make_disk.sh localhost/omni-os:personale "$VMWORK" "$TESTKEY.pub" || exit 1
@@ -79,6 +80,7 @@ jobs:
           rm -f "$VMWORK/disk-pristine.raw"
           exit $rc
       - name: Disco PERSONALE (senza chiavi né utenti) e controlli di sicurezza
+        timeout-minutes: 30
         run: |
           set +e
           out=$RUNNER_TEMP/out; mkdir -p "$out"
@@ -88,6 +90,7 @@ jobs:
           cat "$VMWORK/sicurezza/sicurezza.md" >> "$GITHUB_STEP_SUMMARY" || true
           exit $rc
       - name: Primo avvio del disco personale (su una copia) - schermata di creazione dell'account
+        timeout-minutes: 15
         run: |
           set -euo pipefail
           w=$VMWORK/primo-avvio; mkdir -p "$w"

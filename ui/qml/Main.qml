@@ -13,5 +13,5 @@ Item {
         sourceComponent: initialScene === "gallery" ? gallery : shell
     }
     Component { id: gallery; Gallery {} }
-    Component { id: shell; Shell { apps: appModel; appLauncher: (typeof appLauncher !== "undefined") ? appLauncher : null; userName: currentUser; scene: initialScene; focus: true } }
+    Component { id: shell; Shell { apps: appModel; appLauncher: (typeof omniLauncher !== "undefined") ? omniLauncher : null; userName: currentUser; scene: initialScene; focus: true } }
 }

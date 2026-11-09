@@ -59,6 +59,8 @@ Nuova VM → *Custom* → *I will install the operating system later* → Linux,
    scegli lingua e tastiera, poi **crea il tuo account** (nome utente e password a tua
    scelta). Il disco non contiene utenti, password né chiavi: le crei tu ora.
 2. Dopo l'accesso, **OMNI Shell si apre a schermo intero** sopra Plasma.
+3. Al primo accesso Plasma mostra anche il **Benvenuto** di Fedora/KDE sopra OMNI Shell:
+   chiudilo con *Skip* (o completalo); non ricompare agli accessi successivi.
 
 ## 4. Usare OMNI Shell
 

@@ -8,6 +8,9 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 # shellcheck source=tests/vm/lib.sh
 . tests/vm/lib.sh
 w=$1; mkdir -p "$w/schermate"
+# Ogni comando SSH ha un limite di tempo: un processo grafico rimasto agganciato alla
+# sessione non deve bloccare la prova.
+vm_ssh() { timeout 120 bash tests/vm/vm_ssh.sh "$TESTKEY" "$@"; }
 LOG=$w/personale.log; : > "$LOG"
 ev=$w/personale-evidenze.txt; : > "$ev"
 res_init "$w/personale.md" "VM personale: avvio automatico di OMNI Shell e avvio reale delle applicazioni"
@@ -54,6 +57,7 @@ shot 01-omni-shell-avvio-automatico
 vm_ssh "ps -o user=,pid=,args= -p $shell_pid" >> "$ev" 2>&1
 if [ "$(vm_ssh "ps -o user= -p $shell_pid" 2>/dev/null | tr -d ' ')" = "$user" ]; then rec OK "OMNI Shell eseguita come utente non privilegiato"; else rec FAIL "proprietario del processo inatteso"; fi
 if vm_ssh "journalctl -b _UID=$uid --no-pager -o cat | grep -q 'avvio delle applicazioni: REALE'"; then rec OK "modalità di avvio reale attiva (registro dell'app)"; else rec FAIL "modalità di avvio reale non confermata dal registro"; fi
+if vm_ssh "journalctl -b _UID=$uid --no-pager -o cat | grep -q 'interfaccia: avvio delle applicazioni REALE'"; then rec OK "interfaccia collegata all'avvio reale (registro QML)"; else rec FAIL "interfaccia in modalità simulata"; fi
 wdisp=$(vm_ssh "tr '\\0' '\\n' < /proc/$shell_pid/environ | sed -n 's/^WAYLAND_DISPLAY=//p'" 2>/dev/null); wdisp=${wdisp:-wayland-1}
 ubus="DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus"
 envs="$ubus XDG_RUNTIME_DIR=/run/user/$uid WAYLAND_DISPLAY=$wdisp QT_QPA_PLATFORM=wayland QT_FORCE_STDERR_LOGGING=1"
@@ -61,12 +65,12 @@ plasma_before=$(vm_ssh "pgrep -u $user -x plasmashell; pgrep -u $user -x kwin_wa
 
 # --- geometria reale (seconda istanza temporanea, stesse dimensioni) ---
 for sc in desktop launcher quicksettings; do
-  vm_ssh "runuser -u $user -- env $envs /usr/bin/omni-shell --fullscreen --scene $sc --dump-geometry /tmp/geo-$sc.json --delay 5000 > /dev/null 2>&1; cat /tmp/geo-$sc.json" > "$w/geo-$sc.json" 2>/dev/null
+  vm_ssh "runuser -u $user -- env $envs /usr/bin/omni-shell --fullscreen --scene $sc --dump-geometry /tmp/geo-$sc.json --delay 5000 </dev/null > /dev/null 2>&1; cat /tmp/geo-$sc.json" > "$w/geo-$sc.json" 2>/dev/null
 done
 python3 -I -c 'import json,sys; m={}; [m.update(json.load(open(p))) for p in sys.argv[2:] if open(p).read().strip()]; json.dump(m, open(sys.argv[1],"w"))' "$w/geometria.json" "$w"/geo-desktop.json "$w"/geo-launcher.json "$w"/geo-quicksettings.json
 at() { python3 -I -c 'import json,sys; g=json.load(open(sys.argv[1])); e=g.get(sys.argv[2]); print("%d %d" % (e["x"], e["y"]) if e else "")' "$w/geometria.json" "$1"; }
 click() { local xy; xy=$(at "$1"); [ -n "$xy" ] || { echo "AVVISO: $1 assente" | tee -a "$LOG"; return 1; }; read -r x y <<< "$xy"; qmp click "$x" "$y" "$W" "$H"; }
-procs() { vm_ssh "ps -u $user -o comm= | sort -u" 2>/dev/null; }
+procs() { vm_ssh "ps -u $user -o comm=" 2>/dev/null | LC_ALL=C sort -u; }
 
 # real_launch <etichetta> <processo atteso (regex)> <azioni...>: esegue le azioni e controlla
 # che un NUOVO processo dell'utente corrisponda a quello atteso
@@ -77,7 +81,7 @@ real_launch() {
   "$@"
   for _ in $(seq 1 30); do
     sleep 2; after=$(procs)
-    new=$(comm -13 <(echo "$before") <(echo "$after") | tr '\n' ' ')
+    new=$(LC_ALL=C comm -13 <(echo "$before") <(echo "$after") | tr '\n' ' ')
     echo "$new" | grep -qE "$want" && break
   done
   echo "INFO $label: nuovi processi dell'utente: ${new:-nessuno}" | tee -a "$LOG" "$ev"
@@ -107,7 +111,8 @@ shot 03-plasma-dopo-uscita
 plasma_after=$(vm_ssh "pgrep -u $user -x plasmashell; pgrep -u $user -x kwin_wayland" 2>/dev/null | tr '\n' ' ')
 if [ -n "$plasma_before" ] && [ "$plasma_before" = "$plasma_after" ]; then rec OK "Plasma e KWin invariati (PID $plasma_after)"; else rec FAIL "PID di Plasma/KWin cambiati"; fi
 # riapertura dalla voce di menu (stesso meccanismo dei lanciatori di Plasma)
-vm_ssh "runuser -u $user -- env $envs gio launch /usr/share/applications/org.omnios.Shell.desktop" >> "$LOG" 2>&1
+# output del processo avviato staccato dalla sessione SSH (altrimenti ssh resta in attesa)
+vm_ssh "runuser -u $user -- env $envs gio launch /usr/share/applications/org.omnios.Shell.desktop </dev/null >/dev/null 2>&1" >> "$LOG" 2>&1
 sleep 12
 if vm_ssh "pgrep -u $user -f 'omni-shell-prototipo --real-launch'" >/dev/null 2>&1; then rec OK "OMNI Shell riaperta dalla voce di menu"; else rec FAIL "riapertura dalla voce di menu"; fi
 shot 04-omni-shell-riaperta
