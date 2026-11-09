@@ -69,6 +69,18 @@ jobs:
           set -euo pipefail
           $PODMAN build --build-arg OMNI_IMAGE=localhost/omni-os:m1-ci -t localhost/omni-os:personale image/personale/ 2>&1 | tail -5
           $PODMAN image inspect --format '{{.Id}} {{.Created}}' localhost/omni-os:personale | tee "$RUNNER_TEMP/immagine-personale.txt"
+      - name: SBOM dell'immagine personale
+        run: |
+          set -euo pipefail
+          # Prima dei passi con VM: disco e memoria del runner ancora liberi (la run
+          # 42583327356 è stata interrotta durante questo passo, eseguito alla fine).
+          df -h / "$RUNNER_TEMP" | tail -n +1; free -g
+          mkdir -p "$RUNNER_TEMP/out"
+          bash tests/ci/fetch_tool.sh syft
+          $PODMAN save --format oci-archive -o "$RUNNER_TEMP/personale.tar" localhost/omni-os:personale
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/personale.tar"
+          SYFT_CHECK_FOR_APP_UPDATE=false "$RUNNER_TEMP/bin/syft" scan "oci-archive:$RUNNER_TEMP/personale.tar" -q -o "spdx-json=$RUNNER_TEMP/out/omni-os-vm-personale.spdx.json"
+          rm -f "$RUNNER_TEMP/personale.tar"
       - name: Disco di prova (stessa immagine + chiave effimera) e prova reale
         timeout-minutes: 45
         run: |
@@ -77,7 +89,7 @@ jobs:
           sudo chown "$(id -u):$(id -g)" "$VMWORK/disk.raw"; mv "$VMWORK/disk.raw" "$VMWORK/disk-pristine.raw"
           bash tests/vm/personale_test.sh "$VMWORK/personale"; rc=$?
           cat "$VMWORK/personale/personale.md" >> "$GITHUB_STEP_SUMMARY" || true
-          rm -f "$VMWORK/disk-pristine.raw"
+          rm -f "$VMWORK/disk-pristine.raw" "$VMWORK/personale/disk.raw"
           exit $rc
       - name: Disco PERSONALE (senza chiavi né utenti) e controlli di sicurezza
         timeout-minutes: 30
@@ -87,6 +99,7 @@ jobs:
           bash tests/vm/make_disk.sh localhost/omni-os:personale "$out" none || exit 1
           sudo chown "$(id -u):$(id -g)" "$out/disk.raw"
           bash tests/vm/personale_sicurezza.sh "$out/disk.raw" "$TESTKEY.pub" "$VMWORK/sicurezza"; rc=$?
+          df -h / "$RUNNER_TEMP" | tail -n +1
           cat "$VMWORK/sicurezza/sicurezza.md" >> "$GITHUB_STEP_SUMMARY" || true
           exit $rc
       - name: Primo avvio del disco personale (su una copia) - schermata di creazione dell'account
@@ -101,14 +114,6 @@ jobs:
           kill "$(cat "$w/qemu.pid")" || true; sleep 3; rm -f "$w/disk.raw"
           sz=$(stat -c %s "$w/primo-avvio.png"); echo "schermata del primo avvio: $sz byte"
           [ "$sz" -gt 15000 ] || { echo "schermata quasi vuota: il desktop di configurazione non è comparso"; exit 1; }
-      - name: SBOM dell'immagine personale
-        run: |
-          set -euo pipefail
-          bash tests/ci/fetch_tool.sh syft
-          $PODMAN save --format oci-archive -o "$RUNNER_TEMP/personale.tar" localhost/omni-os:personale
-          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/personale.tar"
-          SYFT_CHECK_FOR_APP_UPDATE=false "$RUNNER_TEMP/bin/syft" scan "oci-archive:$RUNNER_TEMP/personale.tar" -q -o "spdx-json=$RUNNER_TEMP/out/omni-os-vm-personale.spdx.json"
-          rm -f "$RUNNER_TEMP/personale.tar"
       - name: Conversione in VMDK (VirtualBox, VMware) e somme di controllo
         run: |
           set -euo pipefail
