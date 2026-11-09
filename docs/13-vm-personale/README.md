@@ -41,3 +41,33 @@ Il disco di test e il disco consegnato derivano dalla stessa immagine; differisc
 per le opzioni di `bootc install` (chiave e console), verificate dal punto 2.
 
 Procedura per l'utente: [LEGGIMI.md](LEGGIMI.md).
+
+## Risultati (run 42588200637, commit ac5fede)
+
+Artifact `OMNI-OS-0.2.0-VM-personale` (3,3 GB): VMDK streamOptimized
+`420ff477d545ab652cfeeb2fbe5c1d36f83214d271f5b2064196773fb7a5b28f`, più SHA256SUMS,
+LEGGIMI, controlli di sicurezza e inventario (1746 pacchetti RPM).
+
+| Controllo | Esito |
+|---|---|
+| Prova reale (accesso, avvio automatico, Konsole, Dolphin, Firefox, Impostazioni, uscita, riapertura, nessun core dump) | 20/20 OK |
+| Sicurezza del disco consegnato (chiavi, utenti, root bloccato, sshd, argomenti del kernel, permessi) | 8/8 OK |
+| Primo avvio del disco consegnato: *Welcome to Plasma Desktop → Begin Setup* | OK |
+| Aggiornamenti automatici (rpm-ostreed-automatic, bootc-fetch-apply-updates) | non abilitati |
+
+Il deployment punta a `localhost/omni-os:personale`, che fuori dalla CI non esiste:
+`bootc upgrade` / `rpm-ostree upgrade` non trovano aggiornamenti. È voluto (nessun registry,
+nessuna pubblicazione).
+
+Problemi trovati e corretti durante il lavoro: caratteri in formato .ttf (non .otf);
+binding di Main.qml che lasciava l'interfaccia in modalità simulata; `Qt.quit()` non
+collegato con QQuickView; comando SSH bloccato dalla riapertura; controlli di sicurezza
+che cercavano nella cartella `backing` di composefs; arresto del runner durante `syft scan`
+(sostituito dall'inventario).
+
+| | |
+|---|---|
+| ![primo avvio](img/00-primo-avvio.png) | ![avvio automatico](img/01-omni-shell-avvio-automatico.png) |
+| ![Konsole](img/02-avvio-reale-Konsole.png) | ![Dolphin](img/02-avvio-reale-Dolphin.png) |
+| ![Firefox](img/02-avvio-reale-Firefox.png) | ![Impostazioni](img/02-avvio-reale-Impostazioni.png) |
+| ![dopo l'uscita](img/03-plasma-dopo-uscita.png) | ![riaperta](img/04-omni-shell-riaperta.png) |

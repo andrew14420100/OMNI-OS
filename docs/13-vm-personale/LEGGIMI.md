@@ -55,7 +55,8 @@ Nuova VM → *Custom* → *I will install the operating system later* → Linux,
 
 ## 3. Primo avvio
 
-1. Il primo avvio richiede 1–3 minuti. Compare la **configurazione iniziale di KDE**:
+1. Il primo avvio richiede 1–3 minuti. Compare *Welcome to Plasma Desktop*: premi
+   **Begin Setup** per la **configurazione iniziale di KDE**:
    scegli lingua e tastiera, poi **crea il tuo account** (nome utente e password a tua
    scelta). Il disco non contiene utenti, password né chiavi: le crei tu ora.
 2. Dopo l'accesso, **OMNI Shell si apre a schermo intero** sopra Plasma.
