@@ -26,6 +26,7 @@ extra=()
 if [ "$mode" = secureboot ]; then
   extra+=(-global "driver=cfi.pflash01,property=secure,value=on")
 fi
+# VM_RES=3840x2160: risoluzione preferita del monitor virtuale (EDID), per le prove in 4K.
 # Puntatore assoluto (tavoletta USB) per inviare movimenti e clic reali via QMP:
 # solo su richiesta (prova di integrazione dell'interfaccia), non nei test M1.
 if [ "${VM_TABLET:-0}" = 1 ]; then
@@ -40,7 +41,7 @@ qemu-system-x86_64 \
   -drive if=pflash,format=raw,unit=1,file="$work/OVMF_VARS.fd" \
   -drive if=virtio,format=raw,file="$disk" \
   -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 -device virtio-net-pci,netdev=n0 \
-  -device virtio-vga -display none \
+  -device "virtio-vga${VM_RES:+,xres=${VM_RES%x*},yres=${VM_RES#*x}}" -display none \
   -serial file:"$work/serial.log" \
   -qmp unix:"$work/qmp.sock",server=on,wait=off \
   -daemonize -pidfile "$work/qemu.pid"
