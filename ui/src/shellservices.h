@@ -55,6 +55,22 @@ signals:
     void failed(const QString &what, const QString &reason);
 };
 
+// Controllo della shell via D-Bus (org.omnios.Shell /Shell): usato dalle prove in VM per
+// conoscere la posizione reale degli elementi (clic veri) e per aprire i pannelli.
+class ShellControl : public QObject {
+    Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "org.omnios.Shell")
+public:
+    explicit ShellControl(QObject *parent = nullptr) : QObject(parent) {}
+    bool registerOnBus();
+public slots:
+    Q_SCRIPTABLE bool DumpGeometry(const QString &file);
+    Q_SCRIPTABLE void ShowPopup(const QString &name);
+    Q_SCRIPTABLE QString Version() { return QStringLiteral("0.3.0"); }
+signals:
+    void popupRequested(const QString &name);
+};
+
 class ThemeIconProvider : public QQuickImageProvider {
 public:
     ThemeIconProvider() : QQuickImageProvider(QQuickImageProvider::Pixmap) {}

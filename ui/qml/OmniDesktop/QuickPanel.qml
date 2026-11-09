@@ -18,7 +18,7 @@ PanelFrame {
 
     component QuickTile: Item {
         id: t
-        property string icon: "sparkle"
+        property string icon: "settings"
         property string label: ""
         property string sub: ""
         property bool checked: false

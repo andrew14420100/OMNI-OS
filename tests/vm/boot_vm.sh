@@ -29,6 +29,11 @@ fi
 # VM_RES=3840x2160: risoluzione preferita del monitor virtuale (EDID), per le prove in 4K.
 # Puntatore assoluto (tavoletta USB) per inviare movimenti e clic reali via QMP:
 # solo su richiesta (prova di integrazione dell'interfaccia), non nei test M1.
+# Scheda audio HDA virtuale (come in VirtualBox), senza uscita sull'host: PipeWire vede un
+# dispositivo reale e il volume si può verificare.
+if [ "${VM_AUDIO:-0}" = 1 ]; then
+  extra+=(-audiodev "none,id=snd0" -device intel-hda -device "hda-duplex,audiodev=snd0")
+fi
 if [ "${VM_TABLET:-0}" = 1 ]; then
   extra+=(-device "qemu-xhci,id=xhci" -device "usb-tablet,bus=xhci.0")
 fi

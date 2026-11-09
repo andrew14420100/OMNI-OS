@@ -68,6 +68,8 @@ kwin_probe_load() {
   u_sh "cat > /tmp/omniwin-$U.js <<'JS'
 workspace.windowAdded.connect(function (w) { print('OMNIWIN add ' + w.resourceClass + ' ' + Date.now()); });
 workspace.windowRemoved.connect(function (w) { print('OMNIWIN del ' + w.resourceClass + ' ' + Date.now()); });
+workspace.windowList().concat([]).forEach(function (w) { w.minimizedChanged.connect(function () { print('OMNIWIN min ' + w.resourceClass + ' ' + w.minimized + ' ' + Date.now()); }); });
+workspace.windowAdded.connect(function (w) { w.minimizedChanged.connect(function () { print('OMNIWIN min ' + w.resourceClass + ' ' + w.minimized + ' ' + Date.now()); }); });
 print('OMNIWIN pronto ' + Date.now());
 JS
 gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.loadScript /tmp/omniwin-$U.js omniwin

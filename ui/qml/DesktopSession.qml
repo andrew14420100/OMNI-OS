@@ -137,6 +137,10 @@ QtObject {
         function onStartRequested() { session.toggle("start") }
         function onShowDesktopRequested() { session.close(); kwinActions.invokeShortcut("Show Desktop") }
     }
+    property Connections control: Connections {
+        target: shellControl
+        function onPopupRequested(name) { session.popup = name === "chiudi" ? "" : name }
+    }
     property Connections sessionErrors: Connections {
         target: sessionActions
         function onActionFailed(what, reason) { notificationServer.postLocal(qsTr("Operazione non riuscita: %1").arg(what), reason, 2) }
@@ -152,6 +156,7 @@ QtObject {
 
     // ---------- superfici ----------
     property var backgroundWin: LayerWindow {
+        objectName: "sfondo"
         scopeName: "omni-sfondo"
         shellLayer: layerBackground
         edges: edgeTop | edgeBottom | edgeLeft | edgeRight
@@ -165,6 +170,7 @@ QtObject {
 
     property var barWin: LayerWindow {
         id: barWindow
+        objectName: "barra"
         scopeName: "omni-barra"
         shellLayer: layerTop
         edges: edgeBottom | edgeLeft | edgeRight
@@ -182,6 +188,7 @@ QtObject {
 
     property var popupWin: LayerWindow {
         id: popupWindow
+        objectName: "pannelli"
         scopeName: "omni-pannelli"
         shellLayer: layerTop
         edges: edgeTop | edgeBottom | edgeLeft | edgeRight
@@ -231,6 +238,7 @@ QtObject {
     }
 
     property var toastWin: LayerWindow {
+        objectName: "notifiche"
         scopeName: "omni-notifiche"
         shellLayer: layerOverlay
         edges: edgeBottom | edgeRight

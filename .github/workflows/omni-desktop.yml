@@ -84,6 +84,77 @@ jobs:
           rm -f "$VMWORK/disk-pristine.raw" "$VMWORK/prima/disk.raw"
           echo "rc_prima=$rc" >> "$GITHUB_ENV"
           exit 0
+      - name: "Dopo: immagine 0.3.0 (desktop OMNI)"
+        if: env.FASE != 'base'
+        run: bash tests/vm/build_personale.sh . localhost/omni-os:nuova 0.3.0-desktop-reale
+      - name: "Dopo: prove reali del desktop OMNI in VM 4K"
+        if: env.FASE != 'base'
+        timeout-minutes: 90
+        run: |
+          set +e
+          bash tests/vm/make_disk.sh localhost/omni-os:nuova "$VMWORK" "$TESTKEY.pub" || exit 1
+          sudo chown "$(id -u):$(id -g)" "$VMWORK/disk.raw"; mv "$VMWORK/disk.raw" "$VMWORK/disk-pristine.raw"
+          bash tests/vm/omni_desktop_test.sh "$VMWORK/dopo-prove"; rc=$?
+          cat "$VMWORK/dopo-prove/desktop.md" >> "$GITHUB_STEP_SUMMARY" || true
+          rm -f "$VMWORK/dopo-prove/disk.raw"
+          echo "rc_prove=$rc" >> "$GITHUB_ENV"
+          exit 0
+      - name: "Dopo: misure della 0.3.0 (stessa procedura della 0.2.0)"
+        if: env.FASE != 'base'
+        timeout-minutes: 75
+        run: |
+          set +e
+          bash tests/vm/prestazioni.sh "$VMWORK/dopo" "0.3.0 (dopo)"; rc=$?
+          cat "$VMWORK/dopo/prestazioni.md" >> "$GITHUB_STEP_SUMMARY" || true
+          rm -f "$VMWORK/disk-pristine.raw" "$VMWORK/dopo/disk.raw"
+          echo "rc_dopo=$rc" >> "$GITHUB_ENV"
+          exit 0
+      - name: Confronto prima/dopo
+        if: env.FASE == 'entrambe'
+        run: |
+          python3 tests/vm/confronto.py "$VMWORK/prima/misure.tsv" "$VMWORK/dopo/misure.tsv" | tee "$VMWORK/confronto.md"
+          { echo "## Confronto prima/dopo (stesso runner, stessa procedura)"; echo; cat "$VMWORK/confronto.md"; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Disco PERSONALE 0.3.0 (senza chiavi né utenti), sicurezza, primo avvio, VMDK
+        if: env.FASE != 'base' && inputs.pacchetto && env.rc_prove == '0'
+        timeout-minutes: 60
+        run: |
+          set -euo pipefail
+          out=$RUNNER_TEMP/out; mkdir -p "$out"
+          bash tests/vm/make_disk.sh localhost/omni-os:nuova "$out" none
+          sudo chown "$(id -u):$(id -g)" "$out/disk.raw"
+          bash tests/vm/personale_sicurezza.sh "$out/disk.raw" "$TESTKEY.pub" "$VMWORK/sicurezza"
+          cat "$VMWORK/sicurezza/sicurezza.md" >> "$GITHUB_STEP_SUMMARY"
+          w=$VMWORK/primo-avvio; mkdir -p "$w"
+          cp --sparse=always "$out/disk.raw" "$w/disk.raw"
+          VM_TABLET=1 bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" uefi
+          sleep 180
+          python3 tests/vm/qmp.py "$w/qmp.sock" screendump "$w/primo-avvio.png"
+          kill "$(cat "$w/qemu.pid")" || true; sleep 3; rm -f "$w/disk.raw"
+          sz=$(stat -c %s "$w/primo-avvio.png"); echo "schermata del primo avvio: $sz byte"; [ "$sz" -gt 15000 ]
+          { echo "# OMNI OS 0.3.0-desktop-reale: inventario del software"; echo
+            echo "## Pacchetti RPM"; $PODMAN run --rm localhost/omni-os:nuova rpm -qa --qf '%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\n' | LC_ALL=C sort
+            echo; echo "## File di OMNI Shell (non da RPM): SHA-256"
+            $PODMAN run --rm localhost/omni-os:nuova sh -c 'cd / && find usr/lib/omni-shell usr/bin/omni-shell usr/libexec/omni-os usr/lib/systemd/user/omni-shell*.service usr/lib/systemd/user/plasma-*.d usr/share/wayland-sessions/omni*.desktop usr/share/fonts/omni-inter usr/lib/omni-os -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum'
+          } > "$out/inventario-software.txt"
+          o=$RUNNER_TEMP/pacchetto; mkdir -p "$o"
+          qemu-img convert -p -O vmdk -o subformat=streamOptimized "$out/disk.raw" "$o/OMNI-OS-0.3.0-desktop.vmdk"
+          rm -f "$out/disk.raw"
+          cp "$out/inventario-software.txt" docs/14-desktop-reale/LEGGIMI.md "$o/"
+          cp "$VMWORK/sicurezza/sicurezza.md" "$o/controlli-di-sicurezza.md"
+          cp "$VMWORK/dopo-prove/desktop.md" "$o/prove-reali.md"
+          [ -f "$VMWORK/confronto.md" ] && cp "$VMWORK/confronto.md" "$o/confronto-prestazioni.md"
+          (cd "$o" && sha256sum ./*.vmdk ./*.txt ./*.md > "$RUNNER_TEMP/SHA256SUMS.txt") && mv "$RUNNER_TEMP/SHA256SUMS.txt" "$o/"
+          cat "$o/SHA256SUMS.txt"; ls -lh "$o"
+          { echo "## Pacchetto"; echo; echo '```'; cat "$o/SHA256SUMS.txt"; ls -lh "$o"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Pacchetto VM 0.3.0 (14 giorni, solo per chi ha accesso al repository)
+        if: env.FASE != 'base' && inputs.pacchetto && env.rc_prove == '0'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.3.0-desktop-VM
+          path: ${{ runner.temp }}/pacchetto/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
       - name: Evidenze
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -95,9 +166,24 @@ jobs:
             ${{ runner.temp }}/vm/prima/*.tsv
             ${{ runner.temp }}/vm/prima/*.txt
             ${{ runner.temp }}/vm/prima/*.log
-            ${{ runner.temp }}/vm/dopo/
-            !${{ runner.temp }}/vm/dopo/disk.raw
-            !${{ runner.temp }}/vm/**/OVMF_VARS.fd
+            ${{ runner.temp }}/vm/dopo/schermate/
+            ${{ runner.temp }}/vm/dopo/*.md
+            ${{ runner.temp }}/vm/dopo/*.tsv
+            ${{ runner.temp }}/vm/dopo/*.txt
+            ${{ runner.temp }}/vm/dopo/*.log
+            ${{ runner.temp }}/vm/dopo-prove/schermate/
+            ${{ runner.temp }}/vm/dopo-prove/*.md
+            ${{ runner.temp }}/vm/dopo-prove/*.txt
+            ${{ runner.temp }}/vm/dopo-prove/*.log
+            ${{ runner.temp }}/vm/dopo-prove/*.json
+            ${{ runner.temp }}/vm/sicurezza/*.md
+            ${{ runner.temp }}/vm/primo-avvio/primo-avvio.png
+            ${{ runner.temp }}/vm/confronto.md
             ${{ runner.temp }}/vm/*.log
           retention-days: 14
           if-no-files-found: ignore
+      - name: Esito (le prove reali devono passare)
+        if: env.FASE != 'base'
+        run: |
+          echo "prove reali: ${rc_prove:-non eseguite}; misure dopo: ${rc_dopo:-non eseguite}"
+          [ "${rc_prove:-1}" = 0 ]

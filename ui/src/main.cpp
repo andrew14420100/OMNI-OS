@@ -74,6 +74,8 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
     KWinActions kwin;
     PlasmaShellProxy plasmaShell;
     plasmaShell.registerOnBus();
+    ShellControl control;
+    control.registerOnBus();
     qInfo("avvio delle applicazioni: %s", launcher.enabled() ? "REALE (gio launch / kstart)" : "disattivato");
 
     QQmlApplicationEngine engine;
@@ -87,6 +89,7 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
     ctx->setContextProperty("systemStatus", &system);
     ctx->setContextProperty("kwinActions", &kwin);
     ctx->setContextProperty("plasmaShell", &plasmaShell);
+    ctx->setContextProperty("shellControl", &control);
     ctx->setContextProperty("shellPerf", &perf);
     ctx->setContextProperty("rendererName", renderer.isEmpty() ? QStringLiteral("non rilevato") : renderer);
     ctx->setContextProperty("softwareRendering", softwareGl);

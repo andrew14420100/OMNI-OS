@@ -113,6 +113,7 @@ Item {
                 }
                 // indicatore: lungo = finestra attiva, corto = app aperta
                 Rectangle {
+                    objectName: "bar:running:" + (task.entry ? task.entry.desktopId : (task.model.AppId || task.index))
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 1

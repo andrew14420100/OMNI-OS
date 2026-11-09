@@ -7,6 +7,13 @@
 #include <QDBusVariant>
 #include <QFileInfo>
 #include <QIcon>
+#include <QFile>
+#include <QGuiApplication>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QQuickItem>
+#include <QQuickWindow>
+#include <functional>
 #include <QUrl>
 
 void ShellPerf::mark(const QString &event) {
@@ -93,4 +100,37 @@ void KWinActions::krunnerQuery(const QString &text) {
                                             QStringLiteral("org.kde.krunner.App"), QStringLiteral("query"));
     m << text;
     kwinCall(this, m, QStringLiteral("ricerca di sistema"));
+}
+
+bool ShellControl::registerOnBus() {
+    auto bus = QDBusConnection::sessionBus();
+    const bool ok = bus.registerObject(QStringLiteral("/Shell"), this, QDBusConnection::ExportScriptableSlots)
+                 && bus.registerService(QStringLiteral("org.omnios.Shell"));
+    qInfo("controllo della shell (org.omnios.Shell): %s", ok ? "registrato" : "non registrato");
+    return ok;
+}
+
+void ShellControl::ShowPopup(const QString &name) { emit popupRequested(name); }
+
+bool ShellControl::DumpGeometry(const QString &file) {
+    QJsonObject windows, items;
+    for (QWindow *w : QGuiApplication::topLevelWindows()) {
+        auto *qw = qobject_cast<QQuickWindow *>(w);
+        if (!qw || !qw->isVisible()) continue;
+        const QString win = qw->objectName();
+        windows[win] = QJsonObject{{"w", qw->width()}, {"h", qw->height()}};
+        std::function<void(QQuickItem *)> walk = [&](QQuickItem *it) {
+            if (!it->isVisible() || it->opacity() <= 0.01) return;
+            if (!it->objectName().isEmpty() && it->width() > 0 && it->height() > 0) {
+                const QPointF c = it->mapToScene(QPointF(it->width() / 2, it->height() / 2));
+                items[it->objectName()] = QJsonObject{{"x", c.x()}, {"y", c.y()}, {"win", win}};
+            }
+            for (QQuickItem *k : it->childItems()) walk(k);
+        };
+        walk(qw->contentItem());
+    }
+    QFile f(file);
+    const bool ok = f.open(QIODevice::WriteOnly) && f.write(QJsonDocument(QJsonObject{{"windows", windows}, {"items", items}}).toJson()) > 0;
+    qInfo("geometria %s: %s (%lld elementi)", ok ? "salvata" : "NON salvata", qPrintable(file), qint64(items.size()));
+    return ok;
 }
