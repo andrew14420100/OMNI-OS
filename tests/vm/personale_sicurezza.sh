@@ -21,7 +21,9 @@ for part in "${loop}"p*; do
 done
 root=""; for r in "${roots[@]}"; do [ -d "$r/ostree/deploy" ] && root=$r; done
 [ -n "$root" ] || { rec FAIL "radice ostree non trovata"; res_end; exit 1; }
-dep=$(sudo find "$root/ostree/deploy" -mindepth 3 -maxdepth 3 -type d -path '*/deploy/*' -name '*.0' | head -1)
+# deployment: ostree/deploy/<stateroot>/deploy/<checksum>.0 (non la cartella "backing" di composefs)
+dep=$(sudo find "$root/ostree/deploy" -mindepth 3 -maxdepth 3 -type d -regex '.*/ostree/deploy/[^/]+/deploy/[0-9a-f]+\.[0-9]+' | head -1)
+if [ -z "$dep" ] || ! sudo test -f "$dep/etc/passwd"; then rec FAIL "deployment ostree non trovato"; res_end; exit 1; fi
 var=$(dirname "$(dirname "$dep")")/var
 echo "INFO deployment: ${dep#"$root"/}" | tee -a "$w/evidenze.txt"
 sudo cat "$dep.origin" 2>/dev/null | tee -a "$w/evidenze.txt"
@@ -35,7 +37,7 @@ if [ -z "$users" ]; then rec OK "nessun account utente preconfigurato (lo crea i
 rootpw=$(sudo awk -F: '$1=="root" {print $2}' "$dep/etc/shadow")
 case "$rootpw" in '!'*|'*'*) rec OK "account root bloccato (nessuna password)" ;; '') rec FAIL "root senza password (accesso libero)" ;; *) rec FAIL "root con password impostata" ;; esac
 if ! sudo test -e "$dep/etc/systemd/system/multi-user.target.wants/sshd.service"; then rec OK "sshd non abilitato"; else rec FAIL "sshd abilitato"; fi
-entries=$(for r in "${roots[@]}"; do sudo find "$r" -path '*loader/entries/*.conf' 2>/dev/null; done)
+entries=$(for r in "${roots[@]}"; do sudo find "$r" -path '*/loader*/entries/*.conf' 2>/dev/null; done)
 if [ -n "$entries" ] && ! for e in $entries; do sudo cat "$e"; done | grep -qE 'sshd|ttyS0'; then
   rec OK "argomenti del kernel senza opzioni di test (sshd, console seriale)"
 else rec FAIL "voci di avvio assenti o con opzioni di test"; fi
