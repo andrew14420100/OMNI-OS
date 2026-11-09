@@ -4,4 +4,4 @@ dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omni-os"
 rm -f "$dir/sessione-omni"
 systemctl --user unset-environment OMNI_SESSION 2>/dev/null || true
 systemctl --user stop omni-shell.service 2>/dev/null || true
-exec /usr/bin/startplasma-wayland "$@"
+exec /usr/libexec/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland "$@"

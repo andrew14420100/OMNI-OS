@@ -92,17 +92,16 @@ shot 01-desktop-4k
 m memoria.disponibile "$(vm_ssh "awk '/MemAvailable/ {printf \"%.0f\", \$2/1024}' /proc/meminfo")" MB "dopo l'accesso"
 
 # --- 5. apertura delle applicazioni: a freddo (cache svuotate) e riapertura ---
-if kwin_probe_load; then rec OK "sonda delle finestre di KWin attiva"; else rec FAIL "sonda delle finestre non attiva (tempi non misurabili)"; fi
-for spec in "Konsole|konsole|org.kde.konsole|konsole" "Dolphin|dolphin|org.kde.dolphin|dolphin" "Firefox|firefox|org.mozilla.firefox|firefox" "Impostazioni|systemsettings|org.kde.systemsettings|systemsettings"; do
-  IFS='|' read -r nome re dsk proc <<< "$spec"
-  f=$(app_desktop "$dsk|$re"); [ -n "$f" ] || { rec FAIL "$nome: file .desktop non trovato"; continue; }
+for spec in "Konsole|konsole|org.kde.konsole|konsole" "Dolphin|dolphin|org.kde.dolphin|dolphin" "Firefox|firefox|org.mozilla.firefox|firefox" "Impostazioni|settings|org.kde.systemsettings|systemsettings"; do
+  IFS='|' read -r nome q dsk proc <<< "$spec"
+  f=$(app_desktop "$dsk|$proc"); [ -n "$f" ] || { rec FAIL "$nome: file .desktop non trovato"; continue; }
   vm_ssh "sync; echo 3 > /proc/sys/vm/drop_caches" >/dev/null 2>&1
-  t0=$(app_launch "$f")
-  if d=$(win_wait "$re" "$t0" 120); then m "app.$nome.freddo" "$(python3 -c "print('%.2f' % ($d/1000))")" s "cache del disco svuotate"; else rec FAIL "$nome: nessuna finestra entro 120 s (a freddo)"; fi
+  d=$(app_open_ms "$f" "$q")
+  if [ -n "$d" ]; then m "app.$nome.freddo" "$(python3 -c "print('%.2f' % (${d% *}/1000))")" s "cache del disco svuotate${d#"${d% *}"}"; else rec FAIL "$nome: nessuna finestra entro 120 s (a freddo)"; fi
   sleep 4; shot "02-$nome"
   app_close "$proc"; sleep 3
-  t0=$(app_launch "$f")
-  if d=$(win_wait "$re" "$t0" 120); then m "app.$nome.riapertura" "$(python3 -c "print('%.2f' % ($d/1000))")" s "subito dopo la chiusura"; else rec FAIL "$nome: nessuna finestra entro 120 s (riapertura)"; fi
+  d=$(app_open_ms "$f" "$q")
+  if [ -n "$d" ]; then m "app.$nome.riapertura" "$(python3 -c "print('%.2f' % (${d% *}/1000))")" s "subito dopo la chiusura${d#"${d% *}"}"; else rec FAIL "$nome: nessuna finestra entro 120 s (riapertura)"; fi
   sleep 3; app_close "$proc"; sleep 2
 done
 rec OK "tempi di apertura misurati (vedi tabella)"

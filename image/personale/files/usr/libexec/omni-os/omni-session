@@ -7,7 +7,7 @@ mkdir -p "$dir"
 printf '%s\n' "${XDG_SESSION_ID:-sconosciuta}" > "$dir/sessione-omni"
 export OMNI_SESSION=1
 systemctl --user import-environment XDG_SESSION_ID OMNI_SESSION 2>/dev/null || true
-/usr/bin/startplasma-wayland "$@"
+/usr/libexec/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland "$@"
 rc=$?
 rm -f "$dir/sessione-omni"
 exit $rc

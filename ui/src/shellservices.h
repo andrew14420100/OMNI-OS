@@ -73,6 +73,8 @@ public slots:
     Q_SCRIPTABLE bool DumpGeometry(const QString &file);
     Q_SCRIPTABLE void ShowPopup(const QString &name);
     Q_SCRIPTABLE QString Version() { return QStringLiteral("0.3.0"); }
+    // eventi della sonda delle prove (script KWin): solo registrati nel journal
+    Q_SCRIPTABLE void Probe(const QString &text);
 signals:
     void popupRequested(const QString &name);
 };

@@ -65,17 +65,35 @@ u_sh() { vm_ssh "runuser -u $U -- env $ENVS bash -s" <<< "$1"; }
 
 # --- sonda delle finestre (script KWin: registra apertura/chiusura con l'ora di KWin) ---
 kwin_probe_load() {
+  # Le stampe degli script KWin non arrivano al journal (regole di log della sessione): lo
+  # script chiama OMNI Shell via D-Bus (org.omnios.Shell.Probe), che registra l'evento.
   u_sh "cat > /tmp/omniwin-$U.js <<'JS'
-workspace.windowAdded.connect(function (w) { print('OMNIWIN add ' + w.resourceClass + ' ' + Date.now()); });
-workspace.windowRemoved.connect(function (w) { print('OMNIWIN del ' + w.resourceClass + ' ' + Date.now()); });
-workspace.windowList().concat([]).forEach(function (w) { w.minimizedChanged.connect(function () { print('OMNIWIN min ' + w.resourceClass + ' ' + w.minimized + ' ' + Date.now()); }); });
-workspace.windowAdded.connect(function (w) { w.minimizedChanged.connect(function () { print('OMNIWIN min ' + w.resourceClass + ' ' + w.minimized + ' ' + Date.now()); }); });
-print('OMNIWIN pronto ' + Date.now());
+function tell(t) { callDBus('org.omnios.Shell', '/Shell', 'org.omnios.Shell', 'Probe', t + ' ' + Date.now()); }
+function watch(w) { w.minimizedChanged.connect(function () { tell('OMNIWIN min ' + w.resourceClass + ' ' + w.minimized); }); }
+workspace.windowList().forEach(watch);
+workspace.windowAdded.connect(function (w) { tell('OMNIWIN add ' + w.resourceClass); watch(w); });
+workspace.windowRemoved.connect(function (w) { tell('OMNIWIN del ' + w.resourceClass); });
+tell('OMNIWIN pronto');
 JS
 gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.loadScript /tmp/omniwin-$U.js omniwin
 gdbus call --session --dest org.kde.KWin --object-path /Scripting --method org.kde.kwin.Scripting.start" >> "$LOG" 2>&1
   sleep 2
   vm_ssh "journalctl -b _UID=$UID_ --no-pager -o cat | grep -q 'OMNIWIN pronto'" 2>/dev/null
+}
+# app_open_ms <file.desktop> <parola>: avvia come il lanciatore e misura, DENTRO la VM, i ms fino
+# a quando KWin elenca una finestra che corrisponde (org.kde.krunner1 /WindowsRunner, interrogato
+# ogni 100 ms). Stessa misura per ogni versione di OMNI OS. Se il servizio manca: tempo fino
+# all'avvio del processo, segnalato con il suffisso " processo".
+app_open_ms() {
+  u_sh "q='$2'; m() { gdbus call --session --dest org.kde.KWin --object-path /WindowsRunner --method org.kde.krunner1.Match \"\$q\" 2>/dev/null; }
+mode=finestra; m >/dev/null || mode=processo
+t0=\$(date +%s%3N); setsid -f gio launch /usr/share/applications/$1 >/dev/null 2>&1 </dev/null
+end=\$((t0 + 120000))
+while [ \$(date +%s%3N) -lt \$end ]; do
+  if [ \$mode = finestra ]; then m | grep -q \"\\[(\" && break; else pgrep -u \$(id -u) -f \"$2\" >/dev/null && break; fi
+  sleep 0.1
+done
+t1=\$(date +%s%3N); [ \$t1 -lt \$end ] && echo \"\$((t1 - t0))\$( [ \$mode = processo ] && echo ' processo')\""
 }
 # win_wait <regex-classe> <t0-ms> <timeout-s>: stampa i ms fra t0 e l'apertura della finestra
 win_wait() {

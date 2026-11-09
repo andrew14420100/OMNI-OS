@@ -114,6 +114,8 @@ bool ShellControl::registerOnBus() {
     return ok;
 }
 
+void ShellControl::Probe(const QString &text) { qInfo("sonda: %s", qPrintable(text.left(200))); }
+
 void ShellControl::ShowPopup(const QString &name) { emit popupRequested(name); }
 
 bool ShellControl::DumpGeometry(const QString &file) {
