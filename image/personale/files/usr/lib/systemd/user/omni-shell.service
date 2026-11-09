@@ -1,0 +1,19 @@
+[Unit]
+Description=OMNI Shell (interfaccia del desktop OMNI)
+PartOf=graphical-session.target
+After=plasma-kwin_wayland.service
+# Più arresti anomali di seguito: desktop Plasma di riserva (omni-recupero)
+OnFailure=omni-shell-recupero.service
+StartLimitIntervalSec=120
+StartLimitBurst=4
+
+[Service]
+Type=simple
+ExecCondition=/usr/libexec/omni-os/omni-session-check omni
+Environment=OMNI_QML_DIR=/usr/lib/omni-shell/qml
+Environment=QT_FORCE_STDERR_LOGGING=1
+ExecStart=/usr/lib/omni-shell/bin/omni-shell-prototipo --session
+Restart=on-failure
+RestartSec=1
+TimeoutStopSec=5s
+Slice=session.slice

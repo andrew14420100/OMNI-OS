@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=OMNI OS – modalità sicura (desktop Plasma)
+Comment=Desktop Plasma originale, senza OMNI Shell: da usare in caso di problemi
+Exec=/usr/libexec/omni-os/plasma-sicura
+TryExec=/usr/libexec/omni-os/plasma-sicura
+DesktopNames=KDE

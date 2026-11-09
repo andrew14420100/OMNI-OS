@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Firefox
+Comment=Navigatore web
+Icon=org.mozilla.firefox
+Exec=firefox %u
+Categories=Network;WebBrowser;

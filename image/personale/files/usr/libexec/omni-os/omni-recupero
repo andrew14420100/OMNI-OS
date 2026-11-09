@@ -1,0 +1,8 @@
+#!/bin/sh
+# OMNI Shell non riparte (più arresti anomali di seguito): si avvia il desktop Plasma di
+# riserva nella stessa sessione, così l'utente non resta mai senza interfaccia.
+dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omni-os"
+rm -f "$dir/sessione-omni"
+echo "OMNI Shell non disponibile: avvio del desktop Plasma di riserva (modalità sicura)"
+systemctl --user reset-failed plasma-plasmashell.service 2>/dev/null || true
+exec systemctl --user start plasma-plasmashell.service

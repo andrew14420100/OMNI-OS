@@ -39,14 +39,18 @@ Item {
         width: 48; height: 48
         scale: root.k
         transformOrigin: Item.TopLeft
-        // Rendering vettoriale con antialiasing multicampione, a risoluzione doppia.
-        layer.enabled: true
+        // Antialiasing analitico (CurveRenderer, Qt >= 6.6) senza buffer multicampione per icona;
+        // con Qt più vecchi (solo test locali) livello multicampione come prima.
+        readonly property bool curve: typeof Shape.CurveRenderer !== "undefined"
+        layer.enabled: !curve
         layer.samples: 4
         layer.smooth: true
         layer.textureSize: Qt.size(Math.ceil(root.size * 2), Math.ceil(root.size * 2))
 
         Shape {
             anchors.fill: parent
+            asynchronous: true
+            Component.onCompleted: if (canvas.curve) preferredRendererType = Shape.CurveRenderer
             ShapePath {
                 strokeWidth: -1
                 fillGradient: LinearGradient {
@@ -81,6 +85,8 @@ Item {
                 id: layerShape
                 required property var modelData
                 anchors.fill: parent
+                asynchronous: true
+                Component.onCompleted: if (canvas.curve) preferredRendererType = Shape.CurveRenderer
                 opacity: modelData.opacity !== undefined ? modelData.opacity : 1
                 function col(c) { return c === "ink" ? root.spec.ink : (c || "transparent") }
                 function pathOf(d) {

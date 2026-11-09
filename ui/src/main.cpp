@@ -7,6 +7,14 @@
 #include "desktopentries.h"
 #include "applauncher.h"
 #include "recorder.h"
+#include "notificationserver.h"
+#include "sessionactions.h"
+#include "shellservices.h"
+#include "systemstatus.h"
+#include <QIcon>
+#include <QQmlApplicationEngine>
+#include <pwd.h>
+#include <unistd.h>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -42,7 +50,59 @@ static QString glRendererName() {
     return name;
 }
 
+// Nome visualizzato dell'utente (campo GECOS), altrimenti il nome di accesso.
+static QString displayUserName() {
+    const QString login = qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME"));
+    if (const passwd *pw = getpwuid(getuid())) {
+        const QString gecos = QString::fromLocal8Bit(pw->pw_gecos).section(',', 0, 0).trimmed();
+        if (!gecos.isEmpty()) return gecos;
+    }
+    return login;
+}
+
+// Sessione OMNI: OMNI Shell è l'interfaccia del desktop (sfondo, barra delle applicazioni,
+// Start, pannelli) sopra KWin e i servizi di Plasma. Il pannello di Plasma non è attivo.
+static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &perf, const QString &qmlDir,
+                      const QString &renderer, bool softwareGl, bool reducedMotion) {
+    if (QIcon::themeName().isEmpty()) QIcon::setThemeName(QStringLiteral("breeze"));
+    QIcon::setFallbackThemeName(QStringLiteral("breeze"));
+    AppLauncher launcher(&apps, !apps.demo());
+    NotificationServer notifications;
+    notifications.registerOnBus();
+    SessionActions session;
+    SystemStatus system;
+    KWinActions kwin;
+    PlasmaShellProxy plasmaShell;
+    plasmaShell.registerOnBus();
+    qInfo("avvio delle applicazioni: %s", launcher.enabled() ? "REALE (gio launch / kstart)" : "disattivato");
+
+    QQmlApplicationEngine engine;
+    engine.addImportPath(qmlDir);
+    engine.addImageProvider(QStringLiteral("omniicon"), new ThemeIconProvider);
+    auto *ctx = engine.rootContext();
+    ctx->setContextProperty("appModel", &apps);
+    ctx->setContextProperty("omniLauncher", &launcher);
+    ctx->setContextProperty("notificationServer", &notifications);
+    ctx->setContextProperty("sessionActions", &session);
+    ctx->setContextProperty("systemStatus", &system);
+    ctx->setContextProperty("kwinActions", &kwin);
+    ctx->setContextProperty("plasmaShell", &plasmaShell);
+    ctx->setContextProperty("shellPerf", &perf);
+    ctx->setContextProperty("rendererName", renderer.isEmpty() ? QStringLiteral("non rilevato") : renderer);
+    ctx->setContextProperty("softwareRendering", softwareGl);
+    ctx->setContextProperty("initialReducedMotion", reducedMotion);
+    ctx->setContextProperty("currentUser", displayUserName());
+    perf.mark(QStringLiteral("servizi pronti"));
+    engine.load(QUrl::fromLocalFile(QDir(qmlDir).filePath(QStringLiteral("DesktopSession.qml"))));
+    if (engine.rootObjects().isEmpty()) {
+        qCritical("sessione OMNI: interfaccia non caricata");
+        return 1;
+    }
+    return app.exec();
+}
+
 int main(int argc, char *argv[]) {
+    ShellPerf perf;
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName("omni-shell-prototipo");
     QGuiApplication::setFont(QFont("Inter", 10));
@@ -69,8 +129,9 @@ int main(int argc, char *argv[]) {
     QCommandLineOption lowPower("low-power", "Risparmio risorse: sfondo statico (attivo da solo con rendering software)");
     QCommandLineOption fullscreen("fullscreen", "Finestra a schermo intero (prova nella sessione Plasma)");
     QCommandLineOption geometry("dump-geometry", "Scrive in JSON il centro degli elementi con objectName e termina", "file");
+    QCommandLineOption sessionMode("session", "Interfaccia del desktop OMNI (sessione OMNI: barra, Start, pannelli, notifiche)");
     QCommandLineOption accent("accent", "Colore d'accento (0 Aurora, 1 Iris, 2 Corallo, 3 Giada)", "n", "0");
-    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch});
+    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch, sessionMode});
     p.process(app);
 
     // piattaforma grafica effettiva (es. "wayland" nella sessione Plasma) e versione di Qt in uso
@@ -85,6 +146,12 @@ int main(int argc, char *argv[]) {
     qInfo("renderer OpenGL: %s%s", renderer.isEmpty() ? "non rilevato" : qPrintable(renderer), softwareGl ? " (rendering software: risparmio risorse automatico)" : "");
 
     DesktopEntryModel apps;
+    if (p.isSet(sessionMode)) {
+        apps.load({}, QLocale::system().name());
+        qInfo("applicazioni: %d (file .desktop del sistema, sola lettura)", apps.count());
+        const QString qmlDirS = qEnvironmentVariableIsSet("OMNI_QML_DIR") ? qEnvironmentVariable("OMNI_QML_DIR") : QStringLiteral(OMNI_QML_DIR);
+        return runSession(app, apps, perf, qmlDirS, renderer, softwareGl, p.isSet(reduced));
+    }
     int n = 0;
     if (!p.isSet(demo)) n = apps.load(p.values(appsDir), QLocale::system().name());
     if (n == 0) apps.loadDemo();
@@ -110,6 +177,7 @@ int main(int argc, char *argv[]) {
     view.rootContext()->setContextProperty("softwareRendering", softwareGl);
     // nome dell'utente della sessione (solo lettura, mostrato nelle Impostazioni rapide)
     view.rootContext()->setContextProperty("currentUser", qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME")));
+    view.rootContext()->setContextProperty("shellPerf", &perf);
     // QQuickView non collega da solo Qt.quit() all'applicazione (a differenza di QQmlApplicationEngine).
     QObject::connect(view.engine(), &QQmlEngine::quit, &app, &QCoreApplication::quit, Qt::QueuedConnection);
     view.setResizeMode(QQuickView::SizeRootObjectToView);

@@ -45,6 +45,17 @@ QtObject {
         "briefcase": "M3.5 8h17v11h-17zM9 8V5.5h6V8M3.5 13h17",
         "gamepad": "M7 8h10a4 4 0 0 1 3.9 3.2l.9 4.5a2.6 2.6 0 0 1-4.5 2.2L15.5 16h-7l-1.8 1.9a2.6 2.6 0 0 1-4.5-2.2l.9-4.5A4 4 0 0 1 7 8zM8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01",
         "tool":    "M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3zM6 5l2.5 2.5M4.5 9.5l2-2",
+        "volume-off": "M4 9h4l5-4v14l-5-4H4zM16 9.5l5 5M21 9.5l-5 5",
+        "ethernet": "M5 4h14v10H5zM9 14v3h6v-3M12 17v3M8 7.5h1M11.5 7.5h1M15 7.5h1",
+        "network-off": "M3 3l18 18M2.5 9a14 14 0 0 1 4.6-3M10 5.1a14 14 0 0 1 11.5 3.9M8.5 16a5 5 0 0 1 5.5-1M12 19.5h.01",
+        "display": "M3.5 5h17v11h-17zM9 20h6M12 16v4",
+        "info":    "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5h.01",
+        "drive":   "M3.5 13.5l2.5-8h12l2.5 8v5h-17zM3.5 13.5h17M16.5 16h.01",
+        "shield":  "M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6zM8.5 12l2.5 2.5 4.5-5",
+        "logout":  "M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10",
+        "arrow-left": "M19 12H5M11 6l-6 6 6 6",
+        "plus":    "M12 5v14M5 12h14",
+        "mic":     "M12 3.5a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0v-5a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v3.5",
         "cpu":     "M7 7h10v10H7zM10 10h4v4h-4zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"
     })
     function path(name) { return paths[name] !== undefined ? paths[name] : paths["sparkle"] }

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Dolphin
+Comment=Gestore dei file
+Icon=system-file-manager
+Exec=dolphin %u
+Categories=Qt;KDE;System;FileManager;

@@ -15,13 +15,13 @@ echo "Qt nell'immagine OMNI: qt6-qtbase-$qb qt6-qtdeclarative-$qd" | tee "$out/q
 sudo podman run --rm --security-opt label=disable -e qb="$qb" -e qd="$qd" -v "$PWD/ui":/src:ro -v "$out":/out quay.io/fedora/fedora:45 bash -euo pipefail -c '
   echo "Qt richiesto: qt6-qtbase-$qb qt6-qtdeclarative-$qd"
   # pacchetti di sviluppo della STESSA versione di Qt presente nell immagine, se ancora nei repository
-  if dnf -y -q install --setopt=install_weak_deps=False cmake gcc-c++ rsms-inter-fonts \
+  if dnf -y -q install --setopt=install_weak_deps=False cmake gcc-c++ rsms-inter-fonts dbus-daemon dbus-tools glib2 \
        "qt6-qtbase-$qb" "qt6-qtdeclarative-$qd" "qt6-qtbase-devel-$qb" "qt6-qtdeclarative-devel-$qd" >/tmp/dnf.log 2>&1; then
     echo "pacchetti di sviluppo: stessa versione dell immagine" > /out/qt-build-match.txt
   else
     tail -5 /tmp/dnf.log
     echo "AVVISO: versione esatta non disponibile, uso la piu recente di Fedora 45"
-    dnf -y -q install --setopt=install_weak_deps=False cmake gcc-c++ rsms-inter-fonts qt6-qtbase-devel qt6-qtdeclarative-devel >/dev/null
+    dnf -y -q install --setopt=install_weak_deps=False cmake gcc-c++ rsms-inter-fonts dbus-daemon dbus-tools glib2 qt6-qtbase-devel qt6-qtdeclarative-devel >/dev/null
     echo "pacchetti di sviluppo: versione piu recente (diversa dall immagine)" > /out/qt-build-match.txt
   fi
   rpm -q qt6-qtbase qt6-qtbase-devel qt6-qtdeclarative qt6-qtdeclarative-devel gcc-c++ cmake > /out/qt-build.txt
