@@ -23,7 +23,7 @@ Shell resta scritta in Qt/QML.
 ## 2. Architettura
 
 ```
-plasmalogin ── sessione "OMNI OS" (/usr/share/wayland-sessions/omni.desktop)
+plasmalogin ── sessione "OMNI OS" (/usr/share/wayland-sessions/plasma.desktop, la voce predefinita del gestore di accesso)
                  └─ /usr/libexec/omni-os/omni-session → startplasma-wayland
                       ├─ KWin (finestre, effetti, Alt+Tab, desktop virtuali)       [Plasma]
                       ├─ ksmserver, kded, powerdevil, polkit, portali, kglobalaccel  [Plasma]

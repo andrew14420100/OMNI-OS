@@ -20,7 +20,7 @@ W=${VM_RES%x*} H=${VM_RES#*x} SCALA=${SCALA:-2}
 
 vm_fresh "$w" || { rec FAIL "avvio della VM"; res_end; exit 1; }
 rec OK "VM avviata ($(vm_version), ${VM_RES})"
-expect_ok "sessione OMNI e modalità sicura installate" vm_ssh "test -f /usr/share/wayland-sessions/omni.desktop && test -f /usr/share/wayland-sessions/omnios-sicura.desktop"
+expect_ok "sessione OMNI e modalità sicura installate" vm_ssh "grep -q omni-session /usr/share/wayland-sessions/plasma.desktop && test -f /usr/share/wayland-sessions/omnios-sicura.desktop"
 expect_ok "servizio utente OMNI Shell e recupero installati" vm_ssh "test -f /usr/lib/systemd/user/omni-shell.service && test -f /usr/lib/systemd/user/omni-shell-recupero.service && test -f /usr/lib/systemd/user/plasma-plasmashell.service.d/10-omni.conf"
 expect_ok "nessun avvio automatico residuo della versione 0.2" vm_ssh "! test -e /etc/xdg/autostart/org.omnios.Shell.desktop"
 expect_ok "nessun file setuid/setgid in OMNI Shell" vm_ssh "! find /usr/lib/omni-shell /usr/libexec/omni-os -perm /6000 | grep -q ."
