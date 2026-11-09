@@ -31,6 +31,12 @@ target_compile_definitions(tst_desktop PRIVATE QUICK_TEST_SOURCE_DIR="${CMAKE_CU
     OMNI_TEST_APPS="${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop")
 add_test(NAME desktop COMMAND tst_desktop -import ${CMAKE_CURRENT_SOURCE_DIR}/qml)
 
+add_executable(tst_session tests/tst_session.cpp src/notificationserver.cpp src/sessionactions.cpp src/systemstatus.cpp src/shellservices.cpp)
+target_link_libraries(tst_session PRIVATE omni_desktopentries Qt6::Quick Qt6::Test Qt6::DBus)
+target_compile_definitions(tst_session PRIVATE OMNI_QML_SRC="${CMAKE_CURRENT_SOURCE_DIR}/qml" OMNI_TEST_APPS="${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop")
+add_test(NAME session COMMAND tst_session)
+set_tests_properties(session PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 add_executable(tst_notifications tests/tst_notifications.cpp src/notificationserver.cpp)
 target_link_libraries(tst_notifications PRIVATE Qt6::Test Qt6::DBus)
 target_include_directories(tst_notifications PRIVATE src)

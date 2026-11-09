@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Window
-import QtCore
 import OmniDesign
 import OmniShell
 import OmniDesktop
@@ -9,7 +8,7 @@ import OmniDesktop
 // non sono attivi in questa sessione). Superfici: sfondo, barra delle applicazioni,
 // pannelli a comparsa (Start, impostazioni rapide, notifiche), fumetti delle notifiche.
 QtObject {
-    id: session
+    id: omni
 
     // ---------- stato ----------
     property string popup: ""                 // "", "start", "quick", "notifications", "menu"
@@ -18,19 +17,12 @@ QtObject {
     property var appIndex: AppIndex { model: appModel }
     readonly property int availableHeight: Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 1000
     property var menuItems: []                 // menu contestuale (barra o Start)
+    property bool panelsReady: false           // pannelli creati dopo il primo fotogramma
     property real menuX: 0
     property real menuY: 0
 
-    property Settings prefs: Settings {
-        category: "OmniShell"
-        property bool dark: true
-        property int accent: 0
-        property bool reducedMotion: false
-        property var startPins: []
-        property var barPins: []
-        property bool pinsInitialized: false
-    }
-    property Binding pinsToTasks: Binding { target: session.services.tasks; property: "pinned"; value: session.barPins; when: session.services.tasks !== null }
+    property var prefs: shellSettings          // preferenze salvate (C++, QSettings)
+    property Binding pinsToTasks: Binding { target: omni.services.tasks; property: "pinned"; value: omni.barPins; when: omni.services.tasks !== null }
     property var startPins: prefs.startPins
     property var barPins: prefs.barPins
 
@@ -45,7 +37,7 @@ QtObject {
     // ---------- azioni ----------
     function toggle(p) { popup = popup === p ? "" : p }
     function close() { popup = "" }
-    function openStart(searchFocus) { popup = "start"; if (searchFocus) Qt.callLater(() => popupWin.start.focusSearch()) }
+    function openStart(searchFocus) { popup = "start"; if (searchFocus) Qt.callLater(() => { if (popupWin.start.item) popupWin.start.item.focusSearch() }) }
     function launchEntry(e) {
         if (!e || !e.filePath) return
         close()
@@ -128,18 +120,18 @@ QtObject {
     property Timer clock: Timer {
         running: true; repeat: true
         interval: 60000 - (new Date().getSeconds() * 1000 + new Date().getMilliseconds())
-        onTriggered: { session.now = new Date(); interval = 60000 - (session.now.getSeconds() * 1000 + session.now.getMilliseconds()) }
+        onTriggered: { omni.now = new Date(); interval = 60000 - (omni.now.getSeconds() * 1000 + omni.now.getMilliseconds()) }
     }
 
     // ---------- servizi di sistema ----------
     property Connections metaKey: Connections {
         target: plasmaShell
-        function onStartRequested() { session.toggle("start") }
-        function onShowDesktopRequested() { session.close(); kwinActions.invokeShortcut("Show Desktop") }
+        function onStartRequested() { omni.toggle("start") }
+        function onShowDesktopRequested() { omni.close(); kwinActions.invokeShortcut("Show Desktop") }
     }
     property Connections control: Connections {
         target: shellControl
-        function onPopupRequested(name) { session.popup = name === "chiudi" ? "" : name }
+        function onPopupRequested(name) { omni.popup = name === "chiudi" ? "" : name }
     }
     property Connections sessionErrors: Connections {
         target: sessionActions
@@ -165,7 +157,7 @@ QtObject {
         color: Theme.background
         visible: true
         Wallpaper { anchors.fill: parent; animate: false }
-        MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton; onClicked: session.close() }
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton; onClicked: omni.close() }
     }
 
     property var barWin: LayerWindow {
@@ -181,9 +173,9 @@ QtObject {
         onFrameSwapped: if (!firstFrame) {
             firstFrame = true
             shellPerf.mark("primo fotogramma")
-            Qt.callLater(session.afterFirstFrame)
+            Qt.callLater(omni.afterFirstFrame)
         }
-        Taskbar { anchors.fill: parent; session: session }
+        Taskbar { anchors.fill: parent; session: omni }
     }
 
     property var popupWin: LayerWindow {
@@ -193,46 +185,52 @@ QtObject {
         shellLayer: layerTop
         edges: edgeTop | edgeBottom | edgeLeft | edgeRight
         zone: 0
-        keyboard: session.popup !== "" ? keyboardExclusive : keyboardNone
+        keyboard: omni.popup !== "" ? keyboardExclusive : keyboardNone
         width: Screen.width; height: Screen.height - 48
-        visible: session.popup !== ""
-        property alias start: startMenu
+        visible: omni.popup !== ""
+        property alias start: startLoader
         onVisibleChanged: if (visible) {
-            if (session.popup === "start") { startMenu.reset(); startMenu.focusSearch() }
-            if (session.popup === "quick") quickPanel.reset()
+            if (omni.popup === "start" && startLoader.item) { startLoader.item.reset(); startLoader.item.focusSearch() }
+            if (omni.popup === "quick" && quickLoader.item) quickLoader.item.reset()
         }
         Item {
             anchors.fill: parent
             focus: true
-            Keys.onEscapePressed: session.close()
+            Keys.onEscapePressed: omni.close()
             // clic fuori dai pannelli: chiude (come in Windows)
-            MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton; onClicked: session.close() }
-            StartMenu {
-                id: startMenu
-                session: session
-                shown: session.popup === "start"
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton; onClicked: omni.close() }
+            // Pannelli creati in background dopo il primo fotogramma della barra (avvio più rapido);
+            // se l'utente apre un pannello prima, viene creato subito.
+            Loader {
+                id: startLoader
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 12 }
-                focus: shown
+                active: omni.panelsReady || omni.popup === "start"
+                asynchronous: omni.popup !== "start"
+                focus: omni.popup === "start"
+                sourceComponent: StartMenu { session: omni; shown: omni.popup === "start"; focus: true }
+                onLoaded: if (omni.popup === "start") { item.reset(); item.focusSearch() }
             }
-            QuickPanel {
-                id: quickPanel
-                session: session
-                shown: session.popup === "quick"
+            Loader {
+                id: quickLoader
                 anchors { right: parent.right; bottom: parent.bottom; margins: 12 }
-                focus: shown
+                active: omni.panelsReady || omni.popup === "quick"
+                asynchronous: omni.popup !== "quick"
+                focus: omni.popup === "quick"
+                sourceComponent: QuickPanel { session: omni; shown: omni.popup === "quick"; focus: true }
             }
-            NotificationPanel {
-                id: notePanel
-                session: session
-                shown: session.popup === "notifications"
+            Loader {
+                id: notesLoader
                 anchors { right: parent.right; bottom: parent.bottom; margins: 12 }
-                focus: shown
+                active: omni.panelsReady || omni.popup === "notifications"
+                asynchronous: omni.popup !== "notifications"
+                focus: omni.popup === "notifications"
+                sourceComponent: NotificationPanel { session: omni; shown: omni.popup === "notifications"; focus: true }
             }
             ContextMenu {
-                session: session
-                visible: session.popup === "menu"
-                x: Math.min(parent.width - width - 8, Math.max(8, session.menuX))
-                y: Math.min(parent.height - height - 8, session.menuY - height - 8 < 8 ? session.menuY + 8 : session.menuY - height - 8)
+                session: omni
+                visible: omni.popup === "menu"
+                x: Math.min(parent.width - width - 8, Math.max(8, omni.menuX))
+                y: Math.min(parent.height - height - 8, omni.menuY - height - 8 < 8 ? omni.menuY + 8 : omni.menuY - height - 8)
             }
         }
     }
@@ -244,11 +242,12 @@ QtObject {
         edges: edgeBottom | edgeRight
         zone: 0
         width: 396; height: Math.max(1, toasts.implicitHeight + 16)
-        visible: toasts.ids.length > 0 && session.popup !== "notifications"
-        ToastStack { id: toasts; x: 8; y: 8; onOpenCenter: session.popup = "notifications" }
+        visible: toasts.ids.length > 0 && omni.popup !== "notifications"
+        ToastStack { id: toasts; x: 8; y: 8; onOpenCenter: omni.popup = "notifications" }
     }
 
     function afterFirstFrame() {
+        panelsReady = true
         services.loadLate()
         systemStatus.refresh()
         sessionActions.refresh()

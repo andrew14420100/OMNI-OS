@@ -71,6 +71,37 @@ signals:
     void popupRequested(const QString &name);
 };
 
+// Preferenze dell'utente (QSettings, ~/.config/omni-os/omni-shell.conf): tema, accento,
+// movimento ridotto, app aggiunte a Start e alla barra.
+class ShellSettings : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool dark READ dark WRITE setDark NOTIFY changed)
+    Q_PROPERTY(int accent READ accent WRITE setAccent NOTIFY changed)
+    Q_PROPERTY(bool reducedMotion READ reducedMotion WRITE setReducedMotion NOTIFY changed)
+    Q_PROPERTY(QStringList startPins READ startPins WRITE setStartPins NOTIFY changed)
+    Q_PROPERTY(QStringList barPins READ barPins WRITE setBarPins NOTIFY changed)
+    Q_PROPERTY(bool pinsInitialized READ pinsInitialized WRITE setPinsInitialized NOTIFY changed)
+public:
+    explicit ShellSettings(const QString &file = QString(), QObject *parent = nullptr);
+    bool dark() const;
+    int accent() const;
+    bool reducedMotion() const;
+    QStringList startPins() const;
+    QStringList barPins() const;
+    bool pinsInitialized() const;
+    void setDark(bool v) { set("dark", v); }
+    void setAccent(int v) { set("accent", v); }
+    void setReducedMotion(bool v) { set("reducedMotion", v); }
+    void setStartPins(const QStringList &v) { set("startPins", v); }
+    void setBarPins(const QStringList &v) { set("barPins", v); }
+    void setPinsInitialized(bool v) { set("pinsInitialized", v); }
+signals:
+    void changed();
+private:
+    void set(const char *key, const QVariant &v);
+    QString m_file;
+};
+
 class ThemeIconProvider : public QQuickImageProvider {
 public:
     ThemeIconProvider() : QQuickImageProvider(QQuickImageProvider::Pixmap) {}

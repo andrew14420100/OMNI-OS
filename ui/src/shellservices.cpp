@@ -7,6 +7,9 @@
 #include <QDBusVariant>
 #include <QFileInfo>
 #include <QIcon>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QDir>
 #include <QFile>
 #include <QGuiApplication>
 #include <QJsonDocument>
@@ -133,4 +136,27 @@ bool ShellControl::DumpGeometry(const QString &file) {
     const bool ok = f.open(QIODevice::WriteOnly) && f.write(QJsonDocument(QJsonObject{{"windows", windows}, {"items", items}}).toJson()) > 0;
     qInfo("geometria %s: %s (%lld elementi)", ok ? "salvata" : "NON salvata", qPrintable(file), qint64(items.size()));
     return ok;
+}
+
+ShellSettings::ShellSettings(const QString &file, QObject *parent) : QObject(parent), m_file(file) {
+    if (m_file.isEmpty()) {
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/omni-os");
+        QDir().mkpath(dir);
+        m_file = dir + QStringLiteral("/omni-shell.conf");
+    }
+}
+#define OMNI_GET(type, key, def) QSettings(m_file, QSettings::IniFormat).value(QStringLiteral(key), def).value<type>()
+bool ShellSettings::dark() const { return OMNI_GET(bool, "dark", true); }
+int ShellSettings::accent() const { return OMNI_GET(int, "accent", 0); }
+bool ShellSettings::reducedMotion() const { return OMNI_GET(bool, "reducedMotion", false); }
+QStringList ShellSettings::startPins() const { return OMNI_GET(QStringList, "startPins", QStringList()); }
+QStringList ShellSettings::barPins() const { return OMNI_GET(QStringList, "barPins", QStringList()); }
+bool ShellSettings::pinsInitialized() const { return OMNI_GET(bool, "pinsInitialized", false); }
+#undef OMNI_GET
+void ShellSettings::set(const char *key, const QVariant &v) {
+    QSettings st(m_file, QSettings::IniFormat);
+    if (st.value(QLatin1String(key)) == v) return;
+    st.setValue(QLatin1String(key), v);
+    st.sync();
+    emit changed();
 }
