@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: omni-desktop-${{ github.ref }}
+  group: omni-desktop-${{ github.ref }}-${{ inputs.fase }}
   cancel-in-progress: true
 
 env:
