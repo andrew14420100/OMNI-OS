@@ -5,6 +5,7 @@
 //   --theme dark|light   --reduced-motion   --demo-apps   --apps-dir DIR
 //   --size 1600x1000     --screenshot FILE.png [--delay MS]
 #include "desktopentries.h"
+#include "applauncher.h"
 #include "recorder.h"
 #include <QFile>
 #include <QJsonDocument>
@@ -64,11 +65,12 @@ int main(int argc, char *argv[]) {
     QCommandLineOption delay("delay", "Attesa prima della schermata (ms)", "ms", "1500");
     QCommandLineOption record("record", "Registra un video reale delle interazioni (MP4, richiede ffmpeg)", "file");
     QCommandLineOption script("script", "Script JSON delle interazioni per --record", "file");
+    QCommandLineOption realLaunch("real-launch", "Avvio REALE delle applicazioni installate (solo file .desktop del sistema)");
     QCommandLineOption lowPower("low-power", "Risparmio risorse: sfondo statico (attivo da solo con rendering software)");
     QCommandLineOption fullscreen("fullscreen", "Finestra a schermo intero (prova nella sessione Plasma)");
     QCommandLineOption geometry("dump-geometry", "Scrive in JSON il centro degli elementi con objectName e termina", "file");
     QCommandLineOption accent("accent", "Colore d'accento (0 Aurora, 1 Iris, 2 Corallo, 3 Giada)", "n", "0");
-    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower});
+    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch});
     p.process(app);
 
     // piattaforma grafica effettiva (es. "wayland" nella sessione Plasma) e versione di Qt in uso
@@ -88,10 +90,17 @@ int main(int argc, char *argv[]) {
     if (n == 0) apps.loadDemo();
     qInfo("applicazioni: %d (%s)", apps.count(), apps.demo() ? "elenco dimostrativo" : "file .desktop del sistema, sola lettura");
 
+    // L'avvio reale è possibile solo con l'elenco del sistema, mai con quello dimostrativo.
+    AppLauncher launcher(&apps, p.isSet(realLaunch) && !apps.demo());
+    qInfo("avvio delle applicazioni: %s", launcher.enabled() ? "REALE (gio launch / kstart)" : "disattivato (prototipo)");
+
     QQuickView view;
     const QString qmlDir = qEnvironmentVariableIsSet("OMNI_QML_DIR") ? qEnvironmentVariable("OMNI_QML_DIR") : QStringLiteral(OMNI_QML_DIR);
     view.engine()->addImportPath(qmlDir);
     view.rootContext()->setContextProperty("appModel", &apps);
+    // Nome distinto dalla proprietà "appLauncher" di Shell: con lo stesso nome il binding
+    // in Main.qml risolverebbe la proprietà stessa (null) invece dell'oggetto C++.
+    view.rootContext()->setContextProperty("omniLauncher", &launcher);
     view.rootContext()->setContextProperty("initialScene", p.value(scene));
     view.rootContext()->setContextProperty("initialDark", p.value(theme) != QLatin1String("light"));
     view.rootContext()->setContextProperty("initialReducedMotion", p.isSet(reduced));
@@ -101,6 +110,8 @@ int main(int argc, char *argv[]) {
     view.rootContext()->setContextProperty("softwareRendering", softwareGl);
     // nome dell'utente della sessione (solo lettura, mostrato nelle Impostazioni rapide)
     view.rootContext()->setContextProperty("currentUser", qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME")));
+    // QQuickView non collega da solo Qt.quit() all'applicazione (a differenza di QQmlApplicationEngine).
+    QObject::connect(view.engine(), &QQmlEngine::quit, &app, &QCoreApplication::quit, Qt::QueuedConnection);
     view.setResizeMode(QQuickView::SizeRootObjectToView);
     const QStringList wh = p.value(size).split('x');
     view.resize(wh.value(0).toInt() > 0 ? wh.value(0).toInt() : 1600, wh.value(1).toInt() > 0 ? wh.value(1).toInt() : 1000);

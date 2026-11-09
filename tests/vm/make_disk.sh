@@ -6,18 +6,22 @@
 # Invocazione secondo la documentazione di bootc: storage predefinito di podman
 # dell'host montato come /var/lib/containers.
 #
-# Uso: make_disk.sh <immagine> <dir-uscita> <chiave-pubblica-ssh-di-prova>
+# Uso: make_disk.sh <immagine> <dir-uscita> <chiave-pubblica-ssh-di-prova | none>
+#   none = disco "personale": nessuna chiave SSH, nessun sshd, nessun argomento di prova
 set -euo pipefail
 image=$1 outdir=$2 pubkey=$3
 size=${DISK_SIZE:-30G}
 
 mkdir -p "$outdir"
-cp "$pubkey" "$outdir/test_key.pub"
 truncate -s "$size" "$outdir/disk.raw"
-
-# - console=ttyS0: log di avvio sulla console seriale (letto dai test)
-# - systemd.wants=sshd.service: avvia sshd solo su questo disco di prova,
-#   senza modificare l'immagine OMNI
+extra=()
+if [ "$pubkey" != none ]; then
+  cp "$pubkey" "$outdir/test_key.pub"
+  # - console=ttyS0: log di avvio sulla console seriale (letto dai test)
+  # - systemd.wants=sshd.service: avvia sshd solo su questo disco di prova
+  extra=(--root-ssh-authorized-keys /output/test_key.pub
+         --karg "console=ttyS0,115200n8" --karg systemd.wants=sshd.service)
+fi
 sudo podman run --rm --privileged --pid=host \
   --security-opt label=type:unconfined_t \
   -v /dev:/dev \
@@ -28,9 +32,7 @@ sudo podman run --rm --privileged --pid=host \
     --via-loopback \
     --generic-image \
     --filesystem xfs \
-    --root-ssh-authorized-keys /output/test_key.pub \
-    --karg console=ttyS0,115200n8 \
-    --karg systemd.wants=sshd.service \
+    "${extra[@]}" \
     /output/disk.raw
 
 ls -lsh "$outdir/disk.raw"

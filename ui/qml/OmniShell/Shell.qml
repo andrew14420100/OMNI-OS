@@ -6,6 +6,8 @@ import OmniDesign
 FocusScope {
     id: shell
     property var apps: null
+    property var appLauncher: null          // AppLauncher C++ (avvio reale) o null
+    readonly property bool realLaunch: appLauncher !== null && appLauncher.enabled
     property string userName: ""
     // scena iniziale: "desktop", "launcher", "notifications", "quicksettings"
     property string scene: "desktop"
@@ -25,10 +27,14 @@ FocusScope {
     }
     // preferiti iniziali: una per tipo, nell'ordine indicato, poi le prime disponibili
     function defaultFavorites(list) {
-        const wanted = ["files", "browser", "terminal", "store", "media", "office", "gaming", "settings", "developer"]
+        const wanted = ["files", "browser", "terminal", "store", "media", "office", "gaming", "settings", "developer",
+                        "texteditor", "photos", "music", "mail", "calculator", "archive", "performance", "help"]
+        // strumenti di diagnostica e utilità minori non entrano nel dock predefinito
+        const skip = ["bug", "logs", "chars", "generic"]
         const out = []
-        wanted.forEach(g => { const e = list.find(x => x.glyph === g && out.indexOf(x.desktopId) < 0); if (e) out.push(e.desktopId) })
-        for (let i = 0; i < list.length && out.length < 8; ++i) if (out.indexOf(list[i].desktopId) < 0) out.push(list[i].desktopId)
+        wanted.forEach(g => { const e = list.find(x => x.glyph === g && out.indexOf(x.desktopId) < 0); if (e && out.length < 8) out.push(e.desktopId) })
+        for (let i = 0; i < list.length && out.length < 8; ++i)
+            if (out.indexOf(list[i].desktopId) < 0 && skip.indexOf(list[i].glyph) < 0) out.push(list[i].desktopId)
         return out.slice(0, 8)
     }
     readonly property var dockItems: {
@@ -47,11 +53,21 @@ FocusScope {
     function launch(entry, gx, gy) {
         if (!entry) return
         if (scene !== "desktop") scene = "desktop"
+        if (realLaunch) {
+            // avvio REALE dell'applicazione installata
+            const ok = appLauncher.launch(entry.filePath)
+            if (ok) session.noteLaunch(entry.desktopId)
+            toast.show(entry.name, ok ? qsTr("Avvio di %1").arg(entry.name) : qsTr("Impossibile avviare %1").arg(entry.name),
+                       ok ? qsTr("Applicazione avviata nella sessione.") : qsTr("Voce non riconosciuta o comando di avvio non disponibile."), false)
+            return
+        }
         session.noteLaunch(entry.desktopId)
         preview.play(entry, gx, gy)
     }
     Component.onCompleted: {
         rebuildCatalog()
+        // Riga di registro verificata dalla prova in VM: conferma che l'interfaccia (non solo il C++) usa l'avvio reale.
+        console.info("interfaccia: avvio delle applicazioni " + (realLaunch ? "REALE" : "simulato"))
         // Notifiche dimostrative del prototipo (non provengono dal sistema reale).
         notifications.add("OMNI Security Center", qsTr("Firma dell'immagine verificata"), qsTr("Esempio: il sistema accetta solo immagini con firma valida."), "", true, 52)
         notifications.add("OMNI Update Center", qsTr("Aggiornamento pronto"), qsTr("Esempio: il deployment 0.1.1 è pronto. Il ritorno alla versione precedente resta disponibile."), "", true, 34)
@@ -98,7 +114,7 @@ FocusScope {
             width: 380; height: cards.implicitHeight
             DesktopCards {
                 id: cards; width: 380
-                session: session; catalog: shell.catalog; store: notifications; appsFromSystem: shell.appsFromSystem
+                session: session; catalog: shell.catalog; store: notifications; appsFromSystem: shell.appsFromSystem; realLaunch: shell.realLaunch
                 onActivated: (e, gx, gy) => shell.launch(e, gx, gy)
             }
         }
@@ -119,12 +135,12 @@ FocusScope {
     }
 
     Launcher {
-        anchors.fill: parent; apps: shell.apps; session: session; open: shell.launcherOpen
+        anchors.fill: parent; apps: shell.apps; session: session; open: shell.launcherOpen; realLaunch: shell.realLaunch
         onCloseRequested: shell.scene = "desktop"
         onActivatedEntry: (e, gx, gy) => shell.launch(e, gx, gy)
         z: 4
     }
-    QuickSettings { anchors.fill: parent; store: notifications; userName: shell.userName; open: shell.quickSettingsOpen; onCloseRequested: shell.scene = "desktop"; z: 6 }
+    QuickSettings { anchors.fill: parent; store: notifications; onQuitRequested: Qt.quit(); userName: shell.userName; open: shell.quickSettingsOpen; onCloseRequested: shell.scene = "desktop"; z: 6 }
     NotificationCenter { anchors.fill: parent; store: notifications; open: shell.notificationsOpen; onCloseRequested: shell.scene = "desktop"; z: 6 }
 
     TopBar {
@@ -147,7 +163,7 @@ FocusScope {
 
     Text {
         anchors { left: parent.left; bottom: parent.bottom; margins: Theme.s4 }
-        text: qsTr("OMNI Shell v2 · prototipo anticipato · non è M4")
+        text: shell.realLaunch ? qsTr("OMNI Shell v2 · anteprima sperimentale · avvio app reale · non è M4") : qsTr("OMNI Shell v2 · prototipo anticipato · non è M4")
         color: Theme.textSecondary; opacity: 0.85; font.family: Theme.fontFamily; font.pixelSize: Theme.fontCaption
         z: 10
     }

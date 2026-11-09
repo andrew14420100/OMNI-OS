@@ -1,0 +1,23 @@
+# OMNI OS — variante "VM personale" (sperimentale, solo macchina virtuale).
+# Parte dall'immagine OMNI di prova costruita dalla base B3 verificata e aggiunge
+# OMNI Shell V2 come normale applicazione (avvio automatico nella sessione Plasma).
+# Plasma, KWin e il gestore di accesso restano quelli di Fedora Kinoite.
+#   podman build --build-arg OMNI_IMAGE=localhost/omni-os:m1-ci image/personale/
+ARG OMNI_IMAGE
+# hadolint ignore=DL3006
+FROM ${OMNI_IMAGE}
+
+LABEL org.opencontainers.image.title="OMNI OS (anteprima per VM personale)" \
+      org.opencontainers.image.description="Anteprima sperimentale con OMNI Shell V2. Solo macchina virtuale."
+
+# omni-shell/ è prodotto da tests/vm/build_shell_bundle.sh (Qt di Fedora 45)
+COPY omni-shell/ /usr/lib/omni-shell/
+COPY files/ /
+
+RUN chmod 0755 /usr/bin/omni-shell /usr/lib/omni-shell/bin/omni-shell-prototipo && \
+    mkdir -p /usr/share/fonts/omni-inter && \
+    find /usr/lib/omni-shell/fonts -type f \( -name '*.otf' -o -name '*.ttf' -o -name '*.ttc' \) -exec cp {} /usr/share/fonts/omni-inter/ \; && \
+    test -n "$(ls -A /usr/share/fonts/omni-inter)" && \
+    rm -rf /usr/lib/omni-shell/fonts && \
+    fc-cache -f /usr/share/fonts/omni-inter >/dev/null && \
+    bootc container lint

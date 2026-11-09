@@ -1,0 +1,4 @@
+OMNI_OS_NAME="OMNI OS (nome di lavoro provvisorio)"
+OMNI_OS_VERSION="0.2.0-vm-personale"
+OMNI_OS_STAGE="Anteprima sperimentale per macchina virtuale personale (base M1, non M2/M3/M4)"
+OMNI_OS_NOTICE="Solo macchina virtuale. Non installare su hardware reale. Nessun aggiornamento automatico configurato."

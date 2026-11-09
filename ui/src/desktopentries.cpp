@@ -21,18 +21,25 @@ QVariant DesktopEntryModel::data(const QModelIndex &index, int role) const {
     case IconRole: return e.icon;
     case CategoriesRole: return e.categories;
     case IdRole: return e.id;
+    case PathRole: return e.path;
     }
     return {};
 }
 
 QHash<int, QByteArray> DesktopEntryModel::roleNames() const {
-    return {{NameRole, "name"}, {CommentRole, "comment"}, {IconRole, "iconName"}, {CategoriesRole, "categories"}, {IdRole, "desktopId"}};
+    return {{NameRole, "name"}, {CommentRole, "comment"}, {IconRole, "iconName"}, {CategoriesRole, "categories"}, {IdRole, "desktopId"}, {PathRole, "filePath"}};
+}
+
+bool DesktopEntryModel::containsPath(const QString &path) const {
+    if (path.isEmpty() || m_demo) return false;
+    for (const auto &e : m_entries) if (e.path == path) return true;
+    return false;
 }
 
 QVariantMap DesktopEntryModel::get(int row) const {
     if (row < 0 || row >= count()) return {};
     const auto &e = m_entries.at(row);
-    return {{"name", e.name}, {"comment", e.comment}, {"iconName", e.icon}, {"categories", e.categories}, {"desktopId", e.id}};
+    return {{"name", e.name}, {"comment", e.comment}, {"iconName", e.icon}, {"categories", e.categories}, {"desktopId", e.id}, {"filePath", e.path}};
 }
 
 static QString localized(const QHash<QString, QString> &kv, const QString &key, const QString &locale) {
@@ -65,6 +72,7 @@ bool DesktopEntryModel::parseFile(const QString &path, const QString &locale, De
     const QString name = localized(kv, "Name", locale);
     if (name.isEmpty()) return false;
     out->id = QFileInfo(path).fileName();
+    out->path = QFileInfo(path).absoluteFilePath();
     out->name = name;
     out->comment = localized(kv, "Comment", locale);
     out->icon = kv.value("Icon");
