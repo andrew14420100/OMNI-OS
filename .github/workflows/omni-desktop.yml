@@ -17,9 +17,6 @@ on:
         description: "Produce il pacchetto VM scaricabile (solo se tutte le prove passano)"
         type: boolean
         default: false
-  push:
-    branches: ["claude/omni-desktop-reale"]
-    paths: [".github/workflows/omni-desktop.yml"]
 
 permissions:
   contents: read
