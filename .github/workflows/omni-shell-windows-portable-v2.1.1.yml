@@ -34,6 +34,7 @@ jobs:
         uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2, commit fissato
         with:
           msystem: UCRT64
+          release: false # usa MSYS2 gia installato nel runner Windows; evita il download GitHub Releases (HTTP 504)
           update: true
           install: >-
             mingw-w64-ucrt-x86_64-gcc
