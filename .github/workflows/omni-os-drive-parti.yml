@@ -27,16 +27,16 @@ jobs:
           test "$(stat -c %s OMNI-OS-0.2.0-VM-personale.zip)" -eq 3449711708
           unzip -tq OMNI-OS-0.2.0-VM-personale.zip | tail -n 1
           sha256sum OMNI-OS-0.2.0-VM-personale.zip | tee out/SHA256-ARCHIVIO.txt
-          split -b 400000000 -d -a 2 OMNI-OS-0.2.0-VM-personale.zip out/OMNI-OS-0.2.0-VM-personale.part-
-          test "$(find out -type f -name 'OMNI-OS-0.2.0-VM-personale.part-*' | wc -l)" -eq 9
-          for p in out/OMNI-OS-0.2.0-VM-personale.part-*; do test "$(stat -c %s "$p")" -le 400000000; done
+          split -b 99000000 -d -a 2 OMNI-OS-0.2.0-VM-personale.zip out/OMNI-OS-0.2.0-VM-personale.part-
+          test "$(find out -type f -name 'OMNI-OS-0.2.0-VM-personale.part-*' | wc -l)" -eq 35
+          for p in out/OMNI-OS-0.2.0-VM-personale.part-*; do test "$(stat -c %s "$p")" -le 99000000; done
           ls -lh out/
       - name: Guida e ricomposizione offline per Windows
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          Path("out/Ricostruisci-OMNI-OS.cmd").write_bytes("@echo off\r\nsetlocal\r\ncd /d \"%~dp0\"\r\necho Ricostruzione OMNI OS 0.2.0 (9 parti)...\r\ncopy /b \"OMNI-OS-0.2.0-VM-personale.part-00\"+\"OMNI-OS-0.2.0-VM-personale.part-01\"+\"OMNI-OS-0.2.0-VM-personale.part-02\"+\"OMNI-OS-0.2.0-VM-personale.part-03\"+\"OMNI-OS-0.2.0-VM-personale.part-04\"+\"OMNI-OS-0.2.0-VM-personale.part-05\"+\"OMNI-OS-0.2.0-VM-personale.part-06\"+\"OMNI-OS-0.2.0-VM-personale.part-07\"+\"OMNI-OS-0.2.0-VM-personale.part-08\" \"OMNI-OS-0.2.0-VM-personale.zip\" >nul\r\nif errorlevel 1 (echo ERRORE: impossibile ricostruire il file. & exit /b 1)\r\necho Archivio ricostruito. Verifica SHA-256:\r\ncertutil -hashfile \"OMNI-OS-0.2.0-VM-personale.zip\" SHA256\r\necho Confrontare con SHA256-ARCHIVIO.txt prima di estrarre il VMDK.\r\npause\r\n".encode("ascii"))
-          Path("out/LEGGIMI-RICOSTRUZIONE.txt").write_text("OMNI OS 0.2.0 - Download in 9 parti per Google Drive\n\n1. Scaricare TUTTE le 9 parti da Google Drive (parte 00 ... parte 08).\n2. Ogni parte arriva in un proprio file ZIP: estrarre il suo contenuto\n   nella STESSA cartella. Per la parte 00 estrarre anche i file CMD e TXT.\n3. Controllare che nella cartella compaiano 9 file con suffisso .part-00 fino .part-08.\n4. Sul PC PERSONALE Windows (non aziendale), avviare Ricostruisci-OMNI-OS.cmd.\n5. Confrontare SHA256 dell'archivio finale con SHA256-ARCHIVIO.txt.\n6. Estrarre l'archivio finale, leggere LEGGIMI.md, importare il VMDK in VirtualBox.\nMai installare il VMDK su dischi fisici. Nessun merge o installazione su Windows.\n\nQuesto metodo trasferisce il ZIP originale INALTERATO, senza ricompilare OMNI OS.\n", encoding="utf-8")
+          Path("out/Ricostruisci-OMNI-OS.cmd").write_bytes("@echo off\r\nsetlocal\r\ncd /d \"%~dp0\"\r\necho Ricostruzione OMNI OS 0.2.0 (35 parti)...\r\ncopy /b \"OMNI-OS-0.2.0-VM-personale.part-00\"+\"OMNI-OS-0.2.0-VM-personale.part-01\"+\"OMNI-OS-0.2.0-VM-personale.part-02\"+\"OMNI-OS-0.2.0-VM-personale.part-03\"+\"OMNI-OS-0.2.0-VM-personale.part-04\"+\"OMNI-OS-0.2.0-VM-personale.part-05\"+\"OMNI-OS-0.2.0-VM-personale.part-06\"+\"OMNI-OS-0.2.0-VM-personale.part-07\"+\"OMNI-OS-0.2.0-VM-personale.part-08\"+\"OMNI-OS-0.2.0-VM-personale.part-09\"+\"OMNI-OS-0.2.0-VM-personale.part-10\"+\"OMNI-OS-0.2.0-VM-personale.part-11\"+\"OMNI-OS-0.2.0-VM-personale.part-12\"+\"OMNI-OS-0.2.0-VM-personale.part-13\"+\"OMNI-OS-0.2.0-VM-personale.part-14\"+\"OMNI-OS-0.2.0-VM-personale.part-15\"+\"OMNI-OS-0.2.0-VM-personale.part-16\"+\"OMNI-OS-0.2.0-VM-personale.part-17\"+\"OMNI-OS-0.2.0-VM-personale.part-18\"+\"OMNI-OS-0.2.0-VM-personale.part-19\"+\"OMNI-OS-0.2.0-VM-personale.part-20\"+\"OMNI-OS-0.2.0-VM-personale.part-21\"+\"OMNI-OS-0.2.0-VM-personale.part-22\"+\"OMNI-OS-0.2.0-VM-personale.part-23\"+\"OMNI-OS-0.2.0-VM-personale.part-24\"+\"OMNI-OS-0.2.0-VM-personale.part-25\"+\"OMNI-OS-0.2.0-VM-personale.part-26\"+\"OMNI-OS-0.2.0-VM-personale.part-27\"+\"OMNI-OS-0.2.0-VM-personale.part-28\"+\"OMNI-OS-0.2.0-VM-personale.part-29\"+\"OMNI-OS-0.2.0-VM-personale.part-30\"+\"OMNI-OS-0.2.0-VM-personale.part-31\"+\"OMNI-OS-0.2.0-VM-personale.part-32\"+\"OMNI-OS-0.2.0-VM-personale.part-33\"+\"OMNI-OS-0.2.0-VM-personale.part-34\" \"OMNI-OS-0.2.0-VM-personale.zip\" >nul\r\nif errorlevel 1 (echo ERRORE: impossibile ricostruire il file. & exit /b 1)\r\necho Archivio ricostruito. Verifica SHA-256:\r\ncertutil -hashfile \"OMNI-OS-0.2.0-VM-personale.zip\" SHA256\r\necho Confrontare con SHA256-ARCHIVIO.txt prima di estrarre il VMDK.\r\npause\r\n".encode("ascii"))
+          Path("out/LEGGIMI-RICOSTRUZIONE.txt").write_text("OMNI OS 0.2.0 - Download in 9 parti per Google Drive\n\n1. Scaricare TUTTE le 35 parti da Google Drive (parte 00 ... parte 34).\n2. Ogni parte arriva in un proprio file ZIP: estrarre il suo contenuto\n   nella STESSA cartella. Per la parte 00 estrarre anche i file CMD e TXT.\n3. Controllare che nella cartella compaiano 35 file con suffisso .part-00 fino .part-08.\n4. Sul PC PERSONALE Windows (non aziendale), avviare Ricostruisci-OMNI-OS.cmd.\n5. Confrontare SHA256 dell'archivio finale con SHA256-ARCHIVIO.txt.\n6. Estrarre l'archivio finale, leggere LEGGIMI.md, importare il VMDK in VirtualBox.\nMai installare il VMDK su dischi fisici. Nessun merge o installazione su Windows.\n\nQuesto metodo trasferisce il ZIP originale INALTERATO, senza ricompilare OMNI OS.\n", encoding="utf-8")
           PY
       - name: Pubblica parte 00
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -111,6 +111,214 @@ jobs:
         with:
           name: OMNI-OS-0.2.0-PARTE-08
           path: out/OMNI-OS-0.2.0-VM-personale.part-08
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 09
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-09
+          path: out/OMNI-OS-0.2.0-VM-personale.part-09
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 10
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-10
+          path: out/OMNI-OS-0.2.0-VM-personale.part-10
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 11
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-11
+          path: out/OMNI-OS-0.2.0-VM-personale.part-11
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 12
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-12
+          path: out/OMNI-OS-0.2.0-VM-personale.part-12
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 13
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-13
+          path: out/OMNI-OS-0.2.0-VM-personale.part-13
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 14
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-14
+          path: out/OMNI-OS-0.2.0-VM-personale.part-14
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 15
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-15
+          path: out/OMNI-OS-0.2.0-VM-personale.part-15
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 16
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-16
+          path: out/OMNI-OS-0.2.0-VM-personale.part-16
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 17
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-17
+          path: out/OMNI-OS-0.2.0-VM-personale.part-17
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 18
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-18
+          path: out/OMNI-OS-0.2.0-VM-personale.part-18
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 19
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-19
+          path: out/OMNI-OS-0.2.0-VM-personale.part-19
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 20
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-20
+          path: out/OMNI-OS-0.2.0-VM-personale.part-20
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 21
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-21
+          path: out/OMNI-OS-0.2.0-VM-personale.part-21
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 22
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-22
+          path: out/OMNI-OS-0.2.0-VM-personale.part-22
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 23
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-23
+          path: out/OMNI-OS-0.2.0-VM-personale.part-23
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 24
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-24
+          path: out/OMNI-OS-0.2.0-VM-personale.part-24
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 25
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-25
+          path: out/OMNI-OS-0.2.0-VM-personale.part-25
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 26
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-26
+          path: out/OMNI-OS-0.2.0-VM-personale.part-26
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 27
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-27
+          path: out/OMNI-OS-0.2.0-VM-personale.part-27
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 28
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-28
+          path: out/OMNI-OS-0.2.0-VM-personale.part-28
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 29
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-29
+          path: out/OMNI-OS-0.2.0-VM-personale.part-29
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 30
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-30
+          path: out/OMNI-OS-0.2.0-VM-personale.part-30
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 31
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-31
+          path: out/OMNI-OS-0.2.0-VM-personale.part-31
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 32
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-32
+          path: out/OMNI-OS-0.2.0-VM-personale.part-32
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 33
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-33
+          path: out/OMNI-OS-0.2.0-VM-personale.part-33
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pubblica parte 34
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OMNI-OS-0.2.0-PARTE-34
+          path: out/OMNI-OS-0.2.0-VM-personale.part-34
           compression-level: 0
           if-no-files-found: error
           retention-days: 14
