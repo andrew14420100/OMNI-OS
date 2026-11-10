@@ -9,6 +9,7 @@ Rectangle {
     property int badge: 0
     property real iconSize: 20
     property bool round: false
+    opacity: enabled ? 1 : 0.4      // disattivato: visibilmente non cliccabile
     signal clicked()
 
     implicitWidth: 40; implicitHeight: 40

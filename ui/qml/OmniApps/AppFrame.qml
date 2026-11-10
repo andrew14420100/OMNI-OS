@@ -61,7 +61,7 @@ Window {
                     Rectangle { anchors.centerIn: parent; width: 12; height: 12; radius: 6; color: Theme.dark ? "#0E1322" : "#F6F7FB" } }
                 Text { anchors.verticalCenter: parent.verticalCenter; text: win.appTitle; color: Theme.textPrimary; font.pixelSize: 15; font.weight: Font.DemiBold; font.family: Theme.fontFamily }
             }
-            OmniSearchField { id: search; visible: win.showSearch; width: parent.width; placeholder: qsTr("Trova un'impostazione"); objectName: "app:search"
+            OmniSearchField { id: search; visible: win.showSearch; width: parent.width; placeholder: qsTr("Cerca"); objectName: "app:search"
                 onAccepted: if (win.filtered.length) win.current = win.filtered[0].id }
             Item { width: 1; height: 8 }
             Repeater {

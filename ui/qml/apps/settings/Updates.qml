@@ -18,8 +18,20 @@ SettingsPage {
     property var flatUpdates: []
     property string flatState: ""
     property string log: ""
+    readonly property bool hasRpmOstree: omniSystem.available("rpm-ostree")
+    property var updateAvailable: undefined    // noto solo dopo "Controlla" (rpm-ostree upgrade --check)
+    function check() {
+        page.busy = true; page.sysState = qsTr("Controllo degli aggiornamenti di sistema…"); page.sysKind = 3; page.log = ""
+        Sys.run("rpm-ostree", ["upgrade", "--check"], (c, o, e) => {
+            page.busy = false
+            // rpm-ostree: 0 = aggiornamento disponibile, 77 = nessun aggiornamento
+            if (c === 0) { page.updateAvailable = true; page.sysState = qsTr("Aggiornamento disponibile: %1").arg(((o || "").split("\n").filter(l => /Version|Commit|Digest/.test(l))[0] || "").trim()); page.sysKind = 1 }
+            else if (c === 77) { page.updateAvailable = false; page.sysState = qsTr("Il sistema è aggiornato"); page.sysKind = 1 }
+            else { page.updateAvailable = undefined; page.sysState = qsTr("Controllo non riuscito: %1").arg((e || o).trim().split("\n").pop()); page.sysKind = 2 }
+        }, { timeout: 600000, onLine: l => page.log = l })
+    }
     function reload() {
-        Sys.run("rpm-ostree", ["status", "--json"], (c, o, e) => {
+        if (page.hasRpmOstree) Sys.run("rpm-ostree", ["status", "--json"], (c, o, e) => {
             try { page.deployments = JSON.parse(o).deployments || [] } catch (x) { page.deployments = []; page.sysState = e || qsTr("Stato non leggibile"); page.sysKind = 2 }
         })
         Sys.run("flatpak", ["remote-ls", "--updates", "--app", "--columns=application,version"], (c, o, e) => {
@@ -52,10 +64,12 @@ SettingsPage {
     StatusNote { objectName: "agg:riavvio"; visible: page.rebootNeeded; text: qsTr("Un aggiornamento è pronto: si attiva al prossimo riavvio."); kind: 1 }
     Row {
         spacing: 8
-        OmniButton { objectName: "agg:controlla"; text: qsTr("Controlla aggiornamenti"); enabled: !page.busy; onClicked: page.rpm(["upgrade", "--check"], qsTr("Controllo degli aggiornamenti di sistema")) }
-        OmniButton { text: qsTr("Scarica e prepara"); primary: true; enabled: !page.busy; onClicked: page.rpm(["upgrade"], qsTr("Preparazione dell'aggiornamento")) }
+        OmniButton { objectName: "agg:controlla"; text: qsTr("Controlla aggiornamenti"); primary: page.updateAvailable !== true; enabled: !page.busy && page.hasRpmOstree; onClicked: page.check() }
+        OmniButton { objectName: "agg:prepara"; text: qsTr("Scarica e prepara"); primary: page.updateAvailable === true; visible: page.updateAvailable === true; enabled: !page.busy
+            onClicked: page.rpm(["upgrade"], qsTr("Preparazione dell'aggiornamento")) }
         OmniButton { visible: page.rebootNeeded; text: qsTr("Riavvia ora"); onClicked: sessionActions.reboot() }
     }
+    StatusNote { visible: !page.hasRpmOstree; text: qsTr("rpm-ostree non è disponibile: gli aggiornamenti di sistema non sono gestibili da qui."); kind: 2 }
     StatusNote { objectName: "agg:stato"; text: page.sysState; kind: page.sysKind }
     StatusNote { text: page.log }
     SettingCard {

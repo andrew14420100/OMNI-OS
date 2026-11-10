@@ -8,6 +8,7 @@ Rectangle {
     property string icon: ""
     property bool checked: false
     property int count: -1
+    opacity: enabled ? 1 : 0.4      // disattivato: visibilmente non cliccabile
     signal clicked()
     implicitWidth: row.implicitWidth + Theme.s4 * 2
     implicitHeight: 36
