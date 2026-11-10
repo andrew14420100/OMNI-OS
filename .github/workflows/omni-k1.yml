@@ -50,13 +50,14 @@ jobs:
           done
       - name: Controlli (nessuna dipendenza esterna, unsafe documentati)
         run: cargo xtask controlli | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Programmi utente K3 (ELF statici, segmenti W^X)
+      - name: Programmi utente K3 (ELF statici, segmenti W^X, caricatore sui file veri)
         run: |
           CARGO_PROFILE_RELEASE_DEBUG=0 cargo build -q -p omni-programmi --target x86_64-unknown-none --release --target-dir target/utente
           for p in ciao spazio memoria errore ciclo genitore figlio; do
             readelf -lW target/utente/x86_64-unknown-none/release/$p | grep -E "^ +LOAD" | grep -q "RWE" && { echo "$p: segmento RWE"; exit 1; }
             echo "$p: $(readelf -lW target/utente/x86_64-unknown-none/release/$p | grep -cE '^ +LOAD') segmenti LOAD, nessuno RWE"
           done
+          cargo xtask verifica-programmi
       - name: Prove K1+K2 in QEMU (KVM e TCG, 1 e 4 CPU, riavvio e spegnimento ACPI, panico, double fault)
         run: cargo xtask prova
       - name: Rapporto

@@ -62,6 +62,9 @@ pub const PRIORITA_ALTA: u64 = 3;
 /// avrebbe un indirizzo di ritorno non canonico).
 pub const UTENTE_INIZIO: u64 = 0x0000_0000_0040_0000;
 pub const UTENTE_FINE: u64 = 0x0000_7fff_ffff_f000;
+/// Fine dello spazio per codice e dati dei programmi (segmenti ELF): la memoria di
+/// `SC_MAPPA` e gli stack stanno sopra.
+pub const LIMITE_IMMAGINE: u64 = BASE_MAPPA;
 /// Cima dello stack del thread principale (16 pagine, guardia sotto).
 pub const CIMA_STACK: u64 = 0x0000_7000_0000_0000;
 pub const PAGINE_STACK: u64 = 16;

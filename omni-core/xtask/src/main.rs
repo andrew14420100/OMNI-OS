@@ -6,6 +6,7 @@
 //!
 //!   cargo xtask controlli        licenze/dipendenze e blocchi `unsafe` documentati
 //!   cargo xtask prova [--tcg]    tutte le prove in QEMU, rapporto in target/prove/rapporto/
+//!   cargo xtask verifica-programmi  caricatore K3 sui programmi utente veri (piano e pagine)
 //!   cargo xtask rapida [cpu]     variante di prova in QEMU fino all'attesa della tastiera:
 //!                                stampa gli esiti delle prove (sviluppo; nessun rapporto)
 
@@ -53,6 +54,77 @@ fn costruisci(variante: &str, funzioni: &str) -> Esito<PathBuf> {
     fs::copy(r.join("target/x86_64-unknown-uefi/release/omni-boot.efi"), esp.join("EFI/BOOT/BOOTX64.EFI")).map_err(|e| e.to_string())?;
     fs::copy(dir_build.join("x86_64-unknown-none/release/omni-kernel"), esp.join("OMNI/KERNEL.ELF")).map_err(|e| e.to_string())?;
     Ok(esp)
+}
+
+/// Programmi utente del pacchetto iniziale (K3).
+const PROGRAMMI: [&str; 7] = ["ciao", "spazio", "memoria", "errore", "ciclo", "genitore", "figlio"];
+
+/// Costruisce i programmi utente (senza informazioni di debug) e restituisce (nome, file ELF).
+fn costruisci_programmi() -> Esito<Vec<(String, Vec<u8>)>> {
+    let r = radice();
+    let dir = r.join("target/utente");
+    esegui(
+        Command::new("cargo")
+            .current_dir(&r)
+            .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
+            .args(["build", "-q", "-p", "omni-programmi", "--target", "x86_64-unknown-none", "--release", "--target-dir"])
+            .arg(&dir),
+    )?;
+    PROGRAMMI
+        .iter()
+        .map(|n| {
+            let f = dir.join("x86_64-unknown-none/release").join(n);
+            fs::read(&f).map(|d| (n.to_string(), d)).map_err(|e| format!("{}: {e}", f.display()))
+        })
+        .collect()
+}
+
+/// Caricatore K3 sui programmi veri: piano valido, W^X, ogni pagina uguale ai byte del file
+/// (e a zero dove il file non ne ha).
+fn verifica_programmi() -> Esito<bool> {
+    use omni_comune::caricatore::{pianifica, riempi_pagina, PAGINA};
+    let mut ok = true;
+    for (nome, d) in costruisci_programmi()? {
+        let p = match pianifica(&d) {
+            Ok(p) => p,
+            Err(e) => {
+                println!("FALLITO {nome}: {} ({e:?})", e.descrizione());
+                ok = false;
+                continue;
+            }
+        };
+        let mut pg = [0u8; PAGINA as usize];
+        let mut errori = 0;
+        for s in p.segmenti() {
+            for k in 0..s.pagine {
+                riempi_pagina(&d, s, k, &mut pg);
+                for (j, &b) in pg.iter().enumerate() {
+                    let v = s.prima_pagina + k * PAGINA + j as u64;
+                    let atteso = if v >= s.virtuale && v < s.virtuale + s.dim_file { d[(s.offset + v - s.virtuale) as usize] } else { 0 };
+                    if b != atteso {
+                        errori += 1;
+                    }
+                }
+            }
+        }
+        let wx = p.segmenti().iter().any(|s| s.scrivibile && s.eseguibile);
+        let descr: Vec<String> = p
+            .segmenti()
+            .iter()
+            .map(|s| format!("{:#x}+{}p {}{}", s.prima_pagina, s.pagine, if s.scrivibile { "RW" } else { "R-" }, if s.eseguibile { "X" } else { "-" }))
+            .collect();
+        let buono = errori == 0 && !wx;
+        ok &= buono;
+        println!(
+            "{} {nome}: {} byte, ingresso {:#x}, {} pagine: {}; byte diversi dal file {errori}",
+            if buono { "OK     " } else { "FALLITO" },
+            d.len(),
+            p.ingresso,
+            p.pagine_totali(),
+            descr.join(", ")
+        );
+    }
+    Ok(ok)
 }
 
 fn hash_file(p: &Path) -> String {
@@ -677,12 +749,13 @@ fn main() {
             true
         }),
         Some("prova") => prova(args.iter().any(|a| a == "--tcg")),
+        Some("verifica-programmi") => verifica_programmi(),
         Some("rapida") => rapida(args.get(1).and_then(|c| c.parse().ok()).unwrap_or(1)),
         Some("costruisci") => costruisci("normale", "").map(|p| {
             println!("{}", p.display());
             true
         }),
-        _ => Err("uso: cargo xtask controlli | prova [--tcg] | rapida [cpu] | costruisci".into()),
+        _ => Err("uso: cargo xtask controlli | prova [--tcg] | verifica-programmi | rapida [cpu] | costruisci".into()),
     };
     match risultato {
         Ok(true) => {}
