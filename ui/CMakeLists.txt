@@ -14,7 +14,7 @@ add_executable(omni-shell-prototipo src/main.cpp src/recorder.cpp src/recorder.h
     src/notificationserver.cpp src/notificationserver.h src/sessionactions.cpp src/sessionactions.h
     src/systemstatus.cpp src/systemstatus.h src/shellservices.cpp src/shellservices.h
     src/omnisystem.cpp src/omnisystem.h src/systemmonitor.cpp src/systemmonitor.h
-    src/filemanager.cpp src/filemanager.h)
+    src/filemanager.cpp src/filemanager.h src/appstream.cpp src/appstream.h)
 target_link_libraries(omni-shell-prototipo PRIVATE omni_desktopentries Qt6::Gui Qt6::Quick Qt6::DBus)
 target_compile_definitions(omni-shell-prototipo PRIVATE OMNI_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
 target_compile_options(omni-shell-prototipo PRIVATE -Wall -Wextra)
@@ -68,16 +68,22 @@ target_compile_definitions(tst_session PRIVATE OMNI_QML_SRC="${CMAKE_CURRENT_SOU
 add_test(NAME session COMMAND tst_session)
 set_tests_properties(session PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
-add_executable(tst_apps tests/tst_apps.cpp src/sessionactions.cpp src/systemstatus.cpp src/shellservices.cpp src/omnisystem.cpp src/systemmonitor.cpp src/filemanager.cpp)
+add_executable(tst_apps tests/tst_apps.cpp src/sessionactions.cpp src/systemstatus.cpp src/shellservices.cpp src/omnisystem.cpp src/systemmonitor.cpp src/filemanager.cpp src/appstream.cpp)
 omni_file_backends(tst_apps)
 target_link_libraries(tst_apps PRIVATE omni_desktopentries Qt6::Quick Qt6::Test Qt6::DBus)
-target_compile_definitions(tst_apps PRIVATE OMNI_QML_SRC="${CMAKE_CURRENT_SOURCE_DIR}/qml" OMNI_TEST_APPS="${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop")
+target_compile_definitions(tst_apps PRIVATE OMNI_QML_SRC="${CMAKE_CURRENT_SOURCE_DIR}/qml" OMNI_TEST_APPS="${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop" OMNI_APPSTREAM_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/appstream")
 add_test(NAME apps COMMAND tst_apps)
 add_executable(tst_files tests/tst_files.cpp src/filemanager.cpp)
 target_link_libraries(tst_files PRIVATE Qt6::Gui Qt6::Test)
 target_include_directories(tst_files PRIVATE src)
 omni_file_backends(tst_files)
 add_test(NAME files COMMAND tst_files)
+add_executable(tst_store tests/tst_store.cpp src/appstream.cpp)
+target_link_libraries(tst_store PRIVATE Qt6::Core Qt6::Test)
+target_include_directories(tst_store PRIVATE src)
+target_compile_definitions(tst_store PRIVATE OMNI_APPSTREAM_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/appstream")
+omni_file_backends(tst_store)
+add_test(NAME store COMMAND tst_store)
 set_tests_properties(apps PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(tst_notifications tests/tst_notifications.cpp src/notificationserver.cpp)

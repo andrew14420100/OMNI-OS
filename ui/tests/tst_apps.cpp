@@ -9,11 +9,13 @@
 #include "systemstatus.h"
 #include "systemmonitor.h"
 #include "filemanager.h"
+#include "appstream.h"
 #include <QtQml/qqml.h>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
 #include <QTemporaryDir>
+#include <QSysInfo>
 #include <QtTest>
 
 class TestApps : public QObject {
@@ -56,6 +58,7 @@ private slots:
         qmlRegisterType<SystemMonitor>("OmniSystemMonitor", 1, 0, "SystemMonitor");
         qmlRegisterType<FolderModel>("OmniFiles", 1, 0, "FolderModel");
         qmlRegisterType<FileOps>("OmniFiles", 1, 0, "FileOps");
+        qmlRegisterType<AppStreamCatalog>("OmniStore", 1, 0, "AppStreamCatalog");
         apps.load({QStringLiteral(OMNI_TEST_APPS)}, QStringLiteral("it_IT"));
         launcher = new AppLauncher(&apps, false, this);
         settings = new ShellSettings(tmp.filePath("omni-shell.conf"), this);
@@ -132,6 +135,37 @@ private slots:
             QVERIFY(QFile::exists(dir + QStringLiteral("/nota.txt")));
             confirm->setProperty("visible", false);
             QMetaObject::invokeMethod(root, "goBack");
+        }
+        if (file == QLatin1String("StoreApp.qml")) {   // catalogo nel formato AppStream di Flathub (dati di prova)
+            const QString active = tmp.filePath(QStringLiteral("appstream/flathub/")) + QSysInfo::currentCpuArchitecture() + QStringLiteral("/active");
+            QDir().mkpath(active);
+            QFile::copy(QStringLiteral(OMNI_APPSTREAM_DIR "/appstream.xml"), active + QStringLiteral("/appstream.xml"));
+            QObject *cat = root->findChild<QObject *>(QStringLiteral("store:catalogo"));
+            QVERIFY(cat);
+            cat->setProperty("roots", QStringList{tmp.filePath(QStringLiteral("appstream"))});
+            QMetaObject::invokeMethod(cat, "reload");
+            QTRY_COMPARE_WITH_TIMEOUT(cat->property("total").toInt(), 2, 5000);
+            root->setProperty("current", QStringLiteral("esplora"));
+            QObject *grid = nullptr;
+            QTRY_VERIFY((grid = root->findChild<QObject *>(QStringLiteral("store:griglia"))) && grid->property("count").toInt() == 2);
+            root->setProperty("detailId", QStringLiteral("org.esempio.Editor"));
+            QObject *det = root->findChild<QObject *>(QStringLiteral("store:dettaglio"));
+            QVERIFY(det && det->property("visible").toBool());
+            QCOMPARE(det->property("info").toMap().value("license").toString(), QStringLiteral("GPL-3.0-or-later"));
+            // permessi non leggibili (qui Flatpak manca o la sorgente non esiste): installazione disattivata
+            QTRY_VERIFY_WITH_TIMEOUT(det->property("permsState").toString() == QLatin1String("error"), 10000);
+            QObject *inst = root->findChild<QObject *>(QStringLiteral("store:installa"));
+            QVERIFY(inst && !inst->property("enabled").toBool());
+            // analisi dei permessi nel formato di Flatpak
+            QVariant perms;
+            QMetaObject::invokeMethod(det, "parsePerms", Q_RETURN_ARG(QVariant, perms),
+                Q_ARG(QVariant, QStringLiteral("[Context]\nshared=network;ipc;\nsockets=wayland;pulseaudio;\nfilesystems=home;xdg-download:ro;\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\n")));
+            const QVariantList pl = perms.toList();
+            QCOMPARE(pl.size(), 5);
+            bool homeRisk = false;
+            for (const auto &x : pl) if (x.toMap().value("text").toString().contains(QStringLiteral("cartella personale"))) homeRisk = x.toMap().value("risk").toBool();
+            QVERIFY(homeRisk);
+            root->setProperty("detailId", QString());
         }
         if (file == QLatin1String("TaskManagerApp.qml")) {   // dati reali di /proc, non vuoti
             QObject *mon = root->property("mon").value<QObject *>();

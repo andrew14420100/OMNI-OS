@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dati di PROVA nel formato AppStream di Flathub (solo per i test automatici). -->
+<components version="0.14" origin="flathub">
+  <component type="desktop-application">
+    <id>org.esempio.Editor</id>
+    <name>Editor di prova</name>
+    <name xml:lang="it">Editor di prova IT</name>
+    <summary>Edit text</summary>
+    <summary xml:lang="it">Modifica testi</summary>
+    <description>
+      <p>Default paragraph.</p>
+      <p xml:lang="it">Paragrafo italiano.</p>
+      <ul><li>Feature</li><li xml:lang="it">Funzione</li></ul>
+    </description>
+    <icon type="cached" height="128">org.esempio.Editor.png</icon>
+    <categories><category>Utility</category><category>Office</category></categories>
+    <developer_name>Sviluppatori di prova</developer_name>
+    <project_license>GPL-3.0-or-later</project_license>
+    <url type="homepage">https://example.org/editor</url>
+    <screenshots><screenshot type="default"><image type="source" width="1600">https://example.org/s.png</image></screenshot></screenshots>
+    <releases><release version="2.1" timestamp="1700000000"/><release version="2.0" timestamp="1600000000"/></releases>
+    <bundle type="flatpak">app/org.esempio.Editor/x86_64/stable</bundle>
+  </component>
+  <component type="desktop">
+    <id>org.esempio.Gioco.desktop</id>
+    <name>Gioco</name>
+    <summary>Un gioco</summary>
+    <categories><category>Game</category></categories>
+    <developer><name>Studio</name></developer>
+    <releases><release version="1.0" date="2025-01-02"/></releases>
+  </component>
+  <component type="runtime">
+    <id>org.esempio.Runtime</id>
+    <name>Runtime</name>
+  </component>
+</components>

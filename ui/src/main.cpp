@@ -14,6 +14,7 @@
 #include "omnisystem.h"
 #include "systemmonitor.h"
 #include "filemanager.h"
+#include "appstream.h"
 #include <QtQml/qqml.h>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -161,6 +162,7 @@ static int runApp(QGuiApplication &app, const QString &name, DesktopEntryModel &
     qmlRegisterType<SystemMonitor>("OmniSystemMonitor", 1, 0, "SystemMonitor");
     qmlRegisterType<FolderModel>("OmniFiles", 1, 0, "FolderModel");
     qmlRegisterType<FileOps>("OmniFiles", 1, 0, "FileOps");
+    qmlRegisterType<AppStreamCatalog>("OmniStore", 1, 0, "AppStreamCatalog");
     QQmlApplicationEngine engine;
     engine.addImportPath(qmlDir);
     engine.addImageProvider(QStringLiteral("omniicon"), new ThemeIconProvider);
