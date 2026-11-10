@@ -73,8 +73,10 @@ pub enum Stato {
 
 /// Priorità 0: thread d'attesa di una CPU (gira solo se non c'è altro).
 pub const PRIORITA_ATTESA: u8 = 0;
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub const PRIORITA_BASSA: u8 = 1;
 pub const PRIORITA_NORMALE: u8 = 2;
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub const PRIORITA_ALTA: u8 = 3;
 const QUANTO: u64 = 12;
 
@@ -101,8 +103,10 @@ pub struct Thread {
     /// stack del kernel (cima, pagine); None per i flussi d'avvio
     pila: Option<(u64, u64)>,
     /// processo utente (0 = thread del kernel)
+    #[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
     processo: u64,
     /// richiesta di terminazione (processo che termina): eseguita al prossimo rientro dal kernel
+    #[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
     uccidi: AtomicBool,
 }
 
@@ -395,20 +399,24 @@ pub fn terminato(id: u64) -> bool {
     con(id, |t| t.stato == Stato::Terminato).unwrap_or(true)
 }
 
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn quanti(id: u64) -> u64 {
     con(id, |t| t.quanti).unwrap_or(0)
 }
 
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn processo(id: u64) -> u64 {
     con(id, |t| t.processo).unwrap_or(0)
 }
 
 /// Thread corrente di questa CPU.
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn corrente() -> u64 {
     PIANIFICATORE.prendi().corrente[smp::indice()] as u64
 }
 
 /// Processo del thread corrente (0 = kernel) e richiesta di terminazione pendente.
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn processo_corrente() -> (u64, bool) {
     let p = PIANIFICATORE.prendi();
     let t = p.t(p.corrente[smp::indice()]);
@@ -416,6 +424,7 @@ pub fn processo_corrente() -> (u64, bool) {
 }
 
 /// Chiede la terminazione di un thread (eseguita quando rientra dal kernel o dal timer).
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn segnala_uccisione(id: u64) {
     if let Some(t) = PIANIFICATORE.prendi().thread.get(id as usize).and_then(|t| t.as_deref()) {
         t.uccidi.store(true, Ordering::Release);
@@ -424,6 +433,7 @@ pub fn segnala_uccisione(id: u64) {
 
 /// Rilascia un thread terminato che nessuna CPU sta più eseguendo (stack e struttura).
 /// true se rilasciato (o già inesistente).
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn raccogli(id: u64) -> bool {
     let t = {
         let mut p = PIANIFICATORE.prendi();

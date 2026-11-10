@@ -204,6 +204,7 @@ pub fn nuovo_stack(pagine_stack: u64) -> u64 {
 }
 
 /// Rilascia uno stack creato da `nuovo_stack` (nessuna CPU deve più usarlo).
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn libera_stack(cima: u64, pagine_stack: u64) {
     let base = cima - (pagine_stack + 1) * PAGINA;
     for i in 1..=pagine_stack {

@@ -10,6 +10,8 @@
 //!   RSP0 del TSS (interruzioni da ring 3) e nei dati per CPU (chiamate di sistema).
 //! - SMEP/SMAP (CR4.20/21), se la CPU li offre: il kernel non esegue mai codice utente e
 //!   tocca la memoria utente solo dentro `con_accesso_utente` (`stac`/`clac`).
+// K3-WIP: modulo non ancora collegato (tolto quando lo usano i processi)
+#![allow(dead_code)]
 
 use super::{cpu, gdt};
 use core::arch::global_asm;

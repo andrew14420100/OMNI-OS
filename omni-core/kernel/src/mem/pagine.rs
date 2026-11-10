@@ -206,6 +206,7 @@ pub fn pml4_kernel() -> u64 {
 /// Crea tutte le tabelle di secondo livello della metà alta (voci 256..512 della PML4):
 /// gli spazi dei processi copiano queste voci, quindi ogni mappatura futura del kernel è
 /// visibile in tutti gli spazi senza aggiornarli. Restituisce le tabelle create.
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
 pub fn prepara_meta_alta() -> u64 {
     let pml4 = STATO.prendi().pml4;
     let t = tabella(pml4);

@@ -502,7 +502,8 @@ fn controlli() -> Esito<String> {
     let mut totale = 0;
     let mut righe_codice = 0;
     let mut senza = Vec::new();
-    for dir in ["comune/src", "boot/src", "kernel/src", "xtask/src"] {
+    let mut wip = Vec::new();
+    for dir in ["comune/src", "boot/src", "kernel/src", "xtask/src", "utente/omni-std/src", "utente/programmi/src"] {
         let mut file = Vec::new();
         fn visita(p: &Path, f: &mut Vec<PathBuf>) {
             for e in fs::read_dir(p).into_iter().flatten().flatten() {
@@ -520,6 +521,9 @@ fn controlli() -> Esito<String> {
             let righe: Vec<&str> = testo.lines().collect();
             righe_codice += righe.iter().filter(|l| !l.trim().is_empty() && !l.trim_start().starts_with("//")).count();
             for (i, l) in righe.iter().enumerate() {
+                if l.contains("// K3-WIP") && !f.ends_with("xtask/src/main.rs") {
+                    wip.push(format!("{}:{}", f.strip_prefix(&r).unwrap().display(), i + 1));
+                }
                 let c = l.split("//").next().unwrap_or("");
                 if !(c.contains("unsafe {") || c.contains("unsafe impl") || c.contains("unsafe fn") || c.contains("unsafe extern \"C\" {")) {
                     continue;
@@ -538,6 +542,13 @@ fn controlli() -> Esito<String> {
     if !senza.is_empty() {
         return Err(format!("blocchi unsafe senza commento SAFETY: {senza:?}"));
     }
+    // codice di K3 non ancora collegato: tollerato solo se segnato e sempre elencato
+    let _ = writeln!(
+        out,
+        "- Marcatori `K3-WIP` (eccezioni temporanee al controllo del codice inutilizzato, da azzerare prima di dichiarare K3 completato): {}{}",
+        wip.len(),
+        if wip.is_empty() { String::new() } else { format!(" ({})", wip.join(", ")) }
+    );
     let _ = writeln!(out, "- Codice: {righe_codice} righe Rust (esclusi commenti e righe vuote); {totale} usi di `unsafe`, tutti con il commento `SAFETY` che ne giustifica la correttezza");
     Ok(out)
 }

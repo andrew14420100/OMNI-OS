@@ -11,6 +11,8 @@
 //! all'allocatore di frame. La distruzione avviene solo quando nessun thread del processo è
 //! più in esecuzione: ogni cambio di thread ricarica CR3, quindi nessuna CPU conserva voci
 //! del TLB di quello spazio.
+// K3-WIP: modulo non ancora collegato (tolto quando lo usano i processi)
+#![allow(dead_code)]
 
 use super::{frame, pagine};
 use core::sync::atomic::{AtomicU64, Ordering};
