@@ -1,0 +1,13 @@
+#!/bin/sh
+# Sessione OMNI: KWin e i servizi di Plasma come infrastruttura, OMNI Shell come unica
+# interfaccia (il pannello di Plasma non parte in questa sessione, vedi omni-session-check).
+# Il marcatore lega la scelta a QUESTA sessione di login e viene rimosso all'uscita.
+dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omni-os"
+mkdir -p "$dir"
+printf '%s\n' "${XDG_SESSION_ID:-sconosciuta}" > "$dir/sessione-omni"
+export OMNI_SESSION=1
+systemctl --user import-environment XDG_SESSION_ID OMNI_SESSION 2>/dev/null || true
+/usr/libexec/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland "$@"
+rc=$?
+rm -f "$dir/sessione-omni"
+exit $rc

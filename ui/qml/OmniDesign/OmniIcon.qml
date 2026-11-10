@@ -11,24 +11,27 @@ Item {
     implicitWidth: 24
     implicitHeight: 24
 
-    Item {
+    // Antialiasing analitico (Shape.CurveRenderer, Qt >= 6.6) e tassellazione in background:
+    // nessun buffer multicampione per icona (prima: un FBO MSAA 4x per ogni icona, costoso in 4K).
+    // Con Qt più vecchi (solo test locali) si torna al livello multicampione.
+    Shape {
+        id: shape
+        readonly property bool curve: typeof Shape.CurveRenderer !== "undefined"
         width: 24; height: 24
         scale: Math.min(root.width, root.height) / 24
         anchors.centerIn: parent
-        layer.enabled: true
+        asynchronous: true
+        layer.enabled: !curve
         layer.samples: 4
         layer.smooth: true
-        layer.textureSize: Qt.size(Math.max(24, Math.ceil(root.width * 2)), Math.max(24, Math.ceil(root.height * 2)))
-        Shape {
-            anchors.fill: parent
-            ShapePath {
-                strokeColor: root.color
-                strokeWidth: root.strokeWidth
-                fillColor: root.filled ? root.color : "transparent"
-                capStyle: ShapePath.RoundCap
-                joinStyle: ShapePath.RoundJoin
-                PathSvg { path: Icons.path(root.name) }
-            }
+        Component.onCompleted: if (curve) preferredRendererType = Shape.CurveRenderer
+        ShapePath {
+            strokeColor: root.color
+            strokeWidth: root.strokeWidth
+            fillColor: root.filled ? root.color : "transparent"
+            capStyle: ShapePath.RoundCap
+            joinStyle: ShapePath.RoundJoin
+            PathSvg { path: Icons.path(root.name) }
         }
     }
 }

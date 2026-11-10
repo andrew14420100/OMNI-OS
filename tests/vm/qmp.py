@@ -4,6 +4,7 @@
   qmp.py SOCK screendump FILE.png
   qmp.py SOCK type TESTO        (solo lettere minuscole e cifre)
   qmp.py SOCK key TASTO...      (qcode QEMU, es. ret tab esc; più tasti = combinazione)
+  qmp.py SOCK tap TASTO         (pressione e rilascio separati, es. meta_l)
   qmp.py SOCK move X Y W H      (puntatore assoluto in pixel su schermo W×H; richiede usb-tablet)
   qmp.py SOCK click X Y W H     (movimento e clic sinistro)
   qmp.py SOCK drag X1 Y1 X2 Y2 W H
@@ -49,6 +50,14 @@ elif action == "type":
         send_keys([c])
 elif action == "key":
     send_keys(args)
+elif action == "tap":
+    # pressione e rilascio separati (come una tastiera reale), per i tasti modificatori da soli
+    for down in (True, False):
+        r = cmd({"execute": "input-send-event", "arguments": {"events": [
+            {"type": "key", "data": {"down": down, "key": {"type": "qcode", "data": args[0]}}}]}})
+        if "error" in r:
+            sys.exit(f"input-send-event fallito: {r['error']}")
+        time.sleep(0.25)
 elif action in ("move", "click", "drag"):
     def absmove(x, y, w, h):
         ev = [{"type": "abs", "data": {"axis": "x", "value": int(float(x) * 32767 / float(w))}},

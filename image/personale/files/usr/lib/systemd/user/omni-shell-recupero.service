@@ -1,0 +1,6 @@
+[Unit]
+Description=Desktop Plasma di riserva se OMNI Shell non riparte
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/omni-os/omni-recupero

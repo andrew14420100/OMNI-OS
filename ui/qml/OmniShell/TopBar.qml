@@ -101,7 +101,6 @@ Item {
             Keys.onReturnPressed: root.quickSettingsRequested(); Keys.onSpacePressed: root.quickSettingsRequested()
             Row {
                 id: tray; anchors.centerIn: parent; spacing: 10
-                OmniIcon { width: 17; height: 17; name: "sparkle"; color: Theme.textSecondary }
                 OmniIcon { width: 17; height: 17; name: "wifi"; color: Theme.textPrimary }
                 OmniIcon { width: 17; height: 17; name: "volume"; color: Theme.textPrimary }
                 OmniIcon { width: 17; height: 17; name: Theme.dark ? "moon" : "sun"; color: Theme.textPrimary }

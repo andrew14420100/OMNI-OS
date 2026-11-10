@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=OMNI Shell (avvio automatico)
-Comment=Apre OMNI Shell all'accesso. Si disattiva da Impostazioni di sistema > Avvio automatico.
-Exec=omni-shell --fullscreen
-Terminal=false
-X-KDE-autostart-phase=2

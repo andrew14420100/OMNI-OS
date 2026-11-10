@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Konsole
+Comment=Terminale
+Icon=utilities-terminal
+Exec=konsole
+Categories=Qt;KDE;System;TerminalEmulator;

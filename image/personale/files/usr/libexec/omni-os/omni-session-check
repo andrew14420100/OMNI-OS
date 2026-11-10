@@ -1,0 +1,13 @@
+#!/bin/sh
+# Uso: omni-session-check omni|plasma   (per ExecCondition delle unità utente)
+#   omni:   esce con 0 se la sessione corrente è una sessione OMNI
+#   plasma: esce con 0 se il pannello di Plasma deve partire (sessione non OMNI)
+# Esito 1 = condizione falsa: systemd salta l'unità senza considerarla un errore.
+marker="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omni-os/sessione-omni"
+omni=1
+if [ -f "$marker" ] && [ "$(cat "$marker" 2>/dev/null)" = "${XDG_SESSION_ID:-sconosciuta}" ]; then omni=0; fi
+case "$1" in
+  omni) exit "$omni" ;;
+  plasma) if [ "$omni" -eq 0 ]; then exit 1; else exit 0; fi ;;
+  *) echo "uso: omni-session-check omni|plasma" >&2; exit 0 ;;
+esac

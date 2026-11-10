@@ -1,0 +1,11 @@
+# OMNI OS: la sessione predefinita del gestore di accesso (plasma.desktop) avvia il desktop
+# OMNI. Plasma e KWin restano l'infrastruttura; il desktop Plasma originale è la voce
+# "OMNI OS – modalità sicura (desktop Plasma)".
+[Desktop Entry]
+Type=Application
+Name=OMNI OS
+Comment=Desktop OMNI: OMNI Shell come interfaccia, KWin e i servizi di Plasma come infrastruttura
+Exec=/usr/libexec/omni-os/omni-session
+TryExec=/usr/libexec/omni-os/omni-session
+DesktopNames=KDE
+X-KDE-PluginInfo-Version=0.3.0

@@ -4,7 +4,7 @@ import OmniDesign
 
 // Impostazioni rapide OMNI (decisione 20). Funzionanti nel prototipo: tema chiaro/scuro,
 // colore d'accento, movimento ridotto, risparmio risorse, non disturbare.
-// Wi-Fi, Bluetooth, volume, luminosità, Assistente AI, blocco e spegnimento sono PROTOTIPI
+// Wi-Fi, Bluetooth, volume, luminosità, blocco e spegnimento sono PROTOTIPI
 // non collegati al sistema (etichetta "Prototipo").
 Item {
     id: root
@@ -122,11 +122,7 @@ Item {
                 }
             }
 
-            // Assistente AI (prototipo)
-            Reveal {
-                shown: root.open; delay: Theme.staggerStep * 5; Layout.fillWidth: true; Layout.preferredHeight: 64
-                OmniToggleTile { anchors.fill: parent; icon: "sparkle"; title: qsTr("Assistente AI"); prototype: true }
-            }
+            // (nessun riquadro per funzioni non previste in questa fase)
         }
     }
 }

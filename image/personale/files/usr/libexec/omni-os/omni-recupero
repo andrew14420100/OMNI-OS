@@ -1,0 +1,17 @@
+#!/bin/sh
+# Avviato da systemd quando omni-shell.service fallisce (OnFailure scatta a OGNI arresto
+# anomalo, anche quando systemd lo riavvia). Si attende il riavvio automatico: solo se
+# OMNI Shell non riparte (limite di 4 riavvii in 120 s raggiunto) si avvia il desktop Plasma
+# di riserva nella stessa sessione, così l'utente non resta mai senza interfaccia.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  sleep 1
+  if systemctl --user is-active --quiet omni-shell.service; then
+    echo "OMNI Shell riavviata da systemd: nessun intervento"
+    exit 0
+  fi
+done
+dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/omni-os"
+rm -f "$dir/sessione-omni"
+echo "OMNI Shell non riparte: avvio del desktop Plasma di riserva (modalità sicura)"
+systemctl --user reset-failed plasma-plasmashell.service 2>/dev/null || true
+exec systemctl --user start plasma-plasmashell.service

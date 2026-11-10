@@ -1,5 +1,6 @@
 #include "applauncher.h"
 #include "desktopentries.h"
+#include <QDateTime>
 #include <QFileInfo>
 #include <QProcess>
 #include <QStandardPaths>
@@ -26,7 +27,7 @@ bool AppLauncher::launch(const QString &path) {
         if (QStandardPaths::findExecutable(cmd.first()).isEmpty()) continue;
         qint64 pid = 0;
         if (QProcess::startDetached(cmd.first(), cmd.mid(1), QString(), &pid)) {
-            qInfo("avvio reale: %s (%s, pid %lld)", qPrintable(path), qPrintable(cmd.first()), pid);
+            qInfo("avvio reale: %s (%s, pid %lld, t=%lld)", qPrintable(path), qPrintable(cmd.first()), pid, QDateTime::currentMSecsSinceEpoch());
             emit launched(path, true, cmd.first());
             return true;
         }

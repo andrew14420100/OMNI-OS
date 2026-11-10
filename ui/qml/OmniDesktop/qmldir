@@ -1,0 +1,15 @@
+module OmniDesktop
+Services 1.0 Services.qml
+AppIndex 1.0 AppIndex.qml
+AppIcon 1.0 AppIcon.qml
+OmniLogo 1.0 OmniLogo.qml
+PanelFrame 1.0 PanelFrame.qml
+Taskbar 1.0 Taskbar.qml
+StartMenu 1.0 StartMenu.qml
+PowerMenu 1.0 PowerMenu.qml
+QuickPanel 1.0 QuickPanel.qml
+NoteCard 1.0 NoteCard.qml
+NotificationPanel 1.0 NotificationPanel.qml
+ToastStack 1.0 ToastStack.qml
+ContextMenu 1.0 ContextMenu.qml
+LayerWindow 1.0 LayerWindow.qml
