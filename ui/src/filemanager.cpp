@@ -349,7 +349,11 @@ int FileOps::startJob(const QString &kind, const QStringList &sources, const QSt
             emit jobsChanged();
         });
         connect(job, &KJob::result, this, [this, id](KJob *j) {
-            done(id, j->error() == 0, j->error() == KJob::KilledJobError ? tr("Annullato") : j->errorString());
+            // esito sempre asincrono: KIO lo emette in modo sincrono dentro kill(), cioè prima
+            // che chi ha chiesto l'annullamento possa riceverlo
+            const bool ok = j->error() == 0;
+            const QString err = j->error() == KJob::KilledJobError ? tr("Annullato") : j->errorString();
+            QMetaObject::invokeMethod(this, [this, id, ok, err]() { done(id, ok, err); }, Qt::QueuedConnection);
         });
         return id;
     }
