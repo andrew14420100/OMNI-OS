@@ -73,6 +73,10 @@ omni_file_backends(tst_apps)
 target_link_libraries(tst_apps PRIVATE omni_desktopentries Qt6::Quick Qt6::Test Qt6::DBus)
 target_compile_definitions(tst_apps PRIVATE OMNI_QML_SRC="${CMAKE_CURRENT_SOURCE_DIR}/qml" OMNI_TEST_APPS="${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop" OMNI_APPSTREAM_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/appstream")
 add_test(NAME apps COMMAND tst_apps)
+# risposte di sistema lente (come su una macchina carica): arrivano dopo la chiusura della
+# pagina che le ha chieste e non devono produrre errori
+add_test(NAME apps_risposte_lente COMMAND tst_apps impostazioniTutteLePagine)
+set_tests_properties(apps_risposte_lente PROPERTIES ENVIRONMENT "PATH=${CMAKE_CURRENT_SOURCE_DIR}/tests/comandi-lenti:$ENV{PATH}")
 add_executable(tst_files tests/tst_files.cpp src/filemanager.cpp)
 target_link_libraries(tst_files PRIVATE Qt6::Gui Qt6::Test)
 target_include_directories(tst_files PRIVATE src)

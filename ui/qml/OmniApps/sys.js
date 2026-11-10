@@ -1,29 +1,37 @@
 // Funzioni comuni delle app OMNI sopra omniSystem (C++): ogni chiamata ha la sua risposta,
 // nessun esito viene supposto prima della risposta del sistema.
 
+// La risposta può arrivare dopo che la pagina che l'ha chiesta è stata chiusa: il suo
+// contesto QML non esiste più ("omniSystem" non è più visibile da qui). In quel caso la
+// risposta non ha più un destinatario e viene ignorata (nessun aggiornamento di una pagina
+// distrutta). Le connessioni usano il riferimento preso alla chiamata.
+function alive() { return typeof omniSystem !== "undefined" }
+
 function run(program, args, cb, opts) {
     opts = opts || {}
-    const id = omniSystem.run(program, args || [], opts.timeout === undefined ? 60000 : opts.timeout, !!opts.onLine)
-    const lineH = function (rid, text) { if (rid === id) opts.onLine(text) }
+    const sys = omniSystem
+    const id = sys.run(program, args || [], opts.timeout === undefined ? 60000 : opts.timeout, !!opts.onLine)
+    const lineH = function (rid, text) { if (rid === id && alive()) opts.onLine(text) }
     const done = function (rid, code, out, err) {
         if (rid !== id) return
-        omniSystem.finished.disconnect(done)
-        if (opts.onLine) omniSystem.line.disconnect(lineH)
-        if (cb) cb(code, out, err)
+        sys.finished.disconnect(done)
+        if (opts.onLine) sys.line.disconnect(lineH)
+        if (cb && alive()) cb(code, out, err)
     }
-    omniSystem.finished.connect(done)
-    if (opts.onLine) omniSystem.line.connect(lineH)
+    sys.finished.connect(done)
+    if (opts.onLine) sys.line.connect(lineH)
     return id
 }
 
 function dbus(bus, service, path, iface, method, args, cb, interactive) {
-    const id = omniSystem.dbus(bus, service, path, iface, method, args || [], !!interactive, 120000)
+    const sys = omniSystem
+    const id = sys.dbus(bus, service, path, iface, method, args || [], !!interactive, 120000)
     const done = function (rid, ok, result, error) {
         if (rid !== id) return
-        omniSystem.dbusFinished.disconnect(done)
-        if (cb) cb(ok, result, error)
+        sys.dbusFinished.disconnect(done)
+        if (cb && alive()) cb(ok, result, error)
     }
-    omniSystem.dbusFinished.connect(done)
+    sys.dbusFinished.connect(done)
     return id
 }
 
