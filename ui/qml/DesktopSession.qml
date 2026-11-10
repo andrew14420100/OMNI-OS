@@ -100,14 +100,17 @@ QtObject {
     // App proposte al primo accesso (solo quelle realmente installate)
     function initPins() {
         if (prefs.pinsInitialized) return
-        const want = ["org.mozilla.firefox.desktop", "firefox.desktop", "org.kde.dolphin.desktop", "org.kde.konsole.desktop",
-                      "systemsettings.desktop", "org.kde.systemsettings.desktop", "org.kde.discover.desktop", "org.kde.kwrite.desktop",
-                      "org.kde.kate.desktop", "org.kde.okular.desktop", "org.kde.gwenview.desktop", "org.kde.ark.desktop",
-                      "org.kde.kcalc.desktop", "org.kde.elisa.desktop", "org.kde.spectacle.desktop", "org.kde.plasma-systemmonitor.desktop",
-                      "org.kde.kinfocenter.desktop", "org.kde.filelight.desktop"]
+        // un'app per ruolo: prima quella OMNI, poi l'equivalente KDE (nessun doppione)
+        const want = [["org.mozilla.firefox.desktop", "firefox.desktop"], ["org.omnios.Explorer.desktop", "org.kde.dolphin.desktop"],
+                      ["org.kde.konsole.desktop"], ["org.omnios.Settings.desktop", "systemsettings.desktop", "org.kde.systemsettings.desktop"],
+                      ["org.omnios.Store.desktop", "org.kde.discover.desktop"], ["org.kde.kwrite.desktop", "org.kde.kate.desktop"],
+                      ["org.kde.okular.desktop"], ["org.kde.gwenview.desktop"], ["org.kde.ark.desktop"], ["org.kde.kcalc.desktop"],
+                      ["org.kde.elisa.desktop"], ["org.kde.spectacle.desktop"], ["org.omnios.TaskManager.desktop", "org.kde.plasma-systemmonitor.desktop"],
+                      ["org.kde.filelight.desktop"]]
         const sp = [], bp = []
-        for (const id of want) {
-            const e = appIndex.find(id)
+        for (const group of want) {
+            let e = null
+            for (const id of group) { e = appIndex.find(id); if (e) break }
             if (!e || sp.indexOf(e.desktopId) >= 0) continue
             sp.push(e.desktopId)
             if (bp.length < 5) bp.push(urlFor(e.desktopId))

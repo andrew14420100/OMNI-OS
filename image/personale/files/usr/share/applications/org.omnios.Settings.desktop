@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Impostazioni
+Name[it]=Impostazioni
+GenericName=Impostazioni di sistema
+GenericName[it]=Impostazioni di sistema
+Comment=Rete, audio, schermo, aspetto, account, aggiornamenti e sicurezza
+Comment[it]=Rete, audio, schermo, aspetto, account, aggiornamenti e sicurezza
+Exec=/usr/bin/omni-shell --app impostazioni
+Icon=preferences-system
+Categories=Settings;System;
+Keywords=impostazioni;preferenze;rete;wifi;audio;schermo;bluetooth;aggiornamenti;settings;
+

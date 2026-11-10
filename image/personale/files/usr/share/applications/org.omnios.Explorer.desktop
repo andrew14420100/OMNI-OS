@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Esplora file
+Name[it]=Esplora file
+GenericName=Gestione file
+GenericName[it]=Gestione file
+Comment=Cartelle e file, cestino, archivi ZIP
+Comment[it]=Cartelle e file, cestino, archivi ZIP
+Exec=/usr/bin/omni-shell --app explorer %U
+Icon=system-file-manager
+Categories=System;FileManager;Utility;
+Keywords=file;cartelle;documenti;explorer;cestino;
+MimeType=inode/directory;

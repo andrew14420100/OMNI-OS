@@ -40,7 +40,14 @@ Window {
     Component.onCompleted: {
         applyPrefs()
         const a = Qt.application.arguments
-        for (let i = 0; i < a.length; ++i) if (a[i] === "--cartella" && a[i + 1]) navigate(a[i + 1])
+        // cartella iniziale: --cartella <percorso>, oppure un percorso/URL file:// passato
+        // dal sistema (apertura di una cartella da un'altra app, Exec=... %U)
+        for (let i = 1; i < a.length; ++i) {
+            let p = a[i] === "--cartella" ? a[i + 1] : (a[i - 1] !== "--cartella" && a[i - 1] !== "--app" && /^(\/|file:\/\/)/.test(a[i]) ? a[i] : "")
+            if (!p) continue
+            if (p.startsWith("file://")) p = decodeURIComponent(p.slice(7))
+            if (omniSystem.exists(p)) { navigate(p); break }
+        }
         folder.path = currentPath
         shellPerf.mark("finestra creata")
     }

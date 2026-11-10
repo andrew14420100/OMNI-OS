@@ -63,6 +63,8 @@ public:
     Q_INVOKABLE void setBrightness(int value);
     // apre un modulo delle Impostazioni di sistema di KDE (es. "kcm_kscreen")
     Q_INVOKABLE bool openSettings(const QString &module = QString());
+    // app OMNI (stesso eseguibile): impostazioni, attivita, explorer, store; pagina facoltativa
+    Q_INVOKABLE bool openOmniApp(const QString &app, const QString &page = QString());
 
 signals:
     void displayChanged();
