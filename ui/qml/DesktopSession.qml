@@ -95,6 +95,14 @@ QtObject {
         if (entry) items.push(isBarPinned(entry.desktopId)
             ? { label: qsTr("Rimuovi dalla barra"), icon: "pin", act: () => setBarPinned(entry.desktopId, false) }
             : { label: qsTr("Aggiungi alla barra"), icon: "pin", act: () => setBarPinned(entry.desktopId, true) })
+        // multitasking con le funzioni reali di KWin (affiancamento, desktop virtuali)
+        if (model.IsWindow === true && model.IsGroupParent !== true) {
+            const onWin = (shortcut) => () => { tasks.activate(row); kwinActions.invokeShortcutLater(shortcut) }
+            items.push({ label: qsTr("Affianca a sinistra"), icon: "chevron-right", act: onWin("Window Quick Tile Left") })
+            items.push({ label: qsTr("Affianca a destra"), icon: "chevron-right", act: onWin("Window Quick Tile Right") })
+            items.push({ label: model.IsMaximized ? qsTr("Ripristina dimensioni") : qsTr("Ingrandisci"), icon: "display", act: () => tasks.toggleMaximized(row) })
+            if (tasks.desktopCount > 1) items.push({ label: qsTr("Sposta sul desktop successivo"), icon: "layers", act: onWin("Window to Next Desktop") })
+        }
         if (model.IsWindow === true || model.IsGroupParent === true)
             items.push({ label: model.ChildCount > 1 ? qsTr("Chiudi tutte le finestre") : qsTr("Chiudi finestra"), icon: "close", act: () => tasks.close(row) })
         showMenu(items, item)

@@ -46,6 +46,8 @@ class KWinActions : public QObject {
 public:
     explicit KWinActions(QObject *parent = nullptr) : QObject(parent) {}
     Q_INVOKABLE void invokeShortcut(const QString &name);
+    // dopo l'attivazione di una finestra (asincrona in Wayland): azione di KWin sulla finestra attiva
+    Q_INVOKABLE void invokeShortcutLater(const QString &name, int delayMs = 200);
     Q_INVOKABLE void setCurrentDesktop(const QString &id);
     Q_INVOKABLE void createDesktop(int position, const QString &name);
     Q_INVOKABLE void removeDesktop(const QString &id);

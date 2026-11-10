@@ -1,4 +1,5 @@
 #include "shellservices.h"
+#include <QTimer>
 #include "applauncher.h"
 #include <QDateTime>
 #include <QDBusConnection>
@@ -90,6 +91,10 @@ void KWinActions::invokeShortcut(const QString &name) {
     m << name;
     qInfo("kwin: scorciatoia \"%s\"", qPrintable(name));
     kwinCall(this, m, name);
+}
+
+void KWinActions::invokeShortcutLater(const QString &name, int delayMs) {
+    QTimer::singleShot(qBound(0, delayMs, 2000), this, [this, name]() { invokeShortcut(name); });
 }
 
 void KWinActions::setCurrentDesktop(const QString &id) {
