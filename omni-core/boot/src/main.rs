@@ -1,7 +1,8 @@
 // Copyright (c) 2026 OMNI OS. Tutti i diritti riservati.
 //! OMNI Boot: applicazione UEFI che carica il kernel OMNI.
 //!
-//! 1. Legge `\OMNI\KERNEL.ELF` dal volume da cui è stato avviato e ne calcola lo SHA-256.
+//! 1. Legge `\OMNI\KERNEL.ELF` dal volume da cui è stato avviato e ne calcola lo SHA-256;
+//!    legge anche il pacchetto iniziale dei programmi utente `\OMNI\INIZIALE.PKG` (K3).
 //! 2. Verifica l'ELF e copia i segmenti in pagine fisiche dedicate.
 //! 3. Sceglie la modalità grafica (GOP), trova la RSDP ACPI.
 //! 4. Costruisce le tabelle di pagine iniziali: identità (solo per il passaggio), mappa
@@ -27,6 +28,7 @@ macro_rules! log {
 }
 
 const PERCORSO_KERNEL: &str = "\\OMNI\\KERNEL.ELF";
+const PERCORSO_PACCHETTO: &str = "\\OMNI\\INIZIALE.PKG";
 const PAGINA: u64 = 4096;
 const DUE_MB: u64 = 2 * 1024 * 1024;
 // bit delle voci di tabella delle pagine (Intel SDM vol. 3, 4.5)
@@ -63,15 +65,16 @@ impl Avvio {
     }
 }
 
-/// Legge l'intero file del kernel in memoria del caricatore.
-fn leggi_kernel(a: &Avvio, immagine: Handle) -> Result<&'static [u8], Status> {
+/// Legge un intero file del volume di avvio in pagine del tipo indicato. `Ok(None)` se il
+/// file non esiste.
+fn leggi_file(a: &Avvio, immagine: Handle, percorso: &str, tipo: u32) -> Result<Option<&'static [u8]>, Status> {
     let img: *mut ImmagineCaricata = a.protocollo(immagine, &GUID_IMMAGINE_CARICATA)?;
     // SAFETY: protocollo restituito dal firmware per la nostra immagine
     let dispositivo = unsafe { (*img).dispositivo };
     let fs: *mut FileSystemSemplice = a.protocollo(dispositivo, &GUID_FILE_SYSTEM_SEMPLICE)?;
     let mut radice: *mut File = core::ptr::null_mut();
     let mut nome = [0u16; 32];
-    for (i, c) in PERCORSO_KERNEL.encode_utf16().enumerate() {
+    for (i, c) in percorso.encode_utf16().enumerate() {
         nome[i] = c;
     }
     // SAFETY: protocolli del firmware; i puntatori restano validi durante i servizi di avvio
@@ -83,15 +86,15 @@ fn leggi_kernel(a: &Avvio, immagine: Handle) -> Result<&'static [u8], Status> {
         let mut file: *mut File = core::ptr::null_mut();
         let s = ((*radice).apri)(radice, &mut file, nome.as_ptr(), FILE_LETTURA, 0);
         if errore(s) {
-            log!("ERRORE: {} non trovato (stato {:#x})", PERCORSO_KERNEL, s);
-            return Err(s);
+            ((*radice).chiudi)(radice);
+            return if s == NOT_FOUND { Ok(None) } else { Err(s) };
         }
         let mut dim = 0u64;
         ((*file).imposta_posizione)(file, u64::MAX);
         ((*file).posizione)(file, &mut dim);
         ((*file).imposta_posizione)(file, 0);
         let pagine = dim.div_ceil(PAGINA) as usize;
-        let buf = a.pagine(pagine.max(1), MEMORIA_DATI_CARICATORE)? as *mut u8;
+        let buf = a.pagine(pagine.max(1), tipo)? as *mut u8;
         let mut letti = dim as usize;
         let s = ((*file).leggi)(file, &mut letti, buf);
         ((*file).chiudi)(file);
@@ -99,7 +102,7 @@ fn leggi_kernel(a: &Avvio, immagine: Handle) -> Result<&'static [u8], Status> {
         if errore(s) || letti as u64 != dim {
             return Err(LOAD_ERROR);
         }
-        Ok(core::slice::from_raw_parts(buf, letti))
+        Ok(Some(core::slice::from_raw_parts(buf, letti)))
     }
 }
 
@@ -248,13 +251,30 @@ fn avvia(a: &Avvio, immagine: Handle, st: &TabellaSistema) -> Result<(), Status>
     log!("firmware: {} (revisione {:#x}); UEFI {}.{}", core::str::from_utf8(&forn[..n]).unwrap_or("?"), st.revisione_firmware, rev >> 16, (rev & 0xffff) / 10);
 
     // 1-2. kernel
-    let file = leggi_kernel(a, immagine)?;
+    let Some(file) = leggi_file(a, immagine, PERCORSO_KERNEL, MEMORIA_DATI_CARICATORE)? else {
+        log!("ERRORE: {} non trovato", PERCORSO_KERNEL);
+        return Err(NOT_FOUND);
+    };
     let hash = sha256::sha256(file);
     log!("kernel: {} ({} byte) sha256={}", PERCORSO_KERNEL, file.len(), core::str::from_utf8(&sha256::esadecimale(&hash)).unwrap_or("?"));
     let elf = Elf::verifica(file).map_err(|e| {
         log!("ERRORE: kernel non valido: {}", e.descrizione());
         LOAD_ERROR
     })?;
+
+    // pacchetto iniziale (facoltativo): resta in memoria per il kernel, tipo dedicato
+    let pacchetto = leggi_file(a, immagine, PERCORSO_PACCHETTO, bootinfo::TIPO_UEFI_PACCHETTO)?;
+    let hash_pacchetto = match pacchetto {
+        Some(p) => {
+            let h = sha256::sha256(p);
+            log!("pacchetto iniziale: {} ({} byte) sha256={}", PERCORSO_PACCHETTO, p.len(), core::str::from_utf8(&sha256::esadecimale(&h)).unwrap_or("?"));
+            h
+        }
+        None => {
+            log!("pacchetto iniziale: {} assente", PERCORSO_PACCHETTO);
+            [0; 32]
+        }
+    };
 
     // 3. grafica e ACPI
     let fb = scegli_grafica(a);
@@ -333,6 +353,9 @@ fn avvia(a: &Avvio, immagine: Handle, st: &TabellaSistema) -> Result<(), Status>
     bi.framebuffer = fb.unwrap_or(Framebuffer { fisico: 0, dimensione: 0, larghezza: 0, altezza: 0, passo: 0, formato: FormatoPixel::Bgr });
     bi.sha256_kernel = hash;
     bi.fornitore_firmware = forn;
+    bi.pacchetto_fisico = pacchetto.map(|p| p.as_ptr() as u64).unwrap_or(0);
+    bi.pacchetto_lunghezza = pacchetto.map(|p| p.len() as u64).unwrap_or(0);
+    bi.sha256_pacchetto = hash_pacchetto;
 
     let mut tentativi = 0;
     loop {
