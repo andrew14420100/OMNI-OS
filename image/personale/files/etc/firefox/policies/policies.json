@@ -1,0 +1,27 @@
+{
+  "policies": {
+    "DontCheckDefaultBrowser": true,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "UserMessaging": {
+      "WhatsNew": false,
+      "ExtensionRecommendations": false,
+      "FeatureRecommendations": false,
+      "UrlbarInterventions": false,
+      "SkipOnboarding": true,
+      "MoreFromMozilla": false,
+      "Locked": false
+    },
+    "Preferences": {
+      "browser.aboutwelcome.enabled": { "Value": false, "Status": "default" },
+      "browser.ml.enable": { "Value": false, "Status": "default" },
+      "browser.ml.chat.enabled": { "Value": false, "Status": "default" },
+      "browser.ml.chat.sidebar": { "Value": false, "Status": "default" },
+      "browser.ml.linkPreview.enabled": { "Value": false, "Status": "default" },
+      "browser.tabs.groups.smart.enabled": { "Value": false, "Status": "default" },
+      "extensions.ml.enabled": { "Value": false, "Status": "default" }
+    }
+  }
+}

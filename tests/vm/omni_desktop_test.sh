@@ -120,9 +120,38 @@ launch_check Dolphin dolphin search_launch dolphin
 sleep 3; shot 05-dolphin
 launch_check Firefox firefox click bar:task:org.mozilla.firefox.desktop
 sleep 8; shot 06-firefox
-launch_check Impostazioni systemsettings search_launch settings
+launch_check "Impostazioni (ricerca 'settings' in Start)" "org.omnios.Settings|systemsettings" search_launch settings
 sleep 4; shot 07-impostazioni
-for p in konsole dolphin firefox systemsettings; do app_close "$p"; done; sleep 3
+for p in konsole dolphin firefox systemsettings; do app_close "$p"; done
+omni_app_close() { vm_ssh "pkill -u $U -f 'omni-shell-prototipo --app $1'" >/dev/null 2>&1 || true; sleep 2; }
+omni_app_close impostazioni; sleep 3
+
+# --- 3b. app OMNI 0.4: Impostazioni, Gestione attività, Esplora file, Store ---
+expect_ok "voci delle app OMNI installate" vm_ssh "for a in Settings TaskManager Explorer Store; do test -f /usr/share/applications/org.omnios.\$a.desktop || exit 1; done"
+d=$(u_sh "xdg-mime query default inode/directory" 2>/dev/null)
+if [ "$d" = org.omnios.Explorer.desktop ]; then rec OK "le cartelle si aprono in OMNI Explorer (xdg-mime)"; else rec FAIL "applicazione predefinita per le cartelle: '${d:-nessuna}'"; fi
+launch_dbus() { u_sh "gdbus call --session --dest org.omnios.Shell --object-path /Shell --method org.omnios.Shell.Launch /usr/share/applications/$1.desktop" >> "$LOG" 2>&1; }
+qp_settings() { click bar:status 2; click qs:settings 1; }
+launch_check "OMNI Settings dal pannello rapido" "org.omnios.Settings" qp_settings
+sleep 5; shot 16-omni-impostazioni; omni_app_close impostazioni
+launch_check "OMNI Task Manager" "org.omnios.TaskManager" launch_dbus org.omnios.TaskManager
+sleep 6; shot 17-omni-gestione-attivita; omni_app_close attivita
+u_sh "mkdir -p ~/Documenti/Progetti ~/Immagini && echo Appunti > ~/Documenti/appunti.txt && echo Relazione > ~/Documenti/relazione.md; true"
+launch_check "OMNI Explorer (ricerca 'esplora' in Start)" "org.omnios.Explorer" search_launch esplora
+sleep 5; shot 18-omni-esplora-file; omni_app_close explorer
+vm_ssh "flatpak remotes --columns=name,url,options 2>&1; ls /var/lib/flatpak/appstream 2>&1" > "$w/flatpak-sorgenti.txt" 2>&1
+# catalogo reale per OMNI Store: come farebbe l'utente da Store > Sorgenti (solo nella VM di prova)
+if ! u_sh "flatpak remotes --columns=name" 2>/dev/null | grep -qx flathub; then
+  u_sh "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo" >> "$w/flatpak-sorgenti.txt" 2>&1
+fi
+u_sh "timeout 600 flatpak update --appstream" >> "$w/flatpak-sorgenti.txt" 2>&1
+napp=$(vm_ssh "for f in /var/lib/flatpak/appstream/*/x86_64/active/appstream.xml* /var/home/$U/.local/share/flatpak/appstream/*/x86_64/active/appstream.xml*; do [ -f \"\$f\" ] && { case \"\$f\" in *.gz) zcat \"\$f\";; *) cat \"\$f\";; esac; }; done 2>/dev/null | grep -c '<component type=\"desktop'" 2>/dev/null)
+if [ "${napp:-0}" -gt 0 ]; then rec OK "catalogo Flatpak reale scaricato: $napp app (AppStream)"; else rec INFO "catalogo Flatpak non disponibile nella VM (rete o sorgente): lo Store mostra lo stato vuoto"; fi
+launch_check "OMNI Store" "org.omnios.Store" launch_dbus org.omnios.Store
+sleep 10; shot 19-omni-store; omni_app_close store
+errs=$(vm_ssh "journalctl -b _UID=$UID_ --no-pager -o cat | grep -E 'qml/apps/.*(Error|TypeError|ReferenceError|Unable to assign|is not installed)'" 2>/dev/null)
+if [ -z "$errs" ]; then rec OK "app OMNI: nessun errore QML nel registro"; else rec FAIL "app OMNI: errori QML (vedi evidenze)"; echo "$errs" | head -30 >> "$ev"; fi
+vm_ssh "journalctl -b _UID=$UID_ --no-pager -o cat | grep -E 'app OMNI|OMNI Shell: (finestra|primo)'" >> "$ev" 2>&1
 
 # --- 4. desktop virtuali (KWin): la barra mostra solo le finestre del desktop corrente ---
 kw() { u_sh "gdbus call --session --dest org.kde.kglobalaccel --object-path /component/kwin --method org.kde.kglobalaccel.Component.invokeShortcut '$1'" >> "$LOG" 2>&1; }

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=OMNI Store
+Name[it]=OMNI Store
+GenericName=Negozio di applicazioni
+GenericName[it]=Negozio di applicazioni
+Comment=Applicazioni Flatpak da Flathub: installazione, aggiornamenti, permessi
+Comment[it]=Applicazioni Flatpak da Flathub: installazione, aggiornamenti, permessi
+Exec=/usr/bin/omni-shell --app store
+Icon=system-software-install
+Categories=System;Settings;PackageManager;
+Keywords=app;store;flatpak;flathub;installa;
+

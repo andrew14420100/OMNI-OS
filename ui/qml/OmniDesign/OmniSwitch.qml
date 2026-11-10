@@ -6,6 +6,7 @@ Item {
     property bool checked: false
     property string label: ""
     property bool accentSurface: false
+    opacity: enabled ? 1 : 0.4      // disattivato: visibilmente non cliccabile
     signal toggled(bool checked)
     implicitWidth: 40; implicitHeight: 24
     activeFocusOnTab: true

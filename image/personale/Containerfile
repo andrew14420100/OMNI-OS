@@ -3,6 +3,8 @@
 # sessione "OMNI OS": OMNI Shell è l'unica interfaccia (barra, Start, pannelli, notifiche)
 # sopra KWin e i servizi di Plasma, che restano l'infrastruttura. La sessione Plasma
 # originale resta disponibile all'accesso come modalità sicura.
+# 0.4: app OMNI (Impostazioni, Gestione attività, Esplora file, Store) dallo stesso
+# eseguibile, schemi di colori OMNI per le app Qt/KDE (scuro predefinito).
 #   podman build --build-arg OMNI_IMAGE=localhost/omni-os:m1-ci image/personale/
 ARG OMNI_IMAGE
 # hadolint ignore=DL3006
@@ -22,4 +24,8 @@ RUN chmod 0755 /usr/bin/omni-shell /usr/lib/omni-shell/bin/omni-shell-prototipo 
     test -n "$(ls -A /usr/share/fonts/omni-inter)" && \
     rm -rf /usr/lib/omni-shell/fonts && \
     fc-cache -f /usr/share/fonts/omni-inter >/dev/null && \
+    for f in /usr/share/applications/org.omnios.*.desktop; do \
+      if command -v desktop-file-validate >/dev/null; then desktop-file-validate "$f"; fi; done && \
+    test -s /usr/share/color-schemes/OmniScuro.colors && test -s /usr/share/color-schemes/OmniChiaro.colors && \
+    { test -e /etc/xdg/kdeglobals || grep -v '^#' /usr/share/color-schemes/OmniScuro.colors > /etc/xdg/kdeglobals; } && \
     bootc container lint

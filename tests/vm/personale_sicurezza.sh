@@ -45,6 +45,17 @@ for e in $entries; do sudo grep -h '^options' "$e"; done | tee -a "$w/evidenze.t
 b=$dep/usr/lib/omni-shell/bin/omni-shell-prototipo
 if [ "$(sudo stat -c '%a %u' "$b")" = "755 0" ]; then rec OK "OMNI Shell: eseguibile di root, permessi 755"; else rec FAIL "permessi di OMNI Shell: $(sudo stat -c '%a %u' "$b")"; fi
 if [ -z "$(sudo find "$dep/usr/lib/omni-shell" -perm /6000 2>/dev/null)" ]; then rec OK "nessun file setuid/setgid in OMNI Shell"; else rec FAIL "file setuid/setgid in OMNI Shell"; fi
+# 0.4: nessun privilegio amministrativo concesso dalle app OMNI (le operazioni di sistema
+# passano da polkit con richiesta all'utente; OMNI non installa regole che le autorizzino)
+if [ -z "$(sudo find "$dep/etc/polkit-1" "$dep/usr/share/polkit-1" -iname '*omni*' 2>/dev/null)" ] && \
+   ! sudo grep -qsE 'pkexec|sudo' "$dep"/usr/share/applications/org.omnios.*.desktop; then
+  rec OK "app OMNI: nessuna regola polkit propria, nessun avvio come amministratore"
+else rec FAIL "app OMNI: regole polkit o avvio privilegiato presenti"; fi
+# nessuna funzione di intelligenza artificiale attiva per impostazione predefinita
+if sudo grep -qs '"browser.ml.enable": { "Value": false' "$dep/etc/firefox/policies/policies.json" && \
+   sudo grep -qs '"browser.ml.chat.enabled": { "Value": false' "$dep/etc/firefox/policies/policies.json"; then
+  rec OK "Firefox: funzioni di IA (chatbot, modelli locali) disattivate per impostazione predefinita"
+else rec FAIL "Firefox: criteri che disattivano le funzioni di IA assenti"; fi
 for t in rpm-ostreed-automatic.timer bootc-fetch-apply-updates.timer; do
   if sudo test -e "$dep/etc/systemd/system/timers.target.wants/$t"; then echo "INFO $t: abilitato" | tee -a "$w/evidenze.txt"; else echo "INFO $t: non abilitato (nessun aggiornamento automatico)" | tee -a "$w/evidenze.txt"; fi
 done

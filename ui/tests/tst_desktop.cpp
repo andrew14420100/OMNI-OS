@@ -6,6 +6,7 @@
 #include "notificationserver.h"
 #include "sessionactions.h"
 #include "shellservices.h"
+#include "omnisystem.h"
 #include "systemstatus.h"
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -23,6 +24,8 @@ public slots:
         c->setContextProperty("sessionActions", &session);
         c->setContextProperty("systemStatus", &system);
         c->setContextProperty("kwinActions", &kwin);
+        static OmniSystem omniSys;
+        c->setContextProperty("omniSystem", &omniSys);
         c->setContextProperty("shellPerf", &perf);
         c->setContextProperty("currentUser", QStringLiteral("Prova"));
         c->setContextProperty("rendererName", QStringLiteral("test"));

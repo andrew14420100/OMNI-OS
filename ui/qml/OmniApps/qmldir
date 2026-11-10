@@ -1,0 +1,9 @@
+module OmniApps
+AppFrame 1.0 AppFrame.qml
+SettingsPage 1.0 SettingsPage.qml
+SettingCard 1.0 SettingCard.qml
+SectionTitle 1.0 SectionTitle.qml
+StatusNote 1.0 StatusNote.qml
+AppSlider 1.0 AppSlider.qml
+FolderPicker 1.0 FolderPicker.qml
+LineGraph 1.0 LineGraph.qml

@@ -46,6 +46,8 @@ class KWinActions : public QObject {
 public:
     explicit KWinActions(QObject *parent = nullptr) : QObject(parent) {}
     Q_INVOKABLE void invokeShortcut(const QString &name);
+    // dopo l'attivazione di una finestra (asincrona in Wayland): azione di KWin sulla finestra attiva
+    Q_INVOKABLE void invokeShortcutLater(const QString &name, int delayMs = 200);
     Q_INVOKABLE void setCurrentDesktop(const QString &id);
     Q_INVOKABLE void createDesktop(int position, const QString &name);
     Q_INVOKABLE void removeDesktop(const QString &id);
@@ -75,11 +77,16 @@ public:
 public slots:
     Q_SCRIPTABLE bool DumpGeometry(const QString &file);
     Q_SCRIPTABLE void ShowPopup(const QString &name);
-    Q_SCRIPTABLE QString Version() { return QStringLiteral("0.3.0"); }
+    Q_SCRIPTABLE QString Version() { return QStringLiteral("0.4.0"); }
+    // avvio di un'app come dal menu Start (file .desktop elencato dal sistema): usato anche dalle misure
+    Q_SCRIPTABLE bool Launch(const QString &desktopFile);
     // eventi della sonda delle prove (script KWin): solo registrati nel journal
     Q_SCRIPTABLE void Probe(const QString &text);
+    void setLauncher(class AppLauncher *l) { m_launcher = l; }
 signals:
     void popupRequested(const QString &name);
+private:
+    class AppLauncher *m_launcher = nullptr;
 };
 
 // Preferenze dell'utente (QSettings, ~/.config/omni-os/omni-shell.conf): tema, accento,
@@ -92,6 +99,15 @@ class ShellSettings : public QObject {
     Q_PROPERTY(QStringList startPins READ startPins WRITE setStartPins NOTIFY changed)
     Q_PROPERTY(QStringList barPins READ barPins WRITE setBarPins NOTIFY changed)
     Q_PROPERTY(bool pinsInitialized READ pinsInitialized WRITE setPinsInitialized NOTIFY changed)
+    // condivise fra OMNI Shell e le app OMNI (stesso file, aggiornate dal vivo in entrambi)
+    Q_PROPERTY(bool doNotDisturb READ doNotDisturb WRITE setDoNotDisturb NOTIFY changed)
+    Q_PROPERTY(int barSize READ barSize WRITE setBarSize NOTIFY changed)
+    Q_PROPERTY(QString wallpaper READ wallpaper WRITE setWallpaper NOTIFY changed)
+    Q_PROPERTY(int effects READ effects WRITE setEffects NOTIFY changed)          // 0 essenziali, 1 equilibrati, 2 completi
+    Q_PROPERTY(bool startShowRecent READ startShowRecent WRITE setStartShowRecent NOTIFY changed)
+    // con grafica software (llvmpipe): le app Qt Quick avviate dalla shell usano il renderer
+    // software di Qt Quick (misurato: Impostazioni utilizzabili in 1,0 s invece di 2,2 s)
+    Q_PROPERTY(bool softwareQuickApps READ softwareQuickApps WRITE setSoftwareQuickApps NOTIFY changed)
 public:
     explicit ShellSettings(const QString &file = QString(), QObject *parent = nullptr);
     bool dark() const;
@@ -106,11 +122,26 @@ public:
     void setStartPins(const QStringList &v) { set("startPins", v); }
     void setBarPins(const QStringList &v) { set("barPins", v); }
     void setPinsInitialized(bool v) { set("pinsInitialized", v); }
+    bool doNotDisturb() const;
+    int barSize() const;
+    QString wallpaper() const;
+    int effects() const;
+    bool startShowRecent() const;
+    void setDoNotDisturb(bool v) { set("doNotDisturb", v); }
+    void setBarSize(int v) { set("barSize", qBound(40, v, 64)); }
+    void setWallpaper(const QString &v) { set("wallpaper", v); }
+    void setEffects(int v) { set("effects", qBound(0, v, 2)); }
+    void setStartShowRecent(bool v) { set("startShowRecent", v); }
+    bool softwareQuickApps() const;
+    void setSoftwareQuickApps(bool v) { set("softwareQuickApps", v); }
+    Q_INVOKABLE QString file() const { return m_file; }
 signals:
     void changed();
 private:
     void set(const char *key, const QVariant &v);
+    void watch();
     QString m_file;
+    class QFileSystemWatcher *m_watcher = nullptr;
 };
 
 class ThemeIconProvider : public QQuickImageProvider {

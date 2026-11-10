@@ -7,6 +7,7 @@
 #include "notificationserver.h"
 #include "sessionactions.h"
 #include "shellservices.h"
+#include "omnisystem.h"
 #include "systemstatus.h"
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -66,6 +67,8 @@ private slots:
         c->setContextProperty("sessionActions", &session);
         c->setContextProperty("systemStatus", &system);
         c->setContextProperty("kwinActions", &kwin);
+        static OmniSystem omniSys;
+        c->setContextProperty("omniSystem", &omniSys);
         c->setContextProperty("plasmaShell", &plasma);
         c->setContextProperty("shellControl", &control);
         c->setContextProperty("shellSettings", &settings);
@@ -138,6 +141,18 @@ private slots:
         const QByteArray j = f.readAll();
         QVERIFY(j.contains("\"bar:start\""));
         QVERIFY(j.contains("\"bar:clock\""));
+
+        // personalizzazione da OMNI Settings (altro processo, stesso file): applicata dal vivo
+        {
+            ShellSettings altroProcesso(tmp.filePath("omni-shell.conf"));
+            altroProcesso.setBarSize(56);
+            altroProcesso.setDark(false);
+        }
+        QQuickWindow *barra = nullptr;
+        for (QWindow *w : QGuiApplication::topLevelWindows()) if (w->objectName() == QLatin1String("barra")) barra = qobject_cast<QQuickWindow *>(w);
+        QVERIFY(barra);
+        QTRY_COMPARE_WITH_TIMEOUT(barra->height(), 56, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(!settings.dark(), 5000);
 
         // nessun errore QML durante il caricamento
         QStringList serious;

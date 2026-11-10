@@ -1,0 +1,6 @@
+# OMNI OS: le cartelle si aprono in OMNI Explorer (Dolphin resta installato e selezionabile).
+[Default Applications]
+inode/directory=org.omnios.Explorer.desktop;org.kde.dolphin.desktop;
+
+[Added Associations]
+inode/directory=org.omnios.Explorer.desktop;org.kde.dolphin.desktop;

@@ -1,0 +1,4 @@
+#!/bin/sh
+# comando di prova lento: la risposta arriva dopo il cambio di pagina
+sleep 0.5
+echo 0

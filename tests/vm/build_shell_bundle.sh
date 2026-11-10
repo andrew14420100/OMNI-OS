@@ -12,23 +12,28 @@ img=$1 out=$2; mkdir -p "$out"
 qb=$(sudo podman run --rm "$img" rpm -q --qf '%{VERSION}-%{RELEASE}' qt6-qtbase)
 qd=$(sudo podman run --rm "$img" rpm -q --qf '%{VERSION}-%{RELEASE}' qt6-qtdeclarative)
 qg=$(sudo podman run --rm "$img" rpm -q --qf '%{VERSION}-%{RELEASE}' kf6-kglobalaccel)
+# KIO e KArchive (OMNI Explorer): stessa versione delle librerie già presenti nell'immagine
+qk=$(sudo podman run --rm "$img" rpm -q --qf '%{VERSION}-%{RELEASE}' kf6-kio-core || true)
+qa=$(sudo podman run --rm "$img" rpm -q --qf '%{VERSION}-%{RELEASE}' kf6-karchive || true)
 echo "Qt nell'immagine OMNI: qt6-qtbase-$qb qt6-qtdeclarative-$qd" | tee "$out/qt-image.txt"
-sudo podman run --rm --security-opt label=disable -e qb="$qb" -e qd="$qd" -e qg="$qg" -v "$PWD/ui":/src:ro -v "$out":/out quay.io/fedora/fedora:45 bash -euo pipefail -c '
+sudo podman run --rm --security-opt label=disable -e qb="$qb" -e qd="$qd" -e qg="$qg" -e qk="$qk" -e qa="$qa" -v "$PWD/ui":/src:ro -v "$out":/out quay.io/fedora/fedora:45 bash -euo pipefail -c '
   echo "Qt richiesto: qt6-qtbase-$qb qt6-qtdeclarative-$qd"
   # pacchetti di sviluppo della STESSA versione di Qt presente nell immagine, se ancora nei repository
   if dnf -y -q install --setopt=install_weak_deps=False cmake gcc-c++ rsms-inter-fonts dbus-daemon dbus-tools glib2 \
-       "qt6-qtbase-$qb" "qt6-qtdeclarative-$qd" "qt6-qtbase-devel-$qb" "qt6-qtdeclarative-devel-$qd" "kf6-kglobalaccel-devel-$qg" >/tmp/dnf.log 2>&1; then
+       "qt6-qtbase-$qb" "qt6-qtdeclarative-$qd" "qt6-qtbase-devel-$qb" "qt6-qtdeclarative-devel-$qd" "kf6-kglobalaccel-devel-$qg" "kf6-kio-devel-$qk" "kf6-karchive-devel-$qa" >/tmp/dnf.log 2>&1; then
     echo "pacchetti di sviluppo: stessa versione dell immagine" > /out/qt-build-match.txt
   else
     tail -5 /tmp/dnf.log
     echo "AVVISO: versione esatta non disponibile, uso la piu recente di Fedora 45"
-    dnf -y -q install --setopt=install_weak_deps=False cmake gcc-c++ rsms-inter-fonts dbus-daemon dbus-tools glib2 qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kglobalaccel-devel >/dev/null
+    dnf -y -q install --setopt=install_weak_deps=False cmake gcc-c++ rsms-inter-fonts dbus-daemon dbus-tools glib2 qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kglobalaccel-devel kf6-kio-devel kf6-karchive-devel >/dev/null
     echo "pacchetti di sviluppo: versione piu recente (diversa dall immagine)" > /out/qt-build-match.txt
   fi
-  rpm -q qt6-qtbase qt6-qtbase-devel qt6-qtdeclarative qt6-qtdeclarative-devel kf6-kglobalaccel-devel gcc-c++ cmake > /out/qt-build.txt
+  rpm -q qt6-qtbase qt6-qtbase-devel qt6-qtdeclarative qt6-qtdeclarative-devel kf6-kglobalaccel-devel kf6-kio-devel kf6-karchive-devel gcc-c++ cmake > /out/qt-build.txt
   cmake -S /src -B /tmp/b -DCMAKE_BUILD_TYPE=Release >/dev/null
-  cmake --build /tmp/b -j"$(nproc)" 2>&1 | grep -E "error|warning: |KGlobalAccel" || true
+  cmake --build /tmp/b -j"$(nproc)" 2>&1 | grep -E "error|warning: |KGlobalAccel|KIO|KArchive" || true
   grep -q OMNI_HAVE_KGLOBALACCEL /tmp/b/CMakeFiles/omni-shell-prototipo.dir/flags.make || { echo "KGlobalAccel non trovato: tasto Meta non collegato"; exit 1; }
+  grep -q OMNI_HAVE_KIO /tmp/b/CMakeFiles/omni-shell-prototipo.dir/flags.make || { echo "KIO non trovato: OMNI Explorer senza KIO"; exit 1; }
+  grep -q OMNI_HAVE_KARCHIVE /tmp/b/CMakeFiles/omni-shell-prototipo.dir/flags.make || { echo "KArchive non trovato: ZIP non disponibile"; exit 1; }
   QT_QPA_PLATFORM=offscreen ctest --test-dir /tmp/b --output-on-failure > /out/test.txt 2>&1 || { cat /out/test.txt; exit 1; }
   tail -3 /out/test.txt
   mkdir -p /out/pkg/bin /out/pkg/fonts

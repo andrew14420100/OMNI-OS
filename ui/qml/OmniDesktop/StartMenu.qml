@@ -123,7 +123,7 @@ PanelFrame {
                 id: list
                 anchors { top: allHeader.bottom; topMargin: 8; left: parent.left; right: parent.right; bottom: parent.bottom }
                 clip: true
-                model: start.appIndex ? start.appIndex.all : []
+                model: start.appIndex ? start.appIndex.listed : []
                 reuseItems: true
                 cacheBuffer: 400
                 boundsBehavior: Flickable.StopAtBounds

@@ -25,6 +25,18 @@ QtObject {
     property Binding pinsToTasks: Binding { target: omni.services.tasks; property: "pinned"; value: omni.barPins; when: omni.services.tasks !== null }
     property var startPins: prefs.startPins
     property var barPins: prefs.barPins
+    // personalizzazione condivisa con OMNI Settings: applicata dal vivo (QFileSystemWatcher)
+    readonly property int barSize: [40, 48, 56].indexOf(prefs.barSize) >= 0 ? prefs.barSize : 48
+    readonly property string wallpaperFile: prefs.wallpaper && omniSystem.exists(prefs.wallpaper) ? prefs.wallpaper : ""
+    property Connections prefsWatch: Connections {
+        target: shellSettings
+        function onChanged() {
+            if (Theme.dark !== shellSettings.dark) Theme.dark = shellSettings.dark
+            if (Theme.accentIndex !== shellSettings.accent) Theme.accentIndex = shellSettings.accent
+            const rm = shellSettings.reducedMotion || initialReducedMotion
+            if (Theme.reducedMotion !== rm) Theme.reducedMotion = rm
+        }
+    }
 
     // ---------- rete (stato reale da NetworkManager) ----------
     readonly property bool networkConnected: systemStatus.networkConnected
@@ -83,6 +95,14 @@ QtObject {
         if (entry) items.push(isBarPinned(entry.desktopId)
             ? { label: qsTr("Rimuovi dalla barra"), icon: "pin", act: () => setBarPinned(entry.desktopId, false) }
             : { label: qsTr("Aggiungi alla barra"), icon: "pin", act: () => setBarPinned(entry.desktopId, true) })
+        // multitasking con le funzioni reali di KWin (affiancamento, desktop virtuali)
+        if (model.IsWindow === true && model.IsGroupParent !== true) {
+            const onWin = (shortcut) => () => { tasks.activate(row); kwinActions.invokeShortcutLater(shortcut) }
+            items.push({ label: qsTr("Affianca a sinistra"), icon: "chevron-right", act: onWin("Window Quick Tile Left") })
+            items.push({ label: qsTr("Affianca a destra"), icon: "chevron-right", act: onWin("Window Quick Tile Right") })
+            items.push({ label: model.IsMaximized ? qsTr("Ripristina dimensioni") : qsTr("Ingrandisci"), icon: "display", act: () => tasks.toggleMaximized(row) })
+            if (tasks.desktopCount > 1) items.push({ label: qsTr("Sposta sul desktop successivo"), icon: "layers", act: onWin("Window to Next Desktop") })
+        }
         if (model.IsWindow === true || model.IsGroupParent === true)
             items.push({ label: model.ChildCount > 1 ? qsTr("Chiudi tutte le finestre") : qsTr("Chiudi finestra"), icon: "close", act: () => tasks.close(row) })
         showMenu(items, item)
@@ -100,14 +120,17 @@ QtObject {
     // App proposte al primo accesso (solo quelle realmente installate)
     function initPins() {
         if (prefs.pinsInitialized) return
-        const want = ["org.mozilla.firefox.desktop", "firefox.desktop", "org.kde.dolphin.desktop", "org.kde.konsole.desktop",
-                      "systemsettings.desktop", "org.kde.systemsettings.desktop", "org.kde.discover.desktop", "org.kde.kwrite.desktop",
-                      "org.kde.kate.desktop", "org.kde.okular.desktop", "org.kde.gwenview.desktop", "org.kde.ark.desktop",
-                      "org.kde.kcalc.desktop", "org.kde.elisa.desktop", "org.kde.spectacle.desktop", "org.kde.plasma-systemmonitor.desktop",
-                      "org.kde.kinfocenter.desktop", "org.kde.filelight.desktop"]
+        // un'app per ruolo: prima quella OMNI, poi l'equivalente KDE (nessun doppione)
+        const want = [["org.mozilla.firefox.desktop", "firefox.desktop"], ["org.omnios.Explorer.desktop", "org.kde.dolphin.desktop"],
+                      ["org.kde.konsole.desktop"], ["org.omnios.Settings.desktop", "systemsettings.desktop", "org.kde.systemsettings.desktop"],
+                      ["org.omnios.Store.desktop", "org.kde.discover.desktop"], ["org.kde.kwrite.desktop", "org.kde.kate.desktop"],
+                      ["org.kde.okular.desktop"], ["org.kde.gwenview.desktop"], ["org.kde.ark.desktop"], ["org.kde.kcalc.desktop"],
+                      ["org.kde.elisa.desktop"], ["org.kde.spectacle.desktop"], ["org.omnios.TaskManager.desktop", "org.kde.plasma-systemmonitor.desktop"],
+                      ["org.kde.filelight.desktop"]]
         const sp = [], bp = []
-        for (const id of want) {
-            const e = appIndex.find(id)
+        for (const group of want) {
+            let e = null
+            for (const id of group) { e = appIndex.find(id); if (e) break }
             if (!e || sp.indexOf(e.desktopId) >= 0) continue
             sp.push(e.desktopId)
             if (bp.length < 5) bp.push(urlFor(e.desktopId))
@@ -157,7 +180,16 @@ QtObject {
         width: Screen.width; height: Screen.height
         color: Theme.background
         visible: true
-        Wallpaper { anchors.fill: parent; animate: false }
+        Wallpaper { anchors.fill: parent; animate: false; visible: !wallImage.visible }
+        // sfondo scelto dall'utente: decodificato alla risoluzione dello schermo (memoria contenuta)
+        Image {
+            id: wallImage
+            anchors.fill: parent
+            visible: omni.wallpaperFile !== "" && status === Image.Ready
+            source: omni.wallpaperFile ? "file://" + omni.wallpaperFile : ""
+            sourceSize: Qt.size(Screen.width * Screen.devicePixelRatio, Screen.height * Screen.devicePixelRatio)
+            fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false
+        }
         // clic destro sul desktop: menu come in Windows (schermo, aspetto, impostazioni)
         MouseArea {
             anchors.fill: parent
@@ -167,7 +199,8 @@ QtObject {
                 omni.showMenuAt([
                     { label: qsTr("Impostazioni dello schermo"), icon: "display", act: () => { systemStatus.refreshDisplay(); omni.popup = "quick"; Qt.callLater(() => { if (omni.popupWin.quick.item) omni.popupWin.quick.item.page = "display" }) } },
                     { label: Theme.dark ? qsTr("Tema chiaro") : qsTr("Tema scuro"), icon: Theme.dark ? "sun" : "moon", act: () => omni.setDark(!Theme.dark) },
-                    { label: qsTr("Impostazioni di sistema"), icon: "settings", act: () => systemStatus.openSettings("") }
+                    { label: qsTr("Personalizza"), icon: "palette", act: () => systemStatus.openOmniApp("impostazioni", "aspetto") },
+                    { label: qsTr("Impostazioni"), icon: "settings", act: () => systemStatus.openSettings("") }
                 ], mouse.x, mouse.y)
             }
         }
@@ -179,8 +212,8 @@ QtObject {
         scopeName: "omni-barra"
         shellLayer: layerTop
         edges: edgeBottom | edgeLeft | edgeRight
-        zone: 48
-        width: Screen.width; height: 48
+        zone: omni.barSize
+        width: Screen.width; height: omni.barSize
         visible: true
         property bool firstFrame: false
         onFrameSwapped: if (!firstFrame) {
@@ -199,7 +232,7 @@ QtObject {
         edges: edgeTop | edgeBottom | edgeLeft | edgeRight
         zone: 0
         keyboard: omni.popup !== "" ? keyboardExclusive : keyboardNone
-        width: Screen.width; height: Screen.height - 48
+        width: Screen.width; height: Screen.height - omni.barSize
         visible: omni.popup !== ""
         property alias start: startLoader
         property alias quick: quickLoader

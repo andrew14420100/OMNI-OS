@@ -11,6 +11,11 @@
 #include "sessionactions.h"
 #include "shellservices.h"
 #include "systemstatus.h"
+#include "omnisystem.h"
+#include "systemmonitor.h"
+#include "filemanager.h"
+#include "appstream.h"
+#include <QtQml/qqml.h>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <pwd.h>
@@ -79,7 +84,25 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
     PlasmaShellProxy plasmaShell;
     plasmaShell.registerOnBus();
     ShellControl control;
+    control.setLauncher(&launcher);
     control.registerOnBus();
+    ShellSettings settings;
+    // Grafica software (nessuna accelerazione 3D): Qt Quick con OpenGL su llvmpipe costa
+    // molto in 4K. Le app avviate da qui (stesso ambiente dei processi figli) usano il
+    // renderer software di Qt Quick; KWin e la shell non sono toccati. Disattivabile da
+    // OMNI Settings (Aspetto). Con accelerazione 3D non si cambia nulla.
+    const QByteArray userBackend = qgetenv("QT_QUICK_BACKEND");
+    auto applyQuickBackend = [softwareGl, userBackend, &settings]() {
+        if (!softwareGl || !userBackend.isEmpty()) return;
+        static int last = -1;
+        const int on = settings.softwareQuickApps() ? 1 : 0;
+        if (on == last) return;
+        last = on;
+        if (on) qputenv("QT_QUICK_BACKEND", "software"); else qunsetenv("QT_QUICK_BACKEND");
+        qInfo("app Qt Quick avviate dalla shell: renderer %s", on ? "software (grafica senza accelerazione)" : "predefinito");
+    };
+    applyQuickBackend();
+    QObject::connect(&settings, &ShellSettings::changed, &app, applyQuickBackend);
 #ifdef OMNI_HAVE_KGLOBALACCEL
     // Stessa azione globale che registra plasmashell: in Plasma 6 il tasto Meta da solo è una
     // scorciatoia KGlobalAccel, non più un'impostazione di KWin. Nella sessione OMNI il
@@ -97,7 +120,12 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
         QList<QKeySequence>() << QKeySequence(Qt::Key_Meta) << QKeySequence(Qt::AltModifier | Qt::Key_F1));
     qInfo("tasto Meta: scorciatoia globale %s", keyOk ? "registrata" : "NON registrata");
 #endif
-    ShellSettings settings;
+    // "Non disturbare" è una preferenza condivisa: Control Center e OMNI Settings scrivono lo
+    // stesso valore, il server delle notifiche lo segue (nessuno stato duplicato).
+    notifications.setDoNotDisturb(settings.doNotDisturb());
+    QObject::connect(&settings, &ShellSettings::changed, &notifications, [&]() { notifications.setDoNotDisturb(settings.doNotDisturb()); });
+    QObject::connect(&notifications, &NotificationServer::doNotDisturbChanged, &settings, [&]() { settings.setDoNotDisturb(notifications.doNotDisturb()); });
+    OmniSystem omniSystem;
     qInfo("avvio delle applicazioni: %s", launcher.enabled() ? "REALE (gio launch / kstart)" : "disattivato");
 
     QQmlApplicationEngine engine;
@@ -113,6 +141,7 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
     ctx->setContextProperty("plasmaShell", &plasmaShell);
     ctx->setContextProperty("shellControl", &control);
     ctx->setContextProperty("shellSettings", &settings);
+    ctx->setContextProperty("omniSystem", &omniSystem);
     ctx->setContextProperty("shellPerf", &perf);
     ctx->setContextProperty("rendererName", renderer.isEmpty() ? QStringLiteral("non rilevato") : renderer);
     ctx->setContextProperty("softwareRendering", softwareGl);
@@ -123,6 +152,58 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
     if (engine.rootObjects().isEmpty()) {
         qCritical("sessione OMNI: interfaccia non caricata");
         return 1;
+    }
+    return app.exec();
+}
+
+// App OMNI (Impostazioni, Gestione attività, Explorer, Store): finestre normali gestite da
+// KWin, stesso linguaggio grafico e stesse preferenze della shell.
+static int runApp(QGuiApplication &app, const QString &name, DesktopEntryModel &apps, ShellPerf &perf, const QString &qmlDir,
+                  const QString &renderer, bool softwareGl, const QString &shotFile = {}, int shotDelay = 1500) {
+    static const QHash<QString, QPair<QString, QString>> known = {
+        {QStringLiteral("impostazioni"), {QStringLiteral("SettingsApp.qml"), QStringLiteral("org.omnios.Settings")}},
+        {QStringLiteral("attivita"), {QStringLiteral("TaskManagerApp.qml"), QStringLiteral("org.omnios.TaskManager")}},
+        {QStringLiteral("explorer"), {QStringLiteral("ExplorerApp.qml"), QStringLiteral("org.omnios.Explorer")}},
+        {QStringLiteral("store"), {QStringLiteral("StoreApp.qml"), QStringLiteral("org.omnios.Store")}}};
+    if (!known.contains(name)) { qCritical("app sconosciuta: %s", qPrintable(name)); return 2; }
+    QGuiApplication::setDesktopFileName(known.value(name).second);   // app_id Wayland = file .desktop
+    if (QIcon::themeName().isEmpty()) QIcon::setThemeName(QStringLiteral("breeze"));
+    QIcon::setFallbackThemeName(QStringLiteral("breeze"));
+    AppLauncher launcher(&apps, !apps.demo());
+    SystemStatus system;
+    SessionActions session;
+    KWinActions kwin;
+    ShellSettings settings;
+    OmniSystem omniSystem;
+    qmlRegisterType<SystemMonitor>("OmniSystemMonitor", 1, 0, "SystemMonitor");
+    qmlRegisterType<FolderModel>("OmniFiles", 1, 0, "FolderModel");
+    qmlRegisterType<FileOps>("OmniFiles", 1, 0, "FileOps");
+    qmlRegisterType<AppStreamCatalog>("OmniStore", 1, 0, "AppStreamCatalog");
+    QQmlApplicationEngine engine;
+    engine.addImportPath(qmlDir);
+    engine.addImageProvider(QStringLiteral("omniicon"), new ThemeIconProvider);
+    auto *ctx = engine.rootContext();
+    ctx->setContextProperty("appModel", &apps);
+    ctx->setContextProperty("omniLauncher", &launcher);
+    ctx->setContextProperty("systemStatus", &system);
+    ctx->setContextProperty("sessionActions", &session);
+    ctx->setContextProperty("kwinActions", &kwin);
+    ctx->setContextProperty("shellSettings", &settings);
+    ctx->setContextProperty("omniSystem", &omniSystem);
+    ctx->setContextProperty("shellPerf", &perf);
+    ctx->setContextProperty("rendererName", renderer.isEmpty() ? QStringLiteral("non rilevato") : renderer);
+    ctx->setContextProperty("softwareRendering", softwareGl);
+    ctx->setContextProperty("currentUser", displayUserName());
+    engine.load(QUrl::fromLocalFile(QDir(qmlDir).filePath(QStringLiteral("apps/") + known.value(name).first)));
+    if (engine.rootObjects().isEmpty()) { qCritical("app %s: interfaccia non caricata", qPrintable(name)); return 1; }
+    if (!shotFile.isEmpty()) {   // schermata reale della finestra dell'app (documentazione e prove)
+        auto *win = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QTimer::singleShot(shotDelay, &app, [win, shotFile]() {
+            const QImage img = win ? win->grabWindow() : QImage();
+            const bool ok = !img.isNull() && img.save(shotFile);
+            qInfo("schermata %s: %s (%dx%d)", ok ? "salvata" : "NON salvata", qPrintable(shotFile), img.width(), img.height());
+            QCoreApplication::exit(ok ? 0 : 2);
+        });
     }
     return app.exec();
 }
@@ -156,8 +237,11 @@ int main(int argc, char *argv[]) {
     QCommandLineOption fullscreen("fullscreen", "Finestra a schermo intero (prova nella sessione Plasma)");
     QCommandLineOption geometry("dump-geometry", "Scrive in JSON il centro degli elementi con objectName e termina", "file");
     QCommandLineOption sessionMode("session", "Interfaccia del desktop OMNI (sessione OMNI: barra, Start, pannelli, notifiche)");
+    QCommandLineOption appMode("app", "Applicazione OMNI: impostazioni, attivita, explorer, store", "nome");
+    QCommandLineOption page("pagina", "Pagina iniziale di un'app OMNI (es. rete, audio, prestazioni)", "id");
+    QCommandLineOption folderOpt("cartella", "Cartella iniziale di OMNI Explorer", "percorso");
     QCommandLineOption accent("accent", "Colore d'accento (0 Aurora, 1 Iris, 2 Corallo, 3 Giada)", "n", "0");
-    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch, sessionMode});
+    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch, sessionMode, appMode, page, folderOpt});
     p.process(app);
 
     // piattaforma grafica effettiva (es. "wayland" nella sessione Plasma) e versione di Qt in uso
@@ -165,13 +249,20 @@ int main(int argc, char *argv[]) {
 
     // Rendering software (nessuna GPU, es. VM senza accelerazione): si attiva il risparmio
     // risorse per mantenere l'interfaccia fluida. Rilevazione solo in lettura.
-    const QString renderer = QGuiApplication::platformName() == QLatin1String("offscreen") ? QString() : glRendererName();
+    // Le app OMNI non creano un contesto OpenGL di prova (circa 100-300 ms con llvmpipe):
+    // la rilevazione serve solo alla shell, per lo sfondo e gli effetti.
+    const QString renderer = (QGuiApplication::platformName() == QLatin1String("offscreen") || p.isSet(appMode)) ? QString() : glRendererName();
     const bool softwareGl = renderer.contains(QLatin1String("llvmpipe"), Qt::CaseInsensitive)
                          || renderer.contains(QLatin1String("softpipe"), Qt::CaseInsensitive)
                          || renderer.contains(QLatin1String("SwiftShader"), Qt::CaseInsensitive);
     qInfo("renderer OpenGL: %s%s", renderer.isEmpty() ? "non rilevato" : qPrintable(renderer), softwareGl ? " (rendering software: risparmio risorse automatico)" : "");
 
     DesktopEntryModel apps;
+    if (p.isSet(appMode)) {
+        apps.load({}, QLocale::system().name());
+        const QString qmlDirA = qEnvironmentVariableIsSet("OMNI_QML_DIR") ? qEnvironmentVariable("OMNI_QML_DIR") : QStringLiteral(OMNI_QML_DIR);
+        return runApp(app, p.value(appMode), apps, perf, qmlDirA, renderer, softwareGl, p.value(shot), p.value(delay).toInt());
+    }
     if (p.isSet(sessionMode)) {
         apps.load({}, QLocale::system().name());
         qInfo("applicazioni: %d (file .desktop del sistema, sola lettura)", apps.count());

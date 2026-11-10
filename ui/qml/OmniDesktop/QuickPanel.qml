@@ -444,8 +444,8 @@ PanelFrame {
             }
             Row {
                 spacing: 8; topPadding: 6
-                OmniButton { text: qsTr("Gestione applicazioni"); onClicked: { qp.session.close(); qp.session.launchById("org.kde.discover.desktop") } }
-                OmniButton { text: qsTr("Impostazioni"); onClicked: { qp.session.close(); systemStatus.openSettings("") } }
+                OmniButton { text: qsTr("OMNI Store"); onClicked: { qp.session.close(); systemStatus.openOmniApp("store") } }
+                OmniButton { text: qsTr("Impostazioni"); onClicked: { qp.session.close(); systemStatus.openSettings("kcm_powerdevilprofilesconfig") } }
             }
             Note { text: qsTr("Renderer grafico: %1").arg(rendererName); color: Theme.textTertiary }
         }

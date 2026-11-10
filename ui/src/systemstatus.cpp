@@ -1,4 +1,5 @@
 #include "systemstatus.h"
+#include <QCoreApplication>
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -237,7 +238,22 @@ void SystemStatus::readSecurity() {
     p->start(QStringLiteral("systemctl"), {QStringLiteral("is-active"), QStringLiteral("firewalld")});
 }
 
+bool SystemStatus::openOmniApp(const QString &app, const QString &page) {
+    QStringList args{QStringLiteral("--app"), app};
+    if (!page.isEmpty()) args << QStringLiteral("--pagina") << page;
+    const bool ok = QProcess::startDetached(QCoreApplication::applicationFilePath(), args);
+    qInfo("app OMNI %s%s: %s", qPrintable(app), qPrintable(page.isEmpty() ? QString() : QLatin1Char('/') + page), ok ? "avviata" : "NON avviata");
+    return ok;
+}
+
+// Le impostazioni si aprono in OMNI Settings, alla pagina corrispondente al modulo KDE
+// richiesto; Impostazioni di sistema di KDE solo come ripiego se l'app OMNI non parte.
 bool SystemStatus::openSettings(const QString &module) {
+    static const QHash<QString, QString> pages = {
+        {QStringLiteral("kcm_networkmanagement"), QStringLiteral("rete")}, {QStringLiteral("kcm_pulseaudio"), QStringLiteral("audio")},
+        {QStringLiteral("kcm_kscreen"), QStringLiteral("schermo")}, {QStringLiteral("kcm_bluetooth"), QStringLiteral("bluetooth")},
+        {QStringLiteral("kcm_powerdevilprofilesconfig"), QStringLiteral("energia")}, {QStringLiteral("kcm_notifications"), QStringLiteral("notifiche")}};
+    if (openOmniApp(QStringLiteral("impostazioni"), pages.value(module))) return true;
     const bool ok = module.isEmpty() ? QProcess::startDetached(QStringLiteral("systemsettings"), {})
                                      : QProcess::startDetached(QStringLiteral("systemsettings"), {module});
     qInfo("impostazioni: apro %s: %s", qPrintable(module.isEmpty() ? QStringLiteral("Impostazioni di sistema") : module), ok ? "ok" : "NON riuscito");

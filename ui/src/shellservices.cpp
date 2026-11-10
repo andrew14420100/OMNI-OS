@@ -1,4 +1,6 @@
 #include "shellservices.h"
+#include <QTimer>
+#include "applauncher.h"
 #include <QDateTime>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -9,8 +11,10 @@
 #include <QIcon>
 #include <QProcess>
 #include <QSettings>
+#include <QFileSystemWatcher>
 #include <QStandardPaths>
 #include <QDir>
+#include <QFileInfo>
 #include <QFile>
 #include <QGuiApplication>
 #include <QJsonDocument>
@@ -44,7 +48,17 @@ void PlasmaShellProxy::toggleDashboard() { emit showDesktopRequested(); }
 
 QPixmap ThemeIconProvider::requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) {
     const QSize s = requestedSize.isValid() && requestedSize.width() > 0 ? requestedSize : QSize(64, 64);
-    const QString name = QUrl::fromPercentEncoding(id.toUtf8());
+    QString name = QUrl::fromPercentEncoding(id.toUtf8());
+    // "strict/<nome>": nessun ripiego (immagine nulla se l'icona manca), così l'app può
+    // mostrare un proprio simbolo al posto di uno spazio vuoto
+    const bool strict = name.startsWith(QLatin1String("strict/"));
+    if (strict) {
+        name = name.mid(7);
+        const QIcon i = QIcon::fromTheme(name);
+        const QPixmap p = i.isNull() ? QPixmap() : i.pixmap(s);
+        if (size) *size = p.isNull() ? QSize() : p.size();
+        return p;
+    }
     QIcon icon;
     if (name.startsWith(QLatin1Char('/')) && QFileInfo::exists(name)) icon = QIcon(name);
     else icon = QIcon::fromTheme(name);
@@ -77,6 +91,10 @@ void KWinActions::invokeShortcut(const QString &name) {
     m << name;
     qInfo("kwin: scorciatoia \"%s\"", qPrintable(name));
     kwinCall(this, m, name);
+}
+
+void KWinActions::invokeShortcutLater(const QString &name, int delayMs) {
+    QTimer::singleShot(qBound(0, delayMs, 2000), this, [this, name]() { invokeShortcut(name); });
 }
 
 void KWinActions::setCurrentDesktop(const QString &id) {
@@ -116,6 +134,11 @@ bool ShellControl::registerOnBus() {
 
 void ShellControl::Probe(const QString &text) { qInfo("sonda: %s", qPrintable(text.left(200))); }
 
+bool ShellControl::Launch(const QString &desktopFile) {
+    const QString path = desktopFile.startsWith(QLatin1Char('/')) ? desktopFile : QStringLiteral("/usr/share/applications/") + desktopFile;
+    return m_launcher && m_launcher->launch(path);
+}
+
 void ShellControl::ShowPopup(const QString &name) { emit popupRequested(name); }
 
 bool ShellControl::DumpGeometry(const QString &file) {
@@ -147,6 +170,22 @@ ShellSettings::ShellSettings(const QString &file, QObject *parent) : QObject(par
         QDir().mkpath(dir);
         m_file = dir + QStringLiteral("/omni-shell.conf");
     }
+    watch();
+}
+
+// QSettings riscrive il file sostituendolo: si osserva anche la cartella, così le modifiche
+// fatte da un altro processo (Impostazioni <-> barra) arrivano subito in entrambi.
+void ShellSettings::watch() {
+    m_watcher = new QFileSystemWatcher(this);
+    QDir().mkpath(QFileInfo(m_file).absolutePath());
+    m_watcher->addPath(QFileInfo(m_file).absolutePath());
+    if (QFileInfo::exists(m_file)) m_watcher->addPath(m_file);
+    auto reload = [this]() {
+        if (QFileInfo::exists(m_file) && !m_watcher->files().contains(m_file)) m_watcher->addPath(m_file);
+        emit changed();
+    };
+    connect(m_watcher, &QFileSystemWatcher::fileChanged, this, reload);
+    connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, reload);
 }
 #define OMNI_GET(type, key, def) QSettings(m_file, QSettings::IniFormat).value(QStringLiteral(key), def).value<type>()
 bool ShellSettings::dark() const { return OMNI_GET(bool, "dark", true); }
@@ -155,6 +194,12 @@ bool ShellSettings::reducedMotion() const { return OMNI_GET(bool, "reducedMotion
 QStringList ShellSettings::startPins() const { return OMNI_GET(QStringList, "startPins", QStringList()); }
 QStringList ShellSettings::barPins() const { return OMNI_GET(QStringList, "barPins", QStringList()); }
 bool ShellSettings::pinsInitialized() const { return OMNI_GET(bool, "pinsInitialized", false); }
+bool ShellSettings::doNotDisturb() const { return OMNI_GET(bool, "doNotDisturb", false); }
+int ShellSettings::barSize() const { return OMNI_GET(int, "barSize", 48); }
+QString ShellSettings::wallpaper() const { return OMNI_GET(QString, "wallpaper", QStringLiteral("aurora")); }
+int ShellSettings::effects() const { return OMNI_GET(int, "effects", 1); }
+bool ShellSettings::startShowRecent() const { return OMNI_GET(bool, "startShowRecent", true); }
+bool ShellSettings::softwareQuickApps() const { return OMNI_GET(bool, "softwareQuickApps", true); }
 #undef OMNI_GET
 void ShellSettings::set(const char *key, const QVariant &v) {
     QSettings st(m_file, QSettings::IniFormat);

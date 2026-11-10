@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Gestione attività
+Name[it]=Gestione attività
+GenericName=Gestione attività
+GenericName[it]=Gestione attività
+Comment=Processi, prestazioni, app aperte e app all'avvio
+Comment[it]=Processi, prestazioni, app aperte e app all'avvio
+Exec=/usr/bin/omni-shell --app attivita
+Icon=utilities-system-monitor
+Categories=System;Monitor;
+Keywords=processi;cpu;memoria;prestazioni;task manager;
+

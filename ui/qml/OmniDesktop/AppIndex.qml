@@ -8,6 +8,13 @@ QtObject {
     property var model: null
     property var byId: ({})
     property var all: []
+    // elenco di Start: senza i doppioni KDE delle app OMNI installate (le app KDE restano
+    // installate e si trovano con la ricerca, dopo quelle OMNI)
+    property var listed: []
+    readonly property var replacedBy: ({
+        "systemsettings.desktop": "org.omnios.Settings.desktop", "org.kde.systemsettings.desktop": "org.omnios.Settings.desktop",
+        "org.kde.discover.desktop": "org.omnios.Store.desktop", "org.kde.plasma-systemmonitor.desktop": "org.omnios.TaskManager.desktop" })
+    function isReplaced(e) { const r = replacedBy[e.desktopId]; return !!r && !!byId[r] }
     function rebuild() {
         const m = {}, list = []
         if (model) for (let i = 0; i < model.count; ++i) {
@@ -19,6 +26,7 @@ QtObject {
         list.sort((a, b) => a.name.localeCompare(b.name, Qt.locale().name))
         byId = m
         all = list
+        listed = list.filter(e => !isReplaced(e))
     }
     // AppId di una finestra o URL di launcher ("applications:org.kde.dolphin.desktop")
     function find(appIdOrUrl) {
@@ -36,7 +44,8 @@ QtObject {
             if (n.startsWith(q) || n.split(" ").some(w => w.startsWith(q))) starts.push(e)
             else if (hay.indexOf(q) >= 0) contains.push(e)
         }
-        return starts.concat(contains).slice(0, limit || 8)
+        const rank = l => l.filter(e => !isReplaced(e)).concat(l.filter(e => isReplaced(e)))
+        return rank(starts).concat(rank(contains)).slice(0, limit || 8)
     }
     property Connections _c: Connections { target: root.model; ignoreUnknownSignals: true; function onCountChanged() { root.rebuild() } }
     Component.onCompleted: rebuild()
