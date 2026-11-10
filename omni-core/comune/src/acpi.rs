@@ -97,7 +97,12 @@ pub struct Madt {
     pub gsi_irq: [u32; 16],
     /// Flag di polarità/attivazione per IRQ ISA (dalle sostituzioni).
     pub flag_irq: [u16; 16],
+    /// ID APIC delle CPU abilitate, nell'ordine della MADT (le prime `cpu_abilitate`).
+    pub id_apic: [u8; MAX_CPU],
 }
+
+/// CPU gestite dal kernel K2.
+pub const MAX_CPU: usize = 16;
 
 /// Analizza una MADT ("APIC") già verificata.
 pub fn madt(t: &[u8]) -> Result<Madt, ErroreAcpi> {
@@ -121,6 +126,9 @@ pub fn madt(t: &[u8]) -> Result<Madt, ErroreAcpi> {
                 // APIC locale del processore: bit 0 abilitato, bit 1 attivabile
                 m.cpu_totali += 1;
                 if u32_le(e, 4) & 0b11 != 0 {
+                    if (m.cpu_abilitate as usize) < MAX_CPU {
+                        m.id_apic[m.cpu_abilitate as usize] = e[3];
+                    }
                     m.cpu_abilitate += 1;
                 }
             }
@@ -150,6 +158,98 @@ pub fn hpet_base(t: &[u8]) -> Result<u64, ErroreAcpi> {
     }
     // struttura Generic Address a offset 40: spazio (0 = memoria), poi indirizzo a +4
     Ok(u64_le(t, 44))
+}
+
+/// Campi della FADT ("FACP") usati per spegnimento e riavvio (ACPI 6.5, 5.2.9).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Fadt {
+    pub dsdt: u64,
+    /// Porta I/O del registro PM1a_CNT (0 se assente).
+    pub pm1a_cnt: u32,
+    pub pm1b_cnt: u32,
+    /// Registro di reset: (spazio d'indirizzi: 0 memoria, 1 I/O), indirizzo, valore.
+    pub reset: Option<(u8, u64, u8)>,
+}
+
+/// Analizza una FADT già verificata.
+pub fn fadt(t: &[u8]) -> Result<Fadt, ErroreAcpi> {
+    if t.len() < 116 {
+        return Err(ErroreAcpi::Troncata);
+    }
+    let mut f = Fadt { dsdt: u32_le(t, 40) as u64, pm1a_cnt: u32_le(t, 64), pm1b_cnt: u32_le(t, 68), reset: None };
+    let flag = u32_le(t, 112);
+    if t.len() >= 129 && flag & (1 << 10) != 0 {
+        f.reset = Some((t[116], u64_le(t, 120), t[128]));
+    }
+    if t.len() >= 148 {
+        let x = u64_le(t, 140);
+        if x != 0 {
+            f.dsdt = x;
+        }
+    }
+    // indirizzi estesi (ACPI 2.0+), solo se nello spazio I/O
+    if t.len() >= 184 && t[172] == 1 && u64_le(t, 176) != 0 {
+        f.pm1a_cnt = u64_le(t, 176) as u32;
+    }
+    if t.len() >= 196 && t[184] == 1 && u64_le(t, 188) != 0 {
+        f.pm1b_cnt = u64_le(t, 188) as u32;
+    }
+    Ok(f)
+}
+
+/// Valori SLP_TYPa e SLP_TYPb dell'oggetto `\_S5` (spegnimento) nell'AML della DSDT.
+/// Non è un interprete AML: legge solo la forma `Name(_S5, Package(){a, b, ...})`.
+pub fn s5(aml: &[u8]) -> Option<(u8, u8)> {
+    let mut i = 0;
+    while i + 4 <= aml.len() {
+        if &aml[i..i + 4] != b"_S5_" {
+            i += 1;
+            continue;
+        }
+        // deve essere preceduto da NameOp (0x08), eventualmente con il prefisso radice '\'
+        let nome = i >= 1 && (aml[i - 1] == 0x08 || (i >= 2 && aml[i - 1] == b'\\' && aml[i - 2] == 0x08));
+        let mut p = i + 4;
+        if !nome || p >= aml.len() || aml[p] != 0x12 {
+            i += 4;
+            continue;
+        }
+        p += 1; // PackageOp
+        let lunghezza_extra = (aml.get(p)? >> 6) as usize;
+        p += 1 + lunghezza_extra; // PkgLength
+        p += 1; // NumElements
+        let mut valori = [0u8; 2];
+        for v in valori.iter_mut() {
+            let op = *aml.get(p)?;
+            match op {
+                0x0a => {
+                    *v = *aml.get(p + 1)?;
+                    p += 2;
+                }
+                0x0b => {
+                    *v = *aml.get(p + 1)?;
+                    p += 3;
+                }
+                0x0c => {
+                    *v = *aml.get(p + 1)?;
+                    p += 5;
+                }
+                0x00 => {
+                    *v = 0;
+                    p += 1;
+                }
+                0x01 => {
+                    *v = 1;
+                    p += 1;
+                }
+                altro => {
+                    *v = altro;
+                    p += 1;
+                }
+            }
+        }
+        return Some((valori[0], valori[1]));
+    }
+    None
 }
 
 #[cfg(test)]
@@ -214,6 +314,7 @@ mod test {
         let v = verifica_sdt(&t, b"APIC").unwrap();
         let m = madt(v).unwrap();
         assert_eq!(m.cpu_abilitate, 4);
+        assert_eq!(&m.id_apic[..4], &[0, 1, 2, 3]);
         assert_eq!(m.cpu_totali, 5);
         assert_eq!(m.apic_locale, 0xfee0_0000);
         assert_eq!(m.ioapic, 0xfec0_0000);
@@ -244,5 +345,36 @@ mod test {
         t[4..8].copy_from_slice(&n.to_le_bytes());
         sistema_checksum(&mut t, 9);
         assert_eq!(madt(&t).err(), Some(ErroreAcpi::Troncata));
+    }
+
+    #[test]
+    fn fadt_e_reset() {
+        let mut corpo = std::vec![0u8; 244 - 36];
+        let at = |o: usize| o - 36;
+        corpo[at(40)..at(44)].copy_from_slice(&0x7fe0_0000u32.to_le_bytes());
+        corpo[at(64)..at(68)].copy_from_slice(&0x604u32.to_le_bytes());
+        corpo[at(112)..at(116)].copy_from_slice(&(1u32 << 10).to_le_bytes());
+        corpo[at(116)] = 1;
+        corpo[at(120)..at(128)].copy_from_slice(&0xcf9u64.to_le_bytes());
+        corpo[at(128)] = 6;
+        corpo[at(140)..at(148)].copy_from_slice(&0x7fe1_0000u64.to_le_bytes());
+        let t = sdt(b"FACP", &corpo);
+        let f = fadt(verifica_sdt(&t, b"FACP").unwrap()).unwrap();
+        assert_eq!(f.dsdt, 0x7fe1_0000, "X_DSDT ha la precedenza");
+        assert_eq!(f.pm1a_cnt, 0x604);
+        assert_eq!(f.reset, Some((1, 0xcf9, 6)));
+    }
+
+    #[test]
+    fn pacchetto_s5() {
+        // Name(_S5, Package(0x04){0x05, 0x05, Zero, Zero}) in forme diverse
+        let a = [0x10, 0x08, b'_', b'S', b'5', b'_', 0x12, 0x06, 0x04, 0x0a, 0x05, 0x0a, 0x05, 0x00, 0x00];
+        assert_eq!(s5(&a), Some((5, 5)));
+        let b = [0x08, b'\\', b'_', b'S', b'5', b'_', 0x12, 0x06, 0x04, 0x00, 0x00, 0x00, 0x00];
+        assert_eq!(s5(&b), Some((0, 0)));
+        // "_S5_" che non è un oggetto Name: ignorato
+        let c = [0x70, b'_', b'S', b'5', b'_', 0x00];
+        assert_eq!(s5(&c), None);
+        assert_eq!(s5(&[0x08, b'_', b'S', b'5', b'_', 0x12]), None, "troncato: nessun panico");
     }
 }

@@ -244,7 +244,7 @@ fn avvia(a: &Avvio, immagine: Handle, st: &TabellaSistema) -> Result<(), Status>
     fornitore(st, &mut forn);
     let n = forn.iter().position(|&b| b == 0).unwrap_or(64);
     let rev = st.intestazione.revisione;
-    log!("OMNI Boot K1 avviato");
+    log!("OMNI Boot avviato");
     log!("firmware: {} (revisione {:#x}); UEFI {}.{}", core::str::from_utf8(&forn[..n]).unwrap_or("?"), st.revisione_firmware, rev >> 16, (rev & 0xffff) / 10);
 
     // 1-2. kernel

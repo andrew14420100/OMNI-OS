@@ -57,7 +57,7 @@ stub_senza \n
 .irp n, 8,10,11,12,13,14,17,21,29,30
 stub_con \n
 .endr
-.irp n, 32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,255
+.irp n, 32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,240,255
 stub_senza \n
 .endr
 
@@ -108,6 +108,9 @@ omni_isr_tabella:
 .global omni_isr_spuria
 omni_isr_spuria:
     .quad omni_isr_255
+.global omni_isr_shootdown
+omni_isr_shootdown:
+    .quad omni_isr_240
 .text
 "#
 );
@@ -115,6 +118,7 @@ omni_isr_spuria:
 extern "C" {
     static omni_isr_tabella: [u64; 48];
     static omni_isr_spuria: u64;
+    static omni_isr_shootdown: u64;
 }
 
 #[repr(C)]
@@ -149,7 +153,10 @@ static mut IDT: [Voce; 256] = [Voce::VUOTA; 256];
 pub const VETTORE_TIMER: u8 = 32;
 pub const VETTORE_TASTIERA: u8 = 33;
 pub const VETTORE_SPURIO: u8 = 255;
+/// IPI di invalidazione del TLB (K2-03).
+pub const VETTORE_SHOOTDOWN: u8 = 240;
 
+/// Prepara la IDT (una volta, sulla CPU di avvio) e la carica.
 pub fn inizializza() {
     // SAFETY: eseguito una sola volta prima di attivare le interruzioni; la tabella è statica
     unsafe {
@@ -164,14 +171,21 @@ pub fn inizializza() {
             (*idt)[v] = Voce::porta(g, ist);
         }
         (*idt)[VETTORE_SPURIO as usize] = Voce::porta((&raw const omni_isr_spuria).read(), 0);
-        #[repr(C, packed)]
-        struct Puntatore {
-            limite: u16,
-            base: u64,
-        }
-        let p = Puntatore { limite: (core::mem::size_of::<[Voce; 256]>() - 1) as u16, base: idt as u64 };
-        asm!("lidt [{}]", in(reg) &p, options(readonly, nostack, preserves_flags));
+        (*idt)[VETTORE_SHOOTDOWN as usize] = Voce::porta((&raw const omni_isr_shootdown).read(), 0);
     }
+    carica();
+}
+
+/// Carica la IDT condivisa sulla CPU corrente (anche sulle CPU secondarie).
+pub fn carica() {
+    #[repr(C, packed)]
+    struct Puntatore {
+        limite: u16,
+        base: u64,
+    }
+    let p = Puntatore { limite: (core::mem::size_of::<[Voce; 256]>() - 1) as u16, base: (&raw const IDT) as u64 };
+    // SAFETY: la IDT è statica e completa (preparata da `inizializza` prima di avviare le altre CPU)
+    unsafe { asm!("lidt [{}]", in(reg) &p, options(readonly, nostack, preserves_flags)) };
 }
 
 pub fn nome_eccezione(v: u64) -> &'static str {

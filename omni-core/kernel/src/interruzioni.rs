@@ -9,8 +9,12 @@ use crate::arch::cpu;
 use crate::arch::idt::{self, Cornice};
 use crate::{kprintln, sched, tastiera, tempo};
 use core::sync::atomic::{AtomicU64, Ordering};
+use omni_comune::acpi::MAX_CPU;
 
-pub static RECUPERO: AtomicU64 = AtomicU64::new(0);
+/// Indirizzo da cui riprendere dopo un page fault atteso, per CPU.
+pub static RECUPERO: [AtomicU64; MAX_CPU] = [const { AtomicU64::new(0) }; MAX_CPU];
+/// Page fault attesi gestiti, per CPU (prova dello shootdown K2-03).
+pub static FAULT_ATTESI: [AtomicU64; MAX_CPU] = [const { AtomicU64::new(0) }; MAX_CPU];
 pub static ULTIMO_CR2: AtomicU64 = AtomicU64::new(0);
 pub static ULTIMO_ERRORE: AtomicU64 = AtomicU64::new(0);
 pub static BREAKPOINT: AtomicU64 = AtomicU64::new(0);
@@ -29,9 +33,15 @@ extern "C" fn omni_interruzione(c: &mut Cornice) {
             PAGE_FAULT.fetch_add(1, Ordering::Relaxed);
             ULTIMO_CR2.store(cr2, Ordering::Relaxed);
             ULTIMO_ERRORE.store(c.errore, Ordering::Relaxed);
-            let r = RECUPERO.swap(0, Ordering::Relaxed);
+            let i = crate::smp::indice();
+            let r = RECUPERO[i].swap(0, Ordering::Relaxed);
             if r != 0 {
+                FAULT_ATTESI[i].fetch_add(1, Ordering::Relaxed);
                 c.rip = r;
+                return;
+            }
+            // memoria virtuale su richiesta e copy-on-write (K2-04, K2-05)
+            if crate::vmm::gestisci_fault(cr2, c.errore) {
                 return;
             }
             eccezione_fatale(c, cr2);
@@ -46,6 +56,10 @@ extern "C" fn omni_interruzione(c: &mut Cornice) {
         v if v == idt::VETTORE_TASTIERA as u64 => {
             TASTI.fetch_add(1, Ordering::Relaxed);
             tastiera::interruzione();
+            tempo::fine_interruzione();
+        }
+        v if v == idt::VETTORE_SHOOTDOWN as u64 => {
+            crate::smp::servi_richieste();
             tempo::fine_interruzione();
         }
         v if v == idt::VETTORE_SPURIO as u64 => {}

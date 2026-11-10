@@ -1,11 +1,11 @@
 // Copyright (c) 2026 OMNI OS. Tutti i diritti riservati.
 //! Strumento di sviluppo di OMNI (non fa parte del sistema): costruisce OMNI Boot e il
 //! kernel, prepara la partizione di avvio (cartella FAT per QEMU, nessuna ISO), avvia QEMU
-//! con OVMF, guida la tastiera e cattura lo schermo via QMP, verifica i criteri di K1 e
+//! con OVMF, guida la tastiera e cattura lo schermo via QMP, verifica i criteri delle milestone (K1, K2) e
 //! scrive il rapporto.
 //!
 //!   cargo xtask controlli        licenze/dipendenze e blocchi `unsafe` documentati
-//!   cargo xtask prova [--tcg]    tutte le prove K1 in QEMU, rapporto in target/k1/
+//!   cargo xtask prova [--tcg]    tutte le prove in QEMU, rapporto in target/prove/rapporto/
 //!   cargo xtask avvia            avvio interattivo in QEMU (finestra)
 
 use omni_comune::sha256;
@@ -46,7 +46,7 @@ fn costruisci(variante: &str, funzioni: &str) -> Esito<PathBuf> {
         c.args(["--features", funzioni]);
     }
     esegui(&mut c)?;
-    let esp = r.join("target").join("k1").join(variante).join("esp");
+    let esp = r.join("target").join("prove").join(variante).join("esp");
     fs::create_dir_all(esp.join("EFI/BOOT")).map_err(|e| e.to_string())?;
     fs::create_dir_all(esp.join("OMNI")).map_err(|e| e.to_string())?;
     fs::copy(r.join("target/x86_64-unknown-uefi/release/omni-boot.efi"), esp.join("EFI/BOOT/BOOTX64.EFI")).map_err(|e| e.to_string())?;
@@ -80,7 +80,7 @@ fn kvm(forza_tcg: bool) -> bool {
 }
 
 impl Macchina {
-    fn avvia(esp: &Path, lavoro: &Path, cpu: u32, usa_kvm: bool) -> Esito<Self> {
+    fn avvia(esp: &Path, lavoro: &Path, cpu: u32, usa_kvm: bool, riavvio: bool) -> Esito<Self> {
         fs::create_dir_all(lavoro).map_err(|e| e.to_string())?;
         let (codice, vars) = ovmf();
         let copia_vars = lavoro.join("OVMF_VARS.fd");
@@ -101,7 +101,10 @@ impl Macchina {
         c.arg("-drive").arg(format!("format=raw,file=fat:rw:{}", esp.display()));
         c.arg("-serial").arg(format!("file:{}", seriale.display()));
         c.arg("-qmp").arg(format!("unix:{},server=on,wait=off", sock.display()));
-        c.args(["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-display", "none", "-vga", "std", "-no-reboot", "-net", "none"]);
+        c.args(["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-display", "none", "-vga", "std", "-net", "none"]);
+        if !riavvio {
+            c.arg("-no-reboot"); // un riavvio inatteso termina QEMU invece di ripetere l'avvio
+        }
         c.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
         let figlio = c.spawn().map_err(|e| format!("qemu-system-x86_64: {e}"))?;
         let inizio = Instant::now();
@@ -362,8 +365,8 @@ fn scenario_principale(rap: &mut Rapporto, cpu: u32, usa_kvm: bool, dir: &Path) 
     let esp = costruisci("ktest", "ktest")?;
     let lavoro = dir.join(&nome);
     let hash_atteso = hash_file(&esp.join("OMNI/KERNEL.ELF"));
-    let mut m = Macchina::avvia(&esp, &lavoro, cpu, usa_kvm)?;
-    let t_attesa = m.attendi_seriale("[K1] in attesa della tastiera", 600)?;
+    let mut m = Macchina::avvia(&esp, &lavoro, cpu, usa_kvm, true)?;
+    let t_attesa = m.attendi_seriale("[K1] in attesa della tastiera", 900)?;
     let ppm = lavoro.join("schermata.ppm");
     m.schermata(&ppm)?;
     m.tasti(&["o", "m", "n", "i"])?;
@@ -372,7 +375,9 @@ fn scenario_principale(rap: &mut Rapporto, cpu: u32, usa_kvm: bool, dir: &Path) 
     let ppm2 = lavoro.join("tastiera.ppm");
     m.schermata(&ppm2)?;
     m.tasti(&["ret"])?;
-    let uscita = m.attendi_uscita(60);
+    // dopo Invio: riavvio ACPI, secondo avvio completo, spegnimento ACPI (QEMU termina con 0)
+    let t_riavvio = m.attendi_seriale("[K2] secondo avvio", 600);
+    let uscita = m.attendi_uscita(600);
     let s = m.testo_seriale();
     fs::write(lavoro.join("seriale.txt"), &s).ok();
     let etichetta = format!("[{cpu} CPU, {}]", if usa_kvm { "KVM" } else { "TCG" });
@@ -389,8 +394,8 @@ fn scenario_principale(rap: &mut Rapporto, cpu: u32, usa_kvm: bool, dir: &Path) 
 
     // K1-02: hash del kernel visto da OMNI Boot e dal kernel = file su disco
     let kb = riga(&s, "[omni-boot] kernel:").unwrap_or("");
-    let kk = riga(&s, "OMNI kernel K1 avviato").unwrap_or("");
-    let k102 = kb.contains(&hash_atteso) && kk.contains(&hash_atteso) && riga(&s, "[K1] K1-02 OK").is_some();
+    let kk = riga(&s, "OMNI kernel avviato").unwrap_or("");
+    let k102 = kb.contains(&hash_atteso) && kk.contains(&hash_atteso) && riga(&s, "[PROVA] K1-02 OK").is_some();
     rap.segna(
         "K1-02",
         k102,
@@ -398,10 +403,10 @@ fn scenario_principale(rap: &mut Rapporto, cpu: u32, usa_kvm: bool, dir: &Path) 
     );
 
     // K1-03..K1-09: esiti delle prove nel kernel
-    for id in ["K1-03", "K1-04", "K1-05", "K1-06", "K1-07", "K1-08", "K1-09"] {
-        let ok = riga(&s, &format!("[K1] {id} OK")).is_some();
-        let r = riga(&s, &format!("[K1] {id} ")).unwrap_or("riga assente").trim().to_string();
-        rap.segna(id, ok, format!("{etichetta} {}", r.trim_start_matches(&format!("[K1] {id} "))));
+    for id in ["K1-03", "K1-04", "K1-05", "K1-06", "K1-07", "K1-08", "K1-09", "K2-01", "K2-02", "K2-03", "K2-04", "K2-05", "K2-06"] {
+        let ok = riga(&s, &format!("[PROVA] {id} OK")).is_some();
+        let r = riga(&s, &format!("[PROVA] {id} ")).unwrap_or("riga assente").trim().to_string();
+        rap.segna(id, ok, format!("{etichetta} {}", r.trim_start_matches(&format!("[PROVA] {id} "))));
     }
     // K1-07: numero di CPU = opzione -smp di QEMU
     let n_cpu: u32 = riga(&s, "[K1] CPU:").and_then(|l| l.rsplit(' ').next()).and_then(|x| x.trim().parse().ok()).unwrap_or(0);
@@ -413,15 +418,45 @@ fn scenario_principale(rap: &mut Rapporto, cpu: u32, usa_kvm: bool, dir: &Path) 
     let png = dir.join(format!("{nome}-schermata.png"));
     img.scrivi_png(&png)?;
     Immagine::leggi_ppm(&ppm2)?.scrivi_png(&dir.join(format!("{nome}-tastiera.png")))?;
-    rap.segna("K1-10", ok && riga(&s, "[K1] K1-10 OK").is_some(), format!("{etichetta} {d}; file {}", png.file_name().unwrap().to_string_lossy()));
+    rap.segna("K1-10", ok && riga(&s, "[PROVA] K1-10 OK").is_some(), format!("{etichetta} {d}; file {}", png.file_name().unwrap().to_string_lossy()));
 
     // K1-11: tastiera
-    let k111 = riga(&s, "[tastiera] inviato: omni").is_some() && riga(&s, "[K1] K1-11 OK").is_some();
-    rap.segna("K1-11", k111, format!("{etichetta} tasti o,m,n,i,Invio inviati con QMP send-key: {}", riga(&s, "[K1] K1-11").unwrap_or("assente").trim()));
+    let k111 = riga(&s, "[tastiera] inviato: omni").is_some() && riga(&s, "[PROVA] K1-11 OK").is_some();
+    rap.segna("K1-11", k111, format!("{etichetta} tasti o,m,n,i,Invio inviati con QMP send-key: {}", riga(&s, "[PROVA] K1-11").unwrap_or("assente").trim()));
 
-    let esito = riga(&s, "[K1] ESITO:").unwrap_or("assente").trim().to_string();
-    rap.note.push(format!("{etichetta}: tastiera attesa dopo {t_attesa:.1} s dall'avvio di QEMU; {esito}; uscita QEMU {:?} (attesa 33 = superato)", uscita));
-    if uscita != Some(33) {
+    // K2-01: CPU in linea = opzione -smp
+    let in_linea: u32 = riga(&s, "[K2] CPU in linea:").and_then(|l| l.rsplit(' ').next()).and_then(|x| x.trim().parse().ok()).unwrap_or(0);
+    rap.segna("K2-01", in_linea == cpu, format!("{etichetta} CPU in linea {in_linea}, QEMU -smp {cpu}"));
+
+    // K2-08: riavvio vero (secondo avvio di firmware, OMNI Boot e kernel) riconosciuto
+    let avvii = s.matches("[omni-boot] OMNI Boot avviato").count();
+    let k208 = t_riavvio.is_ok() && avvii == 2 && riga(&s, "[PROVA] K2-08 OK").is_some();
+    rap.segna(
+        "K2-08",
+        k208,
+        format!(
+            "{etichetta} {}; avvii di OMNI Boot nel registro: {avvii}; {}",
+            riga(&s, "[K2] riavvio ACPI richiesto").unwrap_or("riavvio non richiesto").trim(),
+            riga(&s, "[PROVA] K2-08").unwrap_or("secondo avvio assente").trim()
+        ),
+    );
+    // K2-07: spegnimento ACPI: QEMU termina da solo con codice 0 (nessun isa-debug-exit)
+    let sp = riga(&s, "[K2] spegnimento ACPI").unwrap_or("").trim().to_string();
+    let k207 = !sp.is_empty() && uscita == Some(0) && riga(&s, "[PROVA] K2-07 FALLITO").is_none();
+    rap.segna("K2-07", k207, format!("{etichetta} {sp}; uscita di QEMU {:?} (attesa 0: macchina spenta dal kernel)", uscita));
+
+    // nessun criterio fallito in nessuno dei due avvii (regressione)
+    let fallite: Vec<&str> = s.lines().filter(|l| l.contains("[PROVA]") && l.contains("FALLITO")).collect();
+    if !fallite.is_empty() {
+        rap.segna("regressione", false, format!("{etichetta} prove fallite: {}", fallite.join(" | ")));
+    }
+    let esiti: Vec<&str> = s.lines().filter(|l| l.contains("[K2] ESITO:")).map(|l| l.trim()).collect();
+    rap.note.push(format!(
+        "{etichetta}: tastiera attesa dopo {t_attesa:.1} s dall'avvio di QEMU; esiti dei due avvii: {}; uscita QEMU {:?} (attesa 0 = spegnimento ACPI)",
+        esiti.join(" / "),
+        uscita
+    ));
+    if uscita != Some(0) {
         return Err(format!("{nome}: uscita {:?}", uscita));
     }
     Ok(())
@@ -430,12 +465,12 @@ fn scenario_principale(rap: &mut Rapporto, cpu: u32, usa_kvm: bool, dir: &Path) 
 fn scenario_errore(rap: &mut Rapporto, usa_kvm: bool, dir: &Path, variante: &str, id: &str, attesi: &[&str]) -> Esito<()> {
     let esp = costruisci(variante, variante)?;
     let lavoro = dir.join(variante);
-    let mut m = Macchina::avvia(&esp, &lavoro, 1, usa_kvm)?;
+    let mut m = Macchina::avvia(&esp, &lavoro, 1, usa_kvm, false)?;
     let uscita = m.attendi_uscita(600);
     let s = m.testo_seriale();
     fs::write(lavoro.join("seriale.txt"), &s).ok();
     let mancanti: Vec<_> = attesi.iter().filter(|a| !s.contains(**a)).collect();
-    let righe: Vec<_> = s.lines().filter(|l| l.contains("PANIC") || l.contains("DOUBLE FAULT") || l.contains("PROVA")).map(|l| l.trim()).collect();
+    let righe: Vec<_> = s.lines().filter(|l| l.contains("PANIC") || l.contains("DOUBLE FAULT") || l.contains("PROVA K1-")).map(|l| l.trim()).collect();
     rap.segna(
         id,
         uscita == Some(33) && mancanti.is_empty(),
@@ -510,7 +545,7 @@ fn controlli() -> Esito<String> {
 
 fn prova(forza_tcg: bool) -> Esito<bool> {
     let r = radice();
-    let dir = r.join("target/k1/rapporto");
+    let dir = r.join("target/prove/rapporto");
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let usa_kvm = kvm(forza_tcg);
@@ -524,9 +559,11 @@ fn prova(forza_tcg: bool) -> Esito<bool> {
         }
     }
     if usa_kvm {
-        // stessa prova senza KVM: nessuna dipendenza dalla velocità
-        if let Err(e) = scenario_principale(&mut rap, 1, false, &dir) {
-            errori.push(e);
+        // stesse prove senza KVM (emulazione completa): nessuna dipendenza dalla velocità
+        for cpu in [1, 4] {
+            if let Err(e) = scenario_principale(&mut rap, cpu, false, &dir) {
+                errori.push(e);
+            }
         }
     }
     if let Err(e) =
@@ -544,7 +581,10 @@ fn prova(forza_tcg: bool) -> Esito<bool> {
     ) {
         errori.push(e);
     }
-    let attesi = ["K1-01", "K1-02", "K1-03", "K1-04", "K1-05", "K1-06", "K1-07", "K1-08", "K1-09", "K1-10", "K1-11", "K1-12"];
+    let attesi = [
+        "K1-01", "K1-02", "K1-03", "K1-04", "K1-05", "K1-06", "K1-07", "K1-08", "K1-09", "K1-10", "K1-11", "K1-12", "K2-01", "K2-02", "K2-03", "K2-04",
+        "K2-05", "K2-06", "K2-07", "K2-08",
+    ];
     for id in attesi {
         rap.criteri.entry(id.into()).or_insert((false, "prova non eseguita".into()));
     }
@@ -558,7 +598,7 @@ fn prova(forza_tcg: bool) -> Esito<bool> {
         .map(|o| String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("").to_string())
         .unwrap_or_default();
     let mut md = String::new();
-    let _ = writeln!(md, "# Milestone K1: kernel OMNI autonomo in QEMU\n");
+    let _ = writeln!(md, "# Milestone K2: memoria e CPU (con regressione di K1), kernel OMNI in QEMU\n");
     let _ = writeln!(
         md,
         "**Esito complessivo: {}** ({} criteri su {} superati, durata {:.0} s)\n",
@@ -580,7 +620,7 @@ fn prova(forza_tcg: bool) -> Esito<bool> {
     }
     let _ = writeln!(md, "\n## Codice e strumenti\n");
     md.push_str(&controlli);
-    let esp = r.join("target/k1/ktest/esp");
+    let esp = r.join("target/prove/ktest/esp");
     let _ = writeln!(md, "- `BOOTX64.EFI` (OMNI Boot) sha256 `{}`", hash_file(&esp.join("EFI/BOOT/BOOTX64.EFI")));
     let _ = writeln!(md, "- `KERNEL.ELF` (variante di prova) sha256 `{}`", hash_file(&esp.join("OMNI/KERNEL.ELF")));
     let _ = writeln!(md, "- Strumenti (non inclusi nei binari): {rustc}; {qemu}; firmware OVMF `{}`", ovmf().0);
@@ -589,8 +629,8 @@ fn prova(forza_tcg: bool) -> Esito<bool> {
         "- Avvio da cartella FAT esposta da QEMU: **nessuna ISO**; macchina q35, 2 GiB, accelerazione {}",
         if usa_kvm { "KVM e TCG" } else { "TCG" }
     );
-    fs::write(dir.join("k1.md"), &md).map_err(|e| e.to_string())?;
-    println!("\nrapporto: {}", dir.join("k1.md").display());
+    fs::write(dir.join("rapporto.md"), &md).map_err(|e| e.to_string())?;
+    println!("\nrapporto: {}", dir.join("rapporto.md").display());
     Ok(tutti)
 }
 

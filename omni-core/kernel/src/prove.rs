@@ -18,14 +18,14 @@ use omni_comune::sha256;
 static SUPERATE: AtomicU64 = AtomicU64::new(0);
 static FALLITE: AtomicU64 = AtomicU64::new(0);
 
-fn esito(id: &str, ok: bool, dettaglio: &str) {
+pub fn esito(id: &str, ok: bool, dettaglio: &str) {
     if ok {
         SUPERATE.fetch_add(1, Ordering::Relaxed);
     } else {
         FALLITE.fetch_add(1, Ordering::Relaxed);
     }
     let stato = if ok { "OK" } else { "FALLITO" };
-    kprintln!("[K1] {} {} - {}", id, stato, dettaglio);
+    kprintln!("[PROVA] {} {} - {}", id, stato, dettaglio);
     let r = testo!("{}  {}  {}", id, stato, dettaglio);
     video::riga(r.as_str(), if ok { video::VERDE } else { video::ROSSO });
 }
@@ -40,10 +40,16 @@ pub fn esegui(indirizzo_boot_info: u64) -> ! {
         panic!("BootInfo non valida");
     }
 
+    // K2-08: questo avvio segue un riavvio chiesto dal kernel?
+    let secondo_avvio = crate::potenza::dopo_riavvio();
+    if secondo_avvio {
+        kprintln!("[K2] secondo avvio: riavvio richiesto dal kernel riconosciuto");
+    }
+
     // K1-02: ingresso nel kernel e identità del binario
     let h = sha256::esadecimale(&bi.sha256_kernel);
     let hash = core::str::from_utf8(&h).unwrap_or("?");
-    kprintln!("OMNI kernel K1 avviato; sha256 del kernel {}", hash);
+    kprintln!("OMNI kernel avviato; sha256 del kernel {}", hash);
     kprintln!("firmware {}, UEFI {}.{}, {} regioni di memoria", bi.fornitore(), bi.revisione_uefi >> 16, (bi.revisione_uefi & 0xffff) / 10, bi.num_regioni);
 
     // K1-05: allocatore di frame
@@ -53,7 +59,7 @@ pub fn esegui(indirizzo_boot_info: u64) -> ! {
     prova_frame(bi, &rf);
 
     // K1-03: GDT, TSS, IDT, eccezioni
-    gdt::inizializza();
+    gdt::inizializza(0);
     idt::inizializza();
     // SAFETY: int3 genera un breakpoint gestito che riprende all'istruzione successiva
     unsafe { asm!("int3") };
@@ -136,6 +142,21 @@ pub fn esegui(indirizzo_boot_info: u64) -> ! {
         prova_doppio_errore();
     }
 
+    // K2: multiprocessore, memoria virtuale, stress, energia
+    crate::prove_k2::prova_smp(&info.madt);
+    crate::prove_k2::prova_scheduler();
+    crate::prove_k2::prova_shootdown();
+    crate::prove_k2::prova_vmm();
+    crate::prove_k2::prova_stress();
+    let energia = crate::potenza::InfoPotenza { fadt: info.fadt, s5: info.s5 };
+    kprintln!(
+        "[K2] ACPI energia: PM1a_CNT {:#x}, PM1b_CNT {:#x}, reset {:?}, \\_S5 {:?}",
+        energia.fadt.pm1a_cnt,
+        energia.fadt.pm1b_cnt,
+        energia.fadt.reset,
+        energia.s5
+    );
+
     // K1-10: schermata
     let (s, f) = (SUPERATE.load(Ordering::Relaxed), FALLITE.load(Ordering::Relaxed));
     esito(
@@ -144,16 +165,38 @@ pub fn esegui(indirizzo_boot_info: u64) -> ! {
         testo!("schermata OMNI su framebuffer GOP {}x{}, font vettoriale originale", bi.framebuffer.larghezza, bi.framebuffer.altezza).as_str(),
     );
     kprintln!("[K1] prove nel kernel: {} superate, {} fallite", s + 1, f);
-    video::riga(testo!("Prove nel kernel: {} superate, {} fallite. Scrivi omni e premi Invio.", s + 1, f).as_str(), video::TESTO);
 
-    // K1-11: tastiera
-    prova_tastiera();
+    if !secondo_avvio {
+        video::riga(testo!("Prove nel kernel: {} superate, {} fallite. Scrivi omni e premi Invio.", s + 1, f).as_str(), video::TESTO);
+        // K1-11: tastiera
+        prova_tastiera();
+        riepilogo();
+        // K2-08: riavvio (il prossimo avvio lo riconosce dal segno nella CMOS)
+        kprintln!("[K2] riavvio ACPI richiesto (registro di reset {:?})", energia.fadt.reset);
+        video::riga("Riavvio...", video::TESTO);
+        let errore = crate::potenza::riavvia(&energia);
+        esito("K2-08", false, errore);
+        fine()
+    }
+    esito("K2-08", true, "riavvio completato: firmware, OMNI Boot e kernel ripartiti e riavvio riconosciuto");
+    riepilogo();
+    // K2-07: spegnimento
+    kprintln!("[K2] spegnimento ACPI (SLP_TYP da \\_S5 {:?}, PM1a_CNT {:#x})", energia.s5, energia.fadt.pm1a_cnt);
+    video::riga("Spegnimento...", video::TESTO);
+    let errore = crate::potenza::spegni(&energia);
+    esito("K2-07", false, errore);
     fine()
+}
+
+fn riepilogo() {
+    let (s, f) = (SUPERATE.load(Ordering::Relaxed), FALLITE.load(Ordering::Relaxed));
+    kprintln!("[K2] ESITO: {} ({} superate, {} fallite)", if f == 0 { "SUPERATO" } else { "FALLITO" }, s, f);
 }
 
 fn fine() -> ! {
     let (s, f) = (SUPERATE.load(Ordering::Relaxed), FALLITE.load(Ordering::Relaxed));
     kprintln!("[K1] ESITO: {} ({} superate, {} fallite)", if f == 0 { "SUPERATO" } else { "FALLITO" }, s, f);
+    let _ = s;
     #[cfg(feature = "ktest")]
     cpu::esci_qemu(if f == 0 { 0x10 } else { 0x11 });
     #[allow(unreachable_code)]
@@ -230,10 +273,10 @@ fn prova_pagine(bi: &BootInfo) {
     unsafe {
         asm!(
             "lea rax, [rip + 2f]",
-            "mov qword ptr [rip + {rec}], rax",
+            "mov qword ptr [{rec}], rax",
             "mov byte ptr [{t}], 0x90",
             "2:",
-            rec = sym RECUPERO,
+            rec = in(reg) RECUPERO[0].as_ptr(),
             t = in(reg) codice,
             out("rax") _,
         );
@@ -249,10 +292,10 @@ fn prova_pagine(bi: &BootInfo) {
     unsafe {
         asm!(
             "lea rax, [rip + 2f]",
-            "mov qword ptr [rip + {rec}], rax",
+            "mov qword ptr [{rec}], rax",
             "jmp {d}",
             "2:",
-            rec = sym RECUPERO,
+            rec = in(reg) RECUPERO[0].as_ptr(),
             d = in(reg) dati,
             out("rax") _,
         );
@@ -266,10 +309,10 @@ fn prova_pagine(bi: &BootInfo) {
     unsafe {
         asm!(
             "lea rax, [rip + 2f]",
-            "mov qword ptr [rip + {rec}], rax",
+            "mov qword ptr [{rec}], rax",
             "mov rax, qword ptr [{v}]",
             "2:",
-            rec = sym RECUPERO,
+            rec = in(reg) RECUPERO[0].as_ptr(),
             v = in(reg) vuoto,
             out("rax") _,
         );
