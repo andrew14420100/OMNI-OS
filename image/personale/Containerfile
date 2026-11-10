@@ -17,7 +17,6 @@ COPY files/ /
 
 RUN chmod 0755 /usr/bin/omni-shell /usr/lib/omni-shell/bin/omni-shell-prototipo /usr/libexec/omni-os/* && \
     test -x /usr/bin/startplasma-wayland && \
-    kwriteconfig6 --file /etc/xdg/kwinrc --group ModifierOnlyShortcuts --key Meta "org.kde.plasmashell,/PlasmaShell,org.kde.PlasmaShell,activateLauncherMenu" && \
     mkdir -p /usr/share/fonts/omni-inter && \
     find /usr/lib/omni-shell/fonts -type f \( -name '*.otf' -o -name '*.ttf' -o -name '*.ttc' \) -exec cp {} /usr/share/fonts/omni-inter/ \; && \
     test -n "$(ls -A /usr/share/fonts/omni-inter)" && \

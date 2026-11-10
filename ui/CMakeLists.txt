@@ -16,6 +16,14 @@ add_executable(omni-shell-prototipo src/main.cpp src/recorder.cpp src/recorder.h
 target_link_libraries(omni-shell-prototipo PRIVATE omni_desktopentries Qt6::Gui Qt6::Quick Qt6::DBus)
 target_compile_definitions(omni-shell-prototipo PRIVATE OMNI_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
 target_compile_options(omni-shell-prototipo PRIVATE -Wall -Wextra)
+# Tasto Meta (Windows) come in Plasma 6: scorciatoia globale KGlobalAccel del componente
+# "plasmashell" ("activate application launcher"). Facoltativo: assente nei test locali.
+find_package(KF6GlobalAccel QUIET)
+if(KF6GlobalAccel_FOUND)
+    target_link_libraries(omni-shell-prototipo PRIVATE KF6::GlobalAccel)
+    target_compile_definitions(omni-shell-prototipo PRIVATE OMNI_HAVE_KGLOBALACCEL)
+    message(STATUS "KGlobalAccel: tasto Meta per il menu Start")
+endif()
 
 enable_testing()
 add_executable(tst_desktopentries tests/tst_desktopentries.cpp)

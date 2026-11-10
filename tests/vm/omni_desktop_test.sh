@@ -33,6 +33,7 @@ shot 00-accesso
 if ! sess_login; then rec FAIL "accesso"; shot 00-accesso-fallito; vm_stop "$w"; res_end; exit 1; fi
 sess_env
 desk=$(vm_ssh "loginctl show-session $SID -p Desktop --value" 2>/dev/null)
+{ echo "--- stato del gestore di accesso"; vm_ssh "ls -la /var/lib/plasmalogin/ 2>&1; cat /var/lib/plasmalogin/state.conf 2>&1; ls /var/lib/AccountsService/users/ 2>&1"; } >> "$ev" 2>&1
 echo "INFO sessione predefinita: Desktop=$desk" | tee -a "$LOG" "$ev"
 shell_up() { vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" >/dev/null 2>&1; }
 plasma_up() { vm_ssh "pgrep -u $U -x plasmashell" >/dev/null 2>&1; }
@@ -182,7 +183,12 @@ if [ -n "$pid2" ] && [ "$pid2" != "$pid1" ]; then rec OK "arresto anomalo: OMNI 
   u_sh "systemctl --user status omni-shell.service --no-pager 2>&1 | head -15"
   vm_ssh "journalctl -b _UID=$UID_ --no-pager -o short-monotonic | grep -E 'omni-shell|coredump|SEGV|Scheduled restart' | tail -25"
   vm_ssh "journalctl -b -u systemd-coredump@* --no-pager -o short-monotonic | tail -8"; } >> "$ev" 2>&1
-for _ in 1 2 3 4; do p=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null); [ -n "$p" ] && vm_ssh "kill -SEGV $p" >/dev/null 2>&1; sleep 3; done
+# arresti ripetuti: si provoca un arresto a ogni riavvio finché systemd raggiunge il limite
+for _ in $(seq 1 8); do
+  p=""; for _ in $(seq 1 20); do p=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null); [ -n "$p" ] && break; sleep 1; done
+  [ -n "$p" ] || break
+  vm_ssh "kill -SEGV $p" >/dev/null 2>&1; sleep 2
+done
 for _ in $(seq 1 40); do plasma_up && break; sleep 2; done; sleep 5; shot 15-recupero
 if plasma_up; then rec OK "arresti ripetuti: desktop Plasma di riserva avviato automaticamente (mai senza interfaccia)"; else rec FAIL "nessuna interfaccia dopo arresti ripetuti"; fi
 
@@ -225,8 +231,9 @@ else rec FAIL "accesso prima della prova di spegnimento"; fi
 rm -f "$w/qmp.sock"
 bash tests/vm/boot_vm.sh "$w/disk.raw" "$w" uefi >/dev/null
 if vm_ready "$w"; then rec OK "nuovo avvio dopo lo spegnimento: sistema pronto"; else rec FAIL "il sistema non riparte dopo lo spegnimento"; fi
-GREETER_WAIT=45 sess_greeter
-if sess_login; then
+# dopo un avvio la schermata di accesso è già quella vera: nessun riavvio del gestore
+sleep 45
+if sess_login || { shot 20a-accesso-primo-tentativo; GREETER_WAIT=45 sess_greeter; sess_login; }; then
   sess_env; for _ in $(seq 1 60); do shell_up && break; sleep 2; done; sleep 15
   b0=$(vm_ssh "cat /proc/sys/kernel/random/boot_id" 2>/dev/null)
   click bar:start 2; click start:power 1; click power:reboot 0

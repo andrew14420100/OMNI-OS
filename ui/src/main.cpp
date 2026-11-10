@@ -14,6 +14,10 @@
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <pwd.h>
+#ifdef OMNI_HAVE_KGLOBALACCEL
+#include <KGlobalAccel>
+#include <QAction>
+#endif
 #include <unistd.h>
 #include <QFile>
 #include <QJsonDocument>
@@ -76,6 +80,23 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
     plasmaShell.registerOnBus();
     ShellControl control;
     control.registerOnBus();
+#ifdef OMNI_HAVE_KGLOBALACCEL
+    // Stessa azione globale che registra plasmashell: in Plasma 6 il tasto Meta da solo è una
+    // scorciatoia KGlobalAccel, non più un'impostazione di KWin. Nella sessione OMNI il
+    // componente "plasmashell" è OMNI Shell (Plasma non è in esecuzione).
+    QAction launcherAction;
+    launcherAction.setObjectName(QStringLiteral("activate application launcher"));
+    launcherAction.setText(QStringLiteral("Activate Application Launcher"));
+    launcherAction.setProperty("componentName", QStringLiteral("plasmashell"));
+    launcherAction.setProperty("componentDisplayName", QStringLiteral("Plasma"));
+    QObject::connect(&launcherAction, &QAction::triggered, &plasmaShell, [&plasmaShell]() {
+        qInfo("tasto Meta: scorciatoia globale ricevuta");
+        emit plasmaShell.startRequested();
+    });
+    const bool keyOk = KGlobalAccel::self()->setGlobalShortcut(&launcherAction,
+        QList<QKeySequence>() << QKeySequence(Qt::Key_Meta) << QKeySequence(Qt::AltModifier | Qt::Key_F1));
+    qInfo("tasto Meta: scorciatoia globale %s", keyOk ? "registrata" : "NON registrata");
+#endif
     ShellSettings settings;
     qInfo("avvio delle applicazioni: %s", launcher.enabled() ? "REALE (gio launch / kstart)" : "disattivato");
 
