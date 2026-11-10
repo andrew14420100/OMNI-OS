@@ -19,9 +19,6 @@ on:
         type: boolean
         default: false
 
-  push:
-    branches: ["claude/omni-0.4-evoluzione"]
-    paths: [".github/workflows/omni-evoluzione.yml"]
 
 permissions:
   contents: read
