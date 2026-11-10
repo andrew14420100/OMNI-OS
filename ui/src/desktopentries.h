@@ -13,6 +13,8 @@ struct DesktopEntry {
     QString icon;
     QStringList categories;
     QString path;          // percorso del file .desktop (vuoto per l'elenco dimostrativo)
+    QStringList mimeTypes;
+    QString flatpakId;     // X-Flatpak: app installata con Flatpak (disinstallabile dallo Store)
 };
 
 class DesktopEntryModel : public QAbstractListModel {
@@ -20,7 +22,7 @@ class DesktopEntryModel : public QAbstractListModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged)
     Q_PROPERTY(bool demo READ demo NOTIFY countChanged)
 public:
-    enum Roles { NameRole = Qt::UserRole + 1, CommentRole, IconRole, CategoriesRole, IdRole, PathRole };
+    enum Roles { NameRole = Qt::UserRole + 1, CommentRole, IconRole, CategoriesRole, IdRole, PathRole, MimeRole, FlatpakRole };
     explicit DesktopEntryModel(QObject *parent = nullptr);
 
     int rowCount(const QModelIndex &parent = {}) const override;

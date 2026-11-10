@@ -22,12 +22,14 @@ QVariant DesktopEntryModel::data(const QModelIndex &index, int role) const {
     case CategoriesRole: return e.categories;
     case IdRole: return e.id;
     case PathRole: return e.path;
+    case MimeRole: return e.mimeTypes;
+    case FlatpakRole: return e.flatpakId;
     }
     return {};
 }
 
 QHash<int, QByteArray> DesktopEntryModel::roleNames() const {
-    return {{NameRole, "name"}, {CommentRole, "comment"}, {IconRole, "iconName"}, {CategoriesRole, "categories"}, {IdRole, "desktopId"}, {PathRole, "filePath"}};
+    return {{NameRole, "name"}, {CommentRole, "comment"}, {IconRole, "iconName"}, {CategoriesRole, "categories"}, {IdRole, "desktopId"}, {PathRole, "filePath"}, {MimeRole, "mimeTypes"}, {FlatpakRole, "flatpakId"}};
 }
 
 bool DesktopEntryModel::containsPath(const QString &path) const {
@@ -39,7 +41,7 @@ bool DesktopEntryModel::containsPath(const QString &path) const {
 QVariantMap DesktopEntryModel::get(int row) const {
     if (row < 0 || row >= count()) return {};
     const auto &e = m_entries.at(row);
-    return {{"name", e.name}, {"comment", e.comment}, {"iconName", e.icon}, {"categories", e.categories}, {"desktopId", e.id}, {"filePath", e.path}};
+    return {{"name", e.name}, {"comment", e.comment}, {"iconName", e.icon}, {"categories", e.categories}, {"desktopId", e.id}, {"filePath", e.path}, {"mimeTypes", e.mimeTypes}, {"flatpakId", e.flatpakId}};
 }
 
 static QString localized(const QHash<QString, QString> &kv, const QString &key, const QString &locale) {
@@ -77,6 +79,8 @@ bool DesktopEntryModel::parseFile(const QString &path, const QString &locale, De
     out->comment = localized(kv, "Comment", locale);
     out->icon = kv.value("Icon");
     out->categories = kv.value("Categories").split(';', Qt::SkipEmptyParts);
+    out->mimeTypes = kv.value("MimeType").split(';', Qt::SkipEmptyParts);
+    out->flatpakId = kv.value("X-Flatpak");
     return true;
 }
 
