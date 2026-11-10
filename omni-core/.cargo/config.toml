@@ -1,0 +1,6 @@
+[alias]
+xtask = "run -p omni-xtask --"
+
+# Kernel nella metà alta dello spazio d'indirizzi: modello di codice "kernel", nessuna rilocazione
+[target.x86_64-unknown-none]
+rustflags = ["-C", "code-model=kernel", "-C", "relocation-model=static"]

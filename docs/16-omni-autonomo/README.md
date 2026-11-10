@@ -12,6 +12,7 @@
 |---|---|
 | Questo file | Obiettivo, fattibilità, architettura, componenti originali, dipendenze, rischi |
 | [`roadmap.md`](roadmap.md) | Piano progressivo K0–K12: kernel, avvio UEFI, memoria, processi, driver, filesystem, grafica, servizi |
+| [`k1-risultati.md`](k1-risultati.md) | **Risultati di K1**: 12/12 criteri superati in CI (QEMU KVM e TCG), schermate e rapporto |
 | [`milestone-k1.md`](milestone-k1.md) | Prima milestone verificabile: kernel OMNI autonomo in QEMU, con criteri di accettazione e prove |
 | [`riuso.md`](riuso.md) | Cosa del lavoro già fatto si riusa, legalmente e tecnicamente, e cosa va riscritto |
 | [`revisione-decisioni.md`](revisione-decisioni.md) | Le 55 decisioni: confermate, da rivedere (presuppongono Linux/KDE), sospese |

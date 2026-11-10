@@ -1,0 +1,8 @@
+OMNI OS — codice originale
+Copyright (c) 2026 OMNI OS. Tutti i diritti riservati.
+
+Questo codice è proprietario. Nessuna licenza d'uso, copia, modifica o distribuzione è
+concessa senza autorizzazione scritta del proprietario (ADR-0011, accettato il 2026-11-10).
+
+Il codice non contiene componenti di terze parti. Gli strumenti di sviluppo usati per
+compilarlo e provarlo (Rust/LLVM, QEMU, OVMF) non fanno parte dei binari prodotti.

@@ -1,0 +1,22 @@
+[package]
+name = "omni-kernel"
+description = "Kernel OMNI (K1)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "omni-kernel"
+test = false
+bench = false
+
+[features]
+# test eseguiti nel kernel all'avvio, con uscita da QEMU tramite isa-debug-exit
+ktest = []
+# varianti di prova che terminano con un errore controllato (K1-03, K1-12)
+prova-panico = ["ktest"]
+prova-doppio-errore = ["ktest"]
+
+[dependencies]
+omni-comune = { path = "../comune" }
