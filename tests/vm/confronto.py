@@ -25,7 +25,7 @@ def cpu_total(v, names=("omni-shell-prot", "kwin_wayland", "plasmashell")):
 
 
 prima, dopo = load(sys.argv[1]), load(sys.argv[2])
-print("| Misura | Prima (0.2.0) | Dopo (0.3.0) | Variazione |")
+print(f"| Misura | Prima ({sys.argv[3] if len(sys.argv) > 3 else 'prima'}) | Dopo ({sys.argv[4] if len(sys.argv) > 4 else 'dopo'}) | Variazione |")
 print("|---|---|---|---|")
 for k in list(prima) + [k for k in dopo if k not in prima]:
     a, b = prima.get(k, {}), dopo.get(k, {})
