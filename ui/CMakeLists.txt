@@ -76,7 +76,7 @@ add_test(NAME apps COMMAND tst_apps)
 # risposte di sistema lente (come su una macchina carica): arrivano dopo la chiusura della
 # pagina che le ha chieste e non devono produrre errori
 add_test(NAME apps_risposte_lente COMMAND tst_apps impostazioniTutteLePagine)
-set_tests_properties(apps_risposte_lente PROPERTIES ENVIRONMENT "PATH=${CMAKE_CURRENT_SOURCE_DIR}/tests/comandi-lenti:$ENV{PATH}")
+set_tests_properties(apps_risposte_lente PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;PATH=${CMAKE_CURRENT_SOURCE_DIR}/tests/comandi-lenti:$ENV{PATH}")
 add_executable(tst_files tests/tst_files.cpp src/filemanager.cpp)
 target_link_libraries(tst_files PRIVATE Qt6::Gui Qt6::Test)
 target_include_directories(tst_files PRIVATE src)
