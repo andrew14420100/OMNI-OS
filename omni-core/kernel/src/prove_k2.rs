@@ -7,7 +7,7 @@ use crate::interruzioni::{FAULT_ATTESI, RECUPERO};
 use crate::mem::{frame, heap, pagine};
 use crate::prove::esito;
 use crate::sync::Blocco;
-use crate::{kprintln, sched, smp, testo, tempo, vmm};
+use crate::{kprintln, sched, smp, tempo, testo, vmm};
 use alloc::vec::Vec;
 use core::arch::asm;
 use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -200,7 +200,8 @@ pub fn prova_vmm() {
     let b = vmm::clona_cow(a).expect("regione");
     let tabelle_clone = pagine::TABELLE.load(Ordering::Relaxed) - tab1;
     let frame_nuovi = (liberi1 - frame::liberi()) as u64 - tabelle_clone;
-    let condivisi = (0..n).all(|p| vmm::frame_di(a + p * PAGINA) == vmm::frame_di(b + p * PAGINA) && vmm::riferimenti(vmm::frame_di(a + p * PAGINA).unwrap_or(0)) == 2);
+    let condivisi =
+        (0..n).all(|p| vmm::frame_di(a + p * PAGINA) == vmm::frame_di(b + p * PAGINA) && vmm::riferimenti(vmm::frame_di(a + p * PAGINA).unwrap_or(0)) == 2);
     // SAFETY: pagine presenti (condivise in sola lettura)
     let uguali = (0..n).all(|p| unsafe { core::ptr::read_volatile((b + p * PAGINA) as *const u64) } == 0xa000 + p);
     // scrittura sul clone: una copia privata, l'originale resta invariato

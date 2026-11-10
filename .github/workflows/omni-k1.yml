@@ -1,11 +1,11 @@
-# OMNI OS autonomo — milestone K1: kernel OMNI in QEMU (UEFI/OVMF), prove automatiche.
+# OMNI OS autonomo — milestoni K1 e K2: kernel OMNI in QEMU (UEFI/OVMF), prove automatiche.
 # Nessuna ISO, nessuna release: rapporto, registri seriali e schermate sono artifact.
 name: omni-k1
 
 on:
   workflow_dispatch:
   push:
-    branches: ["claude/omni-k1"]
+    branches: ["claude/omni-k1", "claude/omni-k2"]
     paths: ["omni-core/**", ".github/workflows/omni-k1.yml"]
 
 permissions:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   k1:
-    name: K1 (build, test, QEMU KVM e TCG)
+    name: Kernel OMNI (build, test, QEMU KVM e TCG)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     defaults:
@@ -49,19 +49,19 @@ jobs:
           done
       - name: Controlli (nessuna dipendenza esterna, unsafe documentati)
         run: cargo xtask controlli | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Prove K1 in QEMU (KVM 1 e 4 CPU, TCG, panico, double fault)
+      - name: Prove K1+K2 in QEMU (KVM e TCG, 1 e 4 CPU, riavvio e spegnimento ACPI, panico, double fault)
         run: cargo xtask prova
       - name: Rapporto
         if: always()
-        run: cat target/k1/rapporto/k1.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: cat target/prove/rapporto/rapporto.md >> "$GITHUB_STEP_SUMMARY" || true
       - name: Evidenze
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: OMNI-K1-prove
+          name: OMNI-prove-K2
           retention-days: 14
           if-no-files-found: warn
           path: |
-            omni-core/target/k1/rapporto/k1.md
-            omni-core/target/k1/rapporto/*.png
-            omni-core/target/k1/rapporto/*/seriale.txt
+            omni-core/target/prove/rapporto/rapporto.md
+            omni-core/target/prove/rapporto/*.png
+            omni-core/target/prove/rapporto/*/seriale.txt

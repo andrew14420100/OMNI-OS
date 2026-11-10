@@ -28,15 +28,8 @@ struct Heap {
     n_liberi: usize,
 }
 
-static HEAP: Blocco<Heap> = Blocco::new(Heap {
-    liste: [0; CLASSI],
-    cima: BASE,
-    in_uso: 0,
-    allocazioni: 0,
-    pagine_mappate: 0,
-    liberi: [(0, 0); MAX_LIBERI],
-    n_liberi: 0,
-});
+static HEAP: Blocco<Heap> =
+    Blocco::new(Heap { liste: [0; CLASSI], cima: BASE, in_uso: 0, allocazioni: 0, pagine_mappate: 0, liberi: [(0, 0); MAX_LIBERI], n_liberi: 0 });
 
 fn classe(l: &Layout) -> Option<usize> {
     let d = l.size().max(l.align()).max(MINIMO).next_power_of_two();

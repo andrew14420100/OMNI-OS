@@ -49,7 +49,7 @@ pub fn esegui(indirizzo_boot_info: u64) -> ! {
     // K1-02: ingresso nel kernel e identità del binario
     let h = sha256::esadecimale(&bi.sha256_kernel);
     let hash = core::str::from_utf8(&h).unwrap_or("?");
-    kprintln!("OMNI kernel K1 avviato; sha256 del kernel {}", hash);
+    kprintln!("OMNI kernel avviato; sha256 del kernel {}", hash);
     kprintln!("firmware {}, UEFI {}.{}, {} regioni di memoria", bi.fornitore(), bi.revisione_uefi >> 16, (bi.revisione_uefi & 0xffff) / 10, bi.num_regioni);
 
     // K1-05: allocatore di frame

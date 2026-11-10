@@ -170,8 +170,7 @@ pub fn tick() {
         }
         let n = p.thread.len();
         let c = p.corrente[cpu];
-        let disponibile =
-            |t: &Thread| t.stato == Stato::Pronto && !t.in_esecuzione.load(Ordering::Acquire) && t.affinita.is_none_or(|a| a == cpu);
+        let disponibile = |t: &Thread| t.stato == Stato::Pronto && !t.in_esecuzione.load(Ordering::Acquire) && t.affinita.is_none_or(|a| a == cpu);
         let Some(s) = (1..n).map(|k| (c + k) % n).find(|&i| disponibile(&p.thread[i])) else { return };
         p.thread[s].in_esecuzione.store(true, Ordering::Release);
         p.corrente[cpu] = s;

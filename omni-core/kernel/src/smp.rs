@@ -243,14 +243,14 @@ pub fn shootdown(virt: u64) {
     }
     let me = indice();
     INDIRIZZO.store(virt, Ordering::Release);
-    for i in 0..MAX_CPU {
+    for (i, r) in RICHIESTA.iter().enumerate() {
         if i != me && cpu_in_linea(i) {
-            RICHIESTA[i].store(true, Ordering::Release);
+            r.store(true, Ordering::Release);
         }
     }
     tempo::invia_ipi(0, 0x4000 | idt::VETTORE_SHOOTDOWN as u32, 3); // a tutte le altre CPU
-    for i in 0..MAX_CPU {
-        while RICHIESTA[i].load(Ordering::Acquire) {
+    for r in RICHIESTA.iter() {
+        while r.load(Ordering::Acquire) {
             core::hint::spin_loop();
         }
     }

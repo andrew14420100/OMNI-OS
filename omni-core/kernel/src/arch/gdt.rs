@@ -66,11 +66,7 @@ pub fn inizializza(indice: usize) {
         let base = tss as u64;
         let limite = (size_of::<Tss>() - 1) as u64;
         // descrittore di sistema a 16 byte: TSS a 64 bit disponibile (tipo 0x9), presente
-        let basso = (limite & 0xffff)
-            | ((base & 0xff_ffff) << 16)
-            | (0x89u64 << 40)
-            | (((limite >> 16) & 0xf) << 48)
-            | (((base >> 24) & 0xff) << 56);
+        let basso = (limite & 0xffff) | ((base & 0xff_ffff) << 16) | (0x89u64 << 40) | (((limite >> 16) & 0xf) << 48) | (((base >> 24) & 0xff) << 56);
         let gdt = &raw mut (*d).gdt;
         (*gdt)[3] = basso;
         (*gdt)[4] = base >> 32;
