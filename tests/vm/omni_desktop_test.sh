@@ -140,6 +140,13 @@ u_sh "mkdir -p ~/Documenti/Progetti ~/Immagini && echo Appunti > ~/Documenti/app
 launch_check "OMNI Explorer (ricerca 'esplora' in Start)" "org.omnios.Explorer" search_launch esplora
 sleep 5; shot 18-omni-esplora-file; omni_app_close explorer
 vm_ssh "flatpak remotes --columns=name,url,options 2>&1; ls /var/lib/flatpak/appstream 2>&1" > "$w/flatpak-sorgenti.txt" 2>&1
+# catalogo reale per OMNI Store: come farebbe l'utente da Store > Sorgenti (solo nella VM di prova)
+if ! u_sh "flatpak remotes --columns=name" 2>/dev/null | grep -qx flathub; then
+  u_sh "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo" >> "$w/flatpak-sorgenti.txt" 2>&1
+fi
+u_sh "timeout 600 flatpak update --appstream" >> "$w/flatpak-sorgenti.txt" 2>&1
+napp=$(vm_ssh "for f in /var/lib/flatpak/appstream/*/x86_64/active/appstream.xml* /var/home/$U/.local/share/flatpak/appstream/*/x86_64/active/appstream.xml*; do [ -f \"\$f\" ] && { case \"\$f\" in *.gz) zcat \"\$f\";; *) cat \"\$f\";; esac; }; done 2>/dev/null | grep -c '<component type=\"desktop'" 2>/dev/null)
+if [ "${napp:-0}" -gt 0 ]; then rec OK "catalogo Flatpak reale scaricato: $napp app (AppStream)"; else rec INFO "catalogo Flatpak non disponibile nella VM (rete o sorgente): lo Store mostra lo stato vuoto"; fi
 launch_check "OMNI Store" "org.omnios.Store" launch_dbus org.omnios.Store
 sleep 10; shot 19-omni-store; omni_app_close store
 errs=$(vm_ssh "journalctl -b _UID=$UID_ --no-pager -o cat | grep -E 'qml/apps/.*(Error|TypeError|ReferenceError|Unable to assign|is not installed)'" 2>/dev/null)
