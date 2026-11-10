@@ -8,6 +8,7 @@
 #include "shellservices.h"
 #include "systemstatus.h"
 #include "systemmonitor.h"
+#include "filemanager.h"
 #include <QtQml/qqml.h>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -51,7 +52,10 @@ class TestApps : public QObject {
     }
 private slots:
     void initTestCase() {
+        qputenv("XDG_DATA_HOME", tmp.filePath(QStringLiteral("dati")).toUtf8());   // cestino di prova
         qmlRegisterType<SystemMonitor>("OmniSystemMonitor", 1, 0, "SystemMonitor");
+        qmlRegisterType<FolderModel>("OmniFiles", 1, 0, "FolderModel");
+        qmlRegisterType<FileOps>("OmniFiles", 1, 0, "FileOps");
         apps.load({QStringLiteral(OMNI_TEST_APPS)}, QStringLiteral("it_IT"));
         launcher = new AppLauncher(&apps, false, this);
         settings = new ShellSettings(tmp.filePath("omni-shell.conf"), this);
@@ -100,6 +104,34 @@ private slots:
             QObject *loader = root->findChild<QObject *>(QStringLiteral("app:pagina"));
             QVERIFY2(loader, qPrintable(id));
             QTRY_VERIFY2_WITH_TIMEOUT(loader->property("status").toInt() == 1, qPrintable(id + QLatin1Char('\n') + serious(warnings).join('\n')), 3000);
+        }
+        if (file == QLatin1String("ExplorerApp.qml")) {   // operazioni reali in una cartella di prova
+            const QString dir = tmp.filePath(QStringLiteral("esplora"));
+            QDir().mkpath(dir + QStringLiteral("/Cartella"));
+            QFile f(dir + QStringLiteral("/nota.txt")); QVERIFY(f.open(QIODevice::WriteOnly)); f.write("ciao"); f.close();
+            QMetaObject::invokeMethod(root, "navigate", Q_ARG(QVariant, dir), Q_ARG(QVariant, false));
+            QObject *list = root->findChild<QObject *>(QStringLiteral("esplora:elenco"));
+            QVERIFY(list);
+            QTRY_COMPARE(list->property("count").toInt(), 2);
+            root->setProperty("selection", QStringList{dir + QStringLiteral("/nota.txt")});
+            QMetaObject::invokeMethod(root, "trashSel");
+            QTRY_VERIFY_WITH_TIMEOUT(!QFile::exists(dir + QStringLiteral("/nota.txt")), 5000);
+            QTRY_COMPARE(list->property("count").toInt(), 1);
+            QMetaObject::invokeMethod(root, "openTrash");
+            QTRY_VERIFY(root->property("trashList").toList().size() == 1);
+            root->setProperty("selection", QStringList{root->property("trashList").toList().first().toMap().value("path").toString()});
+            QMetaObject::invokeMethod(root, "restoreSel");
+            QVERIFY(QFile::exists(dir + QStringLiteral("/nota.txt")));
+            // eliminazione definitiva: solo dopo conferma esplicita
+            QMetaObject::invokeMethod(root, "navigate", Q_ARG(QVariant, dir), Q_ARG(QVariant, false));
+            root->setProperty("selection", QStringList{dir + QStringLiteral("/nota.txt")});
+            QMetaObject::invokeMethod(root, "askDelete");
+            QObject *confirm = root->findChild<QObject *>(QStringLiteral("esplora:conferma"));
+            QVERIFY(confirm && confirm->property("visible").toBool());
+            QTest::qWait(200);
+            QVERIFY(QFile::exists(dir + QStringLiteral("/nota.txt")));
+            confirm->setProperty("visible", false);
+            QMetaObject::invokeMethod(root, "goBack");
         }
         if (file == QLatin1String("TaskManagerApp.qml")) {   // dati reali di /proc, non vuoti
             QObject *mon = root->property("mon").value<QObject *>();

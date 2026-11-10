@@ -13,6 +13,7 @@
 #include "systemstatus.h"
 #include "omnisystem.h"
 #include "systemmonitor.h"
+#include "filemanager.h"
 #include <QtQml/qqml.h>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -158,6 +159,8 @@ static int runApp(QGuiApplication &app, const QString &name, DesktopEntryModel &
     ShellSettings settings;
     OmniSystem omniSystem;
     qmlRegisterType<SystemMonitor>("OmniSystemMonitor", 1, 0, "SystemMonitor");
+    qmlRegisterType<FolderModel>("OmniFiles", 1, 0, "FolderModel");
+    qmlRegisterType<FileOps>("OmniFiles", 1, 0, "FileOps");
     QQmlApplicationEngine engine;
     engine.addImportPath(qmlDir);
     engine.addImageProvider(QStringLiteral("omniicon"), new ThemeIconProvider);
@@ -218,8 +221,9 @@ int main(int argc, char *argv[]) {
     QCommandLineOption sessionMode("session", "Interfaccia del desktop OMNI (sessione OMNI: barra, Start, pannelli, notifiche)");
     QCommandLineOption appMode("app", "Applicazione OMNI: impostazioni, attivita, explorer, store", "nome");
     QCommandLineOption page("pagina", "Pagina iniziale di un'app OMNI (es. rete, audio, prestazioni)", "id");
+    QCommandLineOption folderOpt("cartella", "Cartella iniziale di OMNI Explorer", "percorso");
     QCommandLineOption accent("accent", "Colore d'accento (0 Aurora, 1 Iris, 2 Corallo, 3 Giada)", "n", "0");
-    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch, sessionMode, appMode, page});
+    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch, sessionMode, appMode, page, folderOpt});
     p.process(app);
 
     // piattaforma grafica effettiva (es. "wayland" nella sessione Plasma) e versione di Qt in uso

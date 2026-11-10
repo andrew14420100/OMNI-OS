@@ -56,7 +56,19 @@ QtObject {
         "arrow-left": "M19 12H5M11 6l-6 6 6 6",
         "plus":    "M12 5v14M5 12h14",
         "mic":     "M12 3.5a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0v-5a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v3.5",
-        "cpu":     "M7 7h10v10H7zM10 10h4v4h-4zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"
+        "cpu":     "M7 7h10v10H7zM10 10h4v4h-4zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4",
+        "arrow-right": "M5 12h14M13 6l6 6-6 6",
+        "arrow-up": "M12 19V5M6 11l6-6 6 6",
+        "copy":    "M8 8h11v12H8zM5 16V4h11",
+        "cut":     "M6 6a2.5 2.5 0 1 0 0 .01M6 18a2.5 2.5 0 1 0 0 .01M8 7.5L20 18M8 16.5L20 6",
+        "paste":   "M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2M9 3.5h6v3H9z",
+        "trash":   "M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6",
+        "edit":    "M4 20h4L19 9l-4-4L4 16zM13 7l4 4",
+        "list":    "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
+        "more":    "M5 12h.01M12 12h.01M19 12h.01",
+        "archive": "M4 4h16v4H4zM5 8v12h14V8M10 12h4",
+        "home":    "M4 11l8-7 8 7M6 9.5V20h12V9.5",
+        "file":    "M6 3h8l4 4v14H6zM14 3v4h4"
     })
     function path(name) { return paths[name] !== undefined ? paths[name] : paths["sparkle"] }
 }

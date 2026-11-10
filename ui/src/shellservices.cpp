@@ -47,7 +47,17 @@ void PlasmaShellProxy::toggleDashboard() { emit showDesktopRequested(); }
 
 QPixmap ThemeIconProvider::requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) {
     const QSize s = requestedSize.isValid() && requestedSize.width() > 0 ? requestedSize : QSize(64, 64);
-    const QString name = QUrl::fromPercentEncoding(id.toUtf8());
+    QString name = QUrl::fromPercentEncoding(id.toUtf8());
+    // "strict/<nome>": nessun ripiego (immagine nulla se l'icona manca), così l'app può
+    // mostrare un proprio simbolo al posto di uno spazio vuoto
+    const bool strict = name.startsWith(QLatin1String("strict/"));
+    if (strict) {
+        name = name.mid(7);
+        const QIcon i = QIcon::fromTheme(name);
+        const QPixmap p = i.isNull() ? QPixmap() : i.pixmap(s);
+        if (size) *size = p.isNull() ? QSize() : p.size();
+        return p;
+    }
     QIcon icon;
     if (name.startsWith(QLatin1Char('/')) && QFileInfo::exists(name)) icon = QIcon(name);
     else icon = QIcon::fromTheme(name);
