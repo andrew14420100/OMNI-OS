@@ -2,6 +2,10 @@
 //! GDT e TSS **per CPU** (ogni CPU ha il proprio TSS: il descrittore diventa "occupato" con
 //! `ltr`) con stack dedicati (IST) per double fault (IST1) e NMI (IST2). Intel SDM vol. 3,
 //! cap. 3 e 8.
+//!
+//! K3: segmenti utente (DPL 3) nell'ordine richiesto da `syscall`/`sysret` (dati utente e poi
+//! codice utente subito dopo i segmenti del kernel) e `RSP0` del TSS, lo stack del kernel su
+//! cui la CPU passa quando un'interruzione arriva in ring 3.
 
 use core::arch::asm;
 use core::mem::size_of;
@@ -9,7 +13,10 @@ use omni_comune::acpi::MAX_CPU;
 
 pub const CODICE_KERNEL: u16 = 0x08;
 pub const DATI_KERNEL: u16 = 0x10;
-const SELETTORE_TSS: u16 = 0x18;
+/// Selettori utente con RPL 3.
+pub const DATI_UTENTE: u16 = 0x18 | 3;
+pub const CODICE_UTENTE: u16 = 0x20 | 3;
+const SELETTORE_TSS: u16 = 0x28;
 pub const IST_DOPPIO_ERRORE: u8 = 1;
 pub const IST_NMI: u8 = 2;
 
@@ -31,15 +38,15 @@ struct Tss {
 
 #[repr(C, align(16))]
 struct DatiCpu {
-    /// null, codice kernel (64 bit), dati kernel, TSS (2 voci).
-    gdt: [u64; 5],
+    /// null, codice kernel (64 bit), dati kernel, dati utente, codice utente (64 bit), TSS (2 voci).
+    gdt: [u64; 7],
     tss: Tss,
     doppio_errore: StackIst,
     nmi: StackIst,
 }
 
 const VUOTO: DatiCpu = DatiCpu {
-    gdt: [0, 0x00af_9a00_0000_ffff, 0x00cf_9200_0000_ffff, 0, 0],
+    gdt: [0, 0x00af_9a00_0000_ffff, 0x00cf_9200_0000_ffff, 0x00cf_f200_0000_ffff, 0x00af_fa00_0000_ffff, 0, 0],
     tss: Tss { _r0: 0, rsp: [0; 3], _r1: 0, ist: [0; 7], _r2: 0, _r3: 0, iomap: size_of::<Tss>() as u16 },
     doppio_errore: StackIst([0; DIM_STACK_IST]),
     nmi: StackIst([0; DIM_STACK_IST]),
@@ -68,9 +75,9 @@ pub fn inizializza(indice: usize) {
         // descrittore di sistema a 16 byte: TSS a 64 bit disponibile (tipo 0x9), presente
         let basso = (limite & 0xffff) | ((base & 0xff_ffff) << 16) | (0x89u64 << 40) | (((limite >> 16) & 0xf) << 48) | (((base >> 24) & 0xff) << 56);
         let gdt = &raw mut (*d).gdt;
-        (*gdt)[3] = basso;
-        (*gdt)[4] = base >> 32;
-        let p = Puntatore { limite: (size_of::<[u64; 5]>() - 1) as u16, base: gdt as u64 };
+        (*gdt)[5] = basso;
+        (*gdt)[6] = base >> 32;
+        let p = Puntatore { limite: (size_of::<[u64; 7]>() - 1) as u16, base: gdt as u64 };
         asm!(
             "lgdt [{p}]",
             // ricarica CS con un ritorno lontano, poi i segmenti dati
@@ -92,5 +99,15 @@ pub fn inizializza(indice: usize) {
             tss = in(reg) SELETTORE_TSS as u64,
             t = out(reg) _,
         );
+    }
+}
+
+/// Stack del kernel usato dalla CPU `indice` per le interruzioni che arrivano in ring 3.
+pub fn imposta_rsp0(indice: usize, cima: u64) {
+    // SAFETY: RSP0 è letto dalla CPU solo al passaggio da ring 3 a ring 0; lo scrive solo la
+    // CPU stessa (dallo scheduler, a interruzioni disattivate) e la scrittura è allineata
+    unsafe {
+        let tss = &raw mut CPU[indice].tss;
+        core::ptr::write_unaligned(&raw mut (*tss).rsp[0], cima);
     }
 }

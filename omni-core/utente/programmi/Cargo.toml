@@ -1,0 +1,45 @@
+[package]
+name = "omni-programmi"
+description = "Programmi utente del pacchetto iniziale OMNI (K3)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "ciao"
+test = false
+bench = false
+
+[[bin]]
+name = "spazio"
+test = false
+bench = false
+
+[[bin]]
+name = "memoria"
+test = false
+bench = false
+
+[[bin]]
+name = "errore"
+test = false
+bench = false
+
+[[bin]]
+name = "ciclo"
+test = false
+bench = false
+
+[[bin]]
+name = "genitore"
+test = false
+bench = false
+
+[[bin]]
+name = "figlio"
+test = false
+bench = false
+
+[dependencies]
+omni-std = { path = "../omni-std" }

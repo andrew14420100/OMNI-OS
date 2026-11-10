@@ -1,0 +1,14 @@
+[package]
+name = "omni-std"
+description = "Libreria minima dei programmi utente OMNI (K3)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+test = false
+bench = false
+
+[dependencies]
+omni-comune = { path = "../../comune" }

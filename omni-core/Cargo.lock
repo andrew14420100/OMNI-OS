@@ -21,6 +21,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "omni-programmi"
+version = "0.1.0"
+dependencies = [
+ "omni-std",
+]
+
+[[package]]
+name = "omni-std"
+version = "0.1.0"
+dependencies = [
+ "omni-comune",
+]
+
+[[package]]
 name = "omni-xtask"
 version = "0.1.0"
 dependencies = [

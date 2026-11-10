@@ -1,11 +1,11 @@
-# OMNI OS autonomo — milestoni K1 e K2: kernel OMNI in QEMU (UEFI/OVMF), prove automatiche.
+# OMNI OS autonomo — milestoni K1, K2 e K3: kernel OMNI in QEMU (UEFI/OVMF), prove automatiche.
 # Nessuna ISO, nessuna release: rapporto, registri seriali e schermate sono artifact.
 name: omni-k1
 
 on:
   workflow_dispatch:
   push:
-    branches: ["claude/omni-k1", "claude/omni-k2"]
+    branches: ["claude/omni-k1", "claude/omni-k2", "claude/omni-k3"]
     paths: ["omni-core/**", ".github/workflows/omni-k1.yml"]
 
 permissions:
@@ -37,18 +37,27 @@ jobs:
         run: rustup show active-toolchain || rustup toolchain install
       - name: Formattazione
         run: cargo fmt --all --check
-      - name: Test del crate comune (ELF, SHA-256, bitmap, ACPI, font)
+      - name: Test del crate comune (ELF, SHA-256, bitmap, ACPI, font, pacchetto, ABI)
         run: cargo test -p omni-comune
       - name: Clippy (nessun avviso ammesso)
         run: |
           cargo clippy -q -p omni-comune --all-targets -- -D warnings
           cargo clippy -q -p omni-xtask -- -D warnings
           cargo clippy -q -p omni-boot --target x86_64-unknown-uefi -- -D warnings
+          cargo clippy -q -p omni-std -p omni-programmi --target x86_64-unknown-none -- -D warnings
           for f in "" ktest prova-panico prova-doppio-errore; do
             cargo clippy -q -p omni-kernel --target x86_64-unknown-none ${f:+--features $f} -- -D warnings
           done
       - name: Controlli (nessuna dipendenza esterna, unsafe documentati)
         run: cargo xtask controlli | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Programmi utente K3 (ELF statici, segmenti W^X, caricatore sui file veri)
+        run: |
+          CARGO_PROFILE_RELEASE_DEBUG=0 cargo build -q -p omni-programmi --target x86_64-unknown-none --release --target-dir target/utente
+          for p in ciao spazio memoria errore ciclo genitore figlio; do
+            readelf -lW target/utente/x86_64-unknown-none/release/$p | grep -E "^ +LOAD" | grep -q "RWE" && { echo "$p: segmento RWE"; exit 1; }
+            echo "$p: $(readelf -lW target/utente/x86_64-unknown-none/release/$p | grep -cE '^ +LOAD') segmenti LOAD, nessuno RWE"
+          done
+          cargo xtask verifica-programmi
       - name: Prove K1+K2 in QEMU (KVM e TCG, 1 e 4 CPU, riavvio e spegnimento ACPI, panico, double fault)
         run: cargo xtask prova
       - name: Rapporto

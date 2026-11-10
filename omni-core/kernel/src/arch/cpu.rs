@@ -77,6 +77,45 @@ pub fn invlpg(ind: u64) {
     unsafe { asm!("invlpg [{}]", in(reg) ind, options(nostack, preserves_flags)) };
 }
 
+/// # Safety
+/// `msr` deve esistere su questa CPU e il valore deve essere valido per esso.
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
+pub unsafe fn scrivi_msr(msr: u32, v: u64) {
+    // SAFETY: garantito dal chiamante
+    unsafe { asm!("wrmsr", in("ecx") msr, in("eax") v as u32, in("edx") (v >> 32) as u32, options(nostack, preserves_flags)) };
+}
+
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
+pub fn leggi_msr(msr: u32) -> u64 {
+    let (a, d): (u32, u32);
+    // SAFETY: usata solo per MSR architetturali presenti su ogni CPU x86-64 (EFER, STAR, ...)
+    unsafe { asm!("rdmsr", in("ecx") msr, out("eax") a, out("edx") d, options(nomem, nostack, preserves_flags)) };
+    ((d as u64) << 32) | a as u64
+}
+
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
+pub fn cr4() -> u64 {
+    let v: u64;
+    // SAFETY: lettura di CR4
+    unsafe { asm!("mov {}, cr4", out(reg) v, options(nomem, nostack, preserves_flags)) };
+    v
+}
+
+/// # Safety
+/// Il valore deve attivare solo funzioni supportate dalla CPU e compatibili con lo stato.
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
+pub unsafe fn imposta_cr4(v: u64) {
+    // SAFETY: garantito dal chiamante
+    unsafe { asm!("mov cr4, {}", in(reg) v, options(nostack, preserves_flags)) };
+}
+
+/// CPUID (foglia, sottofoglia) → (eax, ebx, ecx, edx).
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
+pub fn cpuid(foglia: u32, sotto: u32) -> (u32, u32, u32, u32) {
+    let r = core::arch::x86_64::__cpuid_count(foglia, sotto);
+    (r.eax, r.ebx, r.ecx, r.edx)
+}
+
 /// Uscita da QEMU tramite il dispositivo isa-debug-exit (solo nelle build di prova).
 #[cfg(feature = "ktest")]
 pub fn esci_qemu(codice: u8) -> ! {

@@ -6,7 +6,9 @@
 //!
 //!   cargo xtask controlli        licenze/dipendenze e blocchi `unsafe` documentati
 //!   cargo xtask prova [--tcg]    tutte le prove in QEMU, rapporto in target/prove/rapporto/
-//!   cargo xtask avvia            avvio interattivo in QEMU (finestra)
+//!   cargo xtask verifica-programmi  caricatore K3 sui programmi utente veri (piano e pagine)
+//!   cargo xtask rapida [cpu]     variante di prova in QEMU fino all'attesa della tastiera:
+//!                                stampa gli esiti delle prove (sviluppo; nessun rapporto)
 
 use omni_comune::sha256;
 use std::collections::BTreeMap;
@@ -52,6 +54,77 @@ fn costruisci(variante: &str, funzioni: &str) -> Esito<PathBuf> {
     fs::copy(r.join("target/x86_64-unknown-uefi/release/omni-boot.efi"), esp.join("EFI/BOOT/BOOTX64.EFI")).map_err(|e| e.to_string())?;
     fs::copy(dir_build.join("x86_64-unknown-none/release/omni-kernel"), esp.join("OMNI/KERNEL.ELF")).map_err(|e| e.to_string())?;
     Ok(esp)
+}
+
+/// Programmi utente del pacchetto iniziale (K3).
+const PROGRAMMI: [&str; 7] = ["ciao", "spazio", "memoria", "errore", "ciclo", "genitore", "figlio"];
+
+/// Costruisce i programmi utente (senza informazioni di debug) e restituisce (nome, file ELF).
+fn costruisci_programmi() -> Esito<Vec<(String, Vec<u8>)>> {
+    let r = radice();
+    let dir = r.join("target/utente");
+    esegui(
+        Command::new("cargo")
+            .current_dir(&r)
+            .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
+            .args(["build", "-q", "-p", "omni-programmi", "--target", "x86_64-unknown-none", "--release", "--target-dir"])
+            .arg(&dir),
+    )?;
+    PROGRAMMI
+        .iter()
+        .map(|n| {
+            let f = dir.join("x86_64-unknown-none/release").join(n);
+            fs::read(&f).map(|d| (n.to_string(), d)).map_err(|e| format!("{}: {e}", f.display()))
+        })
+        .collect()
+}
+
+/// Caricatore K3 sui programmi veri: piano valido, W^X, ogni pagina uguale ai byte del file
+/// (e a zero dove il file non ne ha).
+fn verifica_programmi() -> Esito<bool> {
+    use omni_comune::caricatore::{pianifica, riempi_pagina, PAGINA};
+    let mut ok = true;
+    for (nome, d) in costruisci_programmi()? {
+        let p = match pianifica(&d) {
+            Ok(p) => p,
+            Err(e) => {
+                println!("FALLITO {nome}: {} ({e:?})", e.descrizione());
+                ok = false;
+                continue;
+            }
+        };
+        let mut pg = [0u8; PAGINA as usize];
+        let mut errori = 0;
+        for s in p.segmenti() {
+            for k in 0..s.pagine {
+                riempi_pagina(&d, s, k, &mut pg);
+                for (j, &b) in pg.iter().enumerate() {
+                    let v = s.prima_pagina + k * PAGINA + j as u64;
+                    let atteso = if v >= s.virtuale && v < s.virtuale + s.dim_file { d[(s.offset + v - s.virtuale) as usize] } else { 0 };
+                    if b != atteso {
+                        errori += 1;
+                    }
+                }
+            }
+        }
+        let wx = p.segmenti().iter().any(|s| s.scrivibile && s.eseguibile);
+        let descr: Vec<String> = p
+            .segmenti()
+            .iter()
+            .map(|s| format!("{:#x}+{}p {}{}", s.prima_pagina, s.pagine, if s.scrivibile { "RW" } else { "R-" }, if s.eseguibile { "X" } else { "-" }))
+            .collect();
+        let buono = errori == 0 && !wx;
+        ok &= buono;
+        println!(
+            "{} {nome}: {} byte, ingresso {:#x}, {} pagine: {}; byte diversi dal file {errori}",
+            if buono { "OK     " } else { "FALLITO" },
+            d.len(),
+            p.ingresso,
+            p.pagine_totali(),
+            descr.join(", ")
+        );
+    }
+    Ok(ok)
 }
 
 fn hash_file(p: &Path) -> String {
@@ -501,7 +574,8 @@ fn controlli() -> Esito<String> {
     let mut totale = 0;
     let mut righe_codice = 0;
     let mut senza = Vec::new();
-    for dir in ["comune/src", "boot/src", "kernel/src", "xtask/src"] {
+    let mut wip = Vec::new();
+    for dir in ["comune/src", "boot/src", "kernel/src", "xtask/src", "utente/omni-std/src", "utente/programmi/src"] {
         let mut file = Vec::new();
         fn visita(p: &Path, f: &mut Vec<PathBuf>) {
             for e in fs::read_dir(p).into_iter().flatten().flatten() {
@@ -519,6 +593,9 @@ fn controlli() -> Esito<String> {
             let righe: Vec<&str> = testo.lines().collect();
             righe_codice += righe.iter().filter(|l| !l.trim().is_empty() && !l.trim_start().starts_with("//")).count();
             for (i, l) in righe.iter().enumerate() {
+                if l.contains("// K3-WIP") && !f.ends_with("xtask/src/main.rs") {
+                    wip.push(format!("{}:{}", f.strip_prefix(&r).unwrap().display(), i + 1));
+                }
                 let c = l.split("//").next().unwrap_or("");
                 if !(c.contains("unsafe {") || c.contains("unsafe impl") || c.contains("unsafe fn") || c.contains("unsafe extern \"C\" {")) {
                     continue;
@@ -537,6 +614,13 @@ fn controlli() -> Esito<String> {
     if !senza.is_empty() {
         return Err(format!("blocchi unsafe senza commento SAFETY: {senza:?}"));
     }
+    // codice di K3 non ancora collegato: tollerato solo se segnato e sempre elencato
+    let _ = writeln!(
+        out,
+        "- Marcatori `K3-WIP` (eccezioni temporanee al controllo del codice inutilizzato, da azzerare prima di dichiarare K3 completato): {}{}",
+        wip.len(),
+        if wip.is_empty() { String::new() } else { format!(" ({})", wip.join(", ")) }
+    );
     let _ = writeln!(out, "- Codice: {righe_codice} righe Rust (esclusi commenti e righe vuote); {totale} usi di `unsafe`, tutti con il commento `SAFETY` che ne giustifica la correttezza");
     Ok(out)
 }
@@ -634,6 +718,29 @@ fn prova(forza_tcg: bool) -> Esito<bool> {
     Ok(tutti)
 }
 
+/// Prova veloce durante lo sviluppo: un avvio della variante di prova, senza tastiera.
+fn rapida(cpu: u32) -> Esito<bool> {
+    let r = radice();
+    let esp = costruisci("ktest", "ktest")?;
+    let usa_kvm = kvm(false);
+    let lavoro = r.join("target/prove/rapida");
+    let mut m = Macchina::avvia(&esp, &lavoro, cpu, usa_kvm, false)?;
+    let atteso = m.attendi_seriale("[K1] in attesa della tastiera", 900);
+    let s = m.testo_seriale();
+    for l in s.lines().filter(|l| l.contains("[PROVA]") || l.contains("PANIC") || l.contains("[K3]") || l.contains("[utente")) {
+        println!("{l}");
+    }
+    let fallite = s.lines().filter(|l| l.contains("[PROVA]") && l.contains("FALLITO")).count();
+    println!(
+        "{} CPU, {}: {}; prove fallite {fallite}; registro {}",
+        cpu,
+        if usa_kvm { "KVM" } else { "TCG" },
+        if atteso.is_ok() { "arrivato all'attesa della tastiera" } else { "attesa della tastiera NON raggiunta" },
+        lavoro.join("seriale.log").display()
+    );
+    Ok(atteso.is_ok() && fallite == 0)
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let risultato = match args.first().map(String::as_str) {
@@ -642,11 +749,13 @@ fn main() {
             true
         }),
         Some("prova") => prova(args.iter().any(|a| a == "--tcg")),
+        Some("verifica-programmi") => verifica_programmi(),
+        Some("rapida") => rapida(args.get(1).and_then(|c| c.parse().ok()).unwrap_or(1)),
         Some("costruisci") => costruisci("normale", "").map(|p| {
             println!("{}", p.display());
             true
         }),
-        _ => Err("uso: cargo xtask controlli | prova [--tcg] | costruisci".into()),
+        _ => Err("uso: cargo xtask controlli | prova [--tcg] | verifica-programmi | rapida [cpu] | costruisci".into()),
     };
     match risultato {
         Ok(true) => {}

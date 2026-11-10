@@ -7,7 +7,7 @@
 /// "OMNIBOOT" in ASCII.
 pub const MAGIA: u64 = u64::from_be_bytes(*b"OMNIBOOT");
 /// Versione del formato: va incrementata a ogni modifica incompatibile.
-pub const VERSIONE: u32 = 1;
+pub const VERSIONE: u32 = 2;
 /// Numero massimo di regioni di memoria trasmesse.
 pub const MAX_REGIONI: usize = 512;
 /// Inizio della mappa diretta della memoria fisica nello spazio del kernel.
@@ -35,6 +35,8 @@ pub enum TipoMemoria {
     Mmio = 7,
     /// Memoria segnalata difettosa.
     Difettosa = 8,
+    /// Pacchetto iniziale dei programmi utente (K3): resta in memoria, in sola lettura.
+    Pacchetto = 9,
 }
 
 /// Una regione contigua di memoria fisica.
@@ -92,6 +94,10 @@ pub struct BootInfo {
     pub sha256_kernel: [u8; 32],
     /// Fornitore del firmware (ASCII, terminato da zero).
     pub fornitore_firmware: [u8; 64],
+    /// Pacchetto iniziale (K3): indirizzo fisico e lunghezza (0 se assente) e SHA-256 del file.
+    pub pacchetto_fisico: u64,
+    pub pacchetto_lunghezza: u64,
+    pub sha256_pacchetto: [u8; 32],
     pub num_regioni: u32,
     pub _riservato: u32,
     pub regioni: [RegioneMemoria; MAX_REGIONI],
@@ -125,6 +131,7 @@ pub fn da_tipo_uefi(t: u32) -> TipoMemoria {
         11 | 12 => TipoMemoria::Mmio,
         TIPO_UEFI_KERNEL => TipoMemoria::Kernel,
         TIPO_UEFI_CARICATORE => TipoMemoria::Caricatore,
+        TIPO_UEFI_PACCHETTO => TipoMemoria::Pacchetto,
         _ => TipoMemoria::Riservata,
     }
 }
@@ -133,6 +140,8 @@ pub fn da_tipo_uefi(t: u32) -> TipoMemoria {
 pub const TIPO_UEFI_KERNEL: u32 = 0x8000_0001;
 /// Tipo di memoria UEFI usato per tabelle di pagine iniziali e BootInfo.
 pub const TIPO_UEFI_CARICATORE: u32 = 0x8000_0002;
+/// Tipo di memoria UEFI usato per il pacchetto iniziale (K3).
+pub const TIPO_UEFI_PACCHETTO: u32 = 0x8000_0003;
 
 #[cfg(test)]
 mod test {
@@ -145,6 +154,7 @@ mod test {
         assert_eq!(da_tipo_uefi(4), TipoMemoria::Libera);
         assert_eq!(da_tipo_uefi(2), TipoMemoria::Caricatore);
         assert_eq!(da_tipo_uefi(TIPO_UEFI_KERNEL), TipoMemoria::Kernel);
+        assert_eq!(da_tipo_uefi(TIPO_UEFI_PACCHETTO), TipoMemoria::Pacchetto);
         assert_eq!(da_tipo_uefi(10), TipoMemoria::AcpiNvs);
         assert_eq!(da_tipo_uefi(0), TipoMemoria::Riservata);
         let r = RegioneMemoria { inizio: 0x1000, pagine: 2, tipo: TipoMemoria::Libera, _riservato: 0 };

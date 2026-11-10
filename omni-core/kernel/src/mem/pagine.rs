@@ -197,3 +197,25 @@ pub fn mappa_dispositivo(fis: u64, byte: u64) -> u64 {
     }
     virt + (fis - base)
 }
+
+/// PML4 del kernel (condivisa da tutti gli spazi d'indirizzi per la metà alta).
+pub fn pml4_kernel() -> u64 {
+    STATO.prendi().pml4
+}
+
+/// Crea tutte le tabelle di secondo livello della metà alta (voci 256..512 della PML4):
+/// gli spazi dei processi copiano queste voci, quindi ogni mappatura futura del kernel è
+/// visibile in tutti gli spazi senza aggiornarli. Restituisce le tabelle create.
+#[allow(dead_code)] // K3-WIP: collegato nei passi successivi di K3
+pub fn prepara_meta_alta() -> u64 {
+    let pml4 = STATO.prendi().pml4;
+    let t = tabella(pml4);
+    let mut create = 0;
+    for i in 256..512 {
+        if t[i] & PRESENTE == 0 {
+            successiva(t, i, true);
+            create += 1;
+        }
+    }
+    create
+}
