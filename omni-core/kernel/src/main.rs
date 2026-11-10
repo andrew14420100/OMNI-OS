@@ -11,6 +11,7 @@ extern crate alloc;
 
 mod acpi;
 mod arch;
+mod chiamate;
 mod interruzioni;
 mod mem;
 mod potenza;

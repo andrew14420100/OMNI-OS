@@ -166,16 +166,34 @@ pub fn statistiche() -> Statistiche {
 // ---------------------------------------------------------------------- stack dei thread
 
 const BASE_STACK: u64 = 0xffff_fe00_0000_0000;
-static PROSSIMO_STACK: Blocco<u64> = Blocco::new(BASE_STACK);
+const MAX_STACK_LIBERI: usize = 128;
+
+struct Stack {
+    prossimo: u64,
+    /// intervalli rilasciati (base, pagine), riusati per stack della stessa dimensione: le
+    /// tabelle di pagine che li coprono esistono già
+    liberi: [(u64, u64); MAX_STACK_LIBERI],
+    n_liberi: usize,
+}
+
+static STACK: Blocco<Stack> = Blocco::new(Stack { prossimo: BASE_STACK, liberi: [(0, 0); MAX_STACK_LIBERI], n_liberi: 0 });
 
 /// Stack di `pagine` pagine con una pagina di guardia NON mappata sotto: un overflow
 /// produce un page fault invece di sovrascrivere altra memoria. Restituisce la cima.
 pub fn nuovo_stack(pagine_stack: u64) -> u64 {
     let base = {
-        let mut p = PROSSIMO_STACK.prendi();
-        let b = *p;
-        *p += (pagine_stack + 1) * PAGINA;
-        b
+        let mut s = STACK.prendi();
+        if let Some(i) = (0..s.n_liberi).find(|&i| s.liberi[i].1 == pagine_stack) {
+            let b = s.liberi[i].0;
+            s.n_liberi -= 1;
+            let n = s.n_liberi;
+            s.liberi[i] = s.liberi[n];
+            b
+        } else {
+            let b = s.prossimo;
+            s.prossimo += (pagine_stack + 1) * PAGINA;
+            b
+        }
     };
     // base: guardia (non mappata); da base+PAGINA lo stack vero
     for i in 1..=pagine_stack {
@@ -185,7 +203,23 @@ pub fn nuovo_stack(pagine_stack: u64) -> u64 {
     base + (pagine_stack + 1) * PAGINA
 }
 
+/// Rilascia uno stack creato da `nuovo_stack` (nessuna CPU deve più usarlo).
+pub fn libera_stack(cima: u64, pagine_stack: u64) {
+    let base = cima - (pagine_stack + 1) * PAGINA;
+    for i in 1..=pagine_stack {
+        if let Some(f) = pagine::rimuovi(base + i * PAGINA) {
+            frame::libera(f);
+        }
+    }
+    let mut s = STACK.prendi();
+    if s.n_liberi < MAX_STACK_LIBERI {
+        let n = s.n_liberi;
+        s.liberi[n] = (base, pagine_stack);
+        s.n_liberi += 1;
+    }
+}
+
 /// true se l'indirizzo cade su una pagina di guardia di uno stack.
 pub fn in_guardia(ind: u64) -> bool {
-    ind >= BASE_STACK && ind < *PROSSIMO_STACK.prendi() && pagine::traduci(ind).is_none()
+    ind >= BASE_STACK && ind < STACK.prendi().prossimo && pagine::traduci(ind).is_none()
 }
