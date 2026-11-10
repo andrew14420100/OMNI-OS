@@ -12,6 +12,8 @@
 #include "shellservices.h"
 #include "systemstatus.h"
 #include "omnisystem.h"
+#include "systemmonitor.h"
+#include <QtQml/qqml.h>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <pwd.h>
@@ -139,7 +141,7 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
 // App OMNI (Impostazioni, Gestione attività, Explorer, Store): finestre normali gestite da
 // KWin, stesso linguaggio grafico e stesse preferenze della shell.
 static int runApp(QGuiApplication &app, const QString &name, DesktopEntryModel &apps, ShellPerf &perf, const QString &qmlDir,
-                  const QString &renderer, bool softwareGl) {
+                  const QString &renderer, bool softwareGl, const QString &shotFile = {}, int shotDelay = 1500) {
     static const QHash<QString, QPair<QString, QString>> known = {
         {QStringLiteral("impostazioni"), {QStringLiteral("SettingsApp.qml"), QStringLiteral("org.omnios.Settings")}},
         {QStringLiteral("attivita"), {QStringLiteral("TaskManagerApp.qml"), QStringLiteral("org.omnios.TaskManager")}},
@@ -155,6 +157,7 @@ static int runApp(QGuiApplication &app, const QString &name, DesktopEntryModel &
     KWinActions kwin;
     ShellSettings settings;
     OmniSystem omniSystem;
+    qmlRegisterType<SystemMonitor>("OmniSystemMonitor", 1, 0, "SystemMonitor");
     QQmlApplicationEngine engine;
     engine.addImportPath(qmlDir);
     engine.addImageProvider(QStringLiteral("omniicon"), new ThemeIconProvider);
@@ -172,6 +175,15 @@ static int runApp(QGuiApplication &app, const QString &name, DesktopEntryModel &
     ctx->setContextProperty("currentUser", displayUserName());
     engine.load(QUrl::fromLocalFile(QDir(qmlDir).filePath(QStringLiteral("apps/") + known.value(name).first)));
     if (engine.rootObjects().isEmpty()) { qCritical("app %s: interfaccia non caricata", qPrintable(name)); return 1; }
+    if (!shotFile.isEmpty()) {   // schermata reale della finestra dell'app (documentazione e prove)
+        auto *win = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+        QTimer::singleShot(shotDelay, &app, [win, shotFile]() {
+            const QImage img = win ? win->grabWindow() : QImage();
+            const bool ok = !img.isNull() && img.save(shotFile);
+            qInfo("schermata %s: %s (%dx%d)", ok ? "salvata" : "NON salvata", qPrintable(shotFile), img.width(), img.height());
+            QCoreApplication::exit(ok ? 0 : 2);
+        });
+    }
     return app.exec();
 }
 
@@ -205,8 +217,9 @@ int main(int argc, char *argv[]) {
     QCommandLineOption geometry("dump-geometry", "Scrive in JSON il centro degli elementi con objectName e termina", "file");
     QCommandLineOption sessionMode("session", "Interfaccia del desktop OMNI (sessione OMNI: barra, Start, pannelli, notifiche)");
     QCommandLineOption appMode("app", "Applicazione OMNI: impostazioni, attivita, explorer, store", "nome");
+    QCommandLineOption page("pagina", "Pagina iniziale di un'app OMNI (es. rete, audio, prestazioni)", "id");
     QCommandLineOption accent("accent", "Colore d'accento (0 Aurora, 1 Iris, 2 Corallo, 3 Giada)", "n", "0");
-    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch, sessionMode, appMode});
+    p.addOptions({scene, theme, reduced, demo, appsDir, size, shot, delay, accent, record, script, fullscreen, geometry, lowPower, realLaunch, sessionMode, appMode, page});
     p.process(app);
 
     // piattaforma grafica effettiva (es. "wayland" nella sessione Plasma) e versione di Qt in uso
@@ -226,7 +239,7 @@ int main(int argc, char *argv[]) {
     if (p.isSet(appMode)) {
         apps.load({}, QLocale::system().name());
         const QString qmlDirA = qEnvironmentVariableIsSet("OMNI_QML_DIR") ? qEnvironmentVariable("OMNI_QML_DIR") : QStringLiteral(OMNI_QML_DIR);
-        return runApp(app, p.value(appMode), apps, perf, qmlDirA, renderer, softwareGl);
+        return runApp(app, p.value(appMode), apps, perf, qmlDirA, renderer, softwareGl, p.value(shot), p.value(delay).toInt());
     }
     if (p.isSet(sessionMode)) {
         apps.load({}, QLocale::system().name());

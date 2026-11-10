@@ -7,6 +7,8 @@
 #include "sessionactions.h"
 #include "shellservices.h"
 #include "systemstatus.h"
+#include "systemmonitor.h"
+#include <QtQml/qqml.h>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
@@ -49,6 +51,7 @@ class TestApps : public QObject {
     }
 private slots:
     void initTestCase() {
+        qmlRegisterType<SystemMonitor>("OmniSystemMonitor", 1, 0, "SystemMonitor");
         apps.load({QStringLiteral(OMNI_TEST_APPS)}, QStringLiteral("it_IT"));
         launcher = new AppLauncher(&apps, false, this);
         settings = new ShellSettings(tmp.filePath("omni-shell.conf"), this);
@@ -89,7 +92,22 @@ private slots:
         setup(engine, warnings);
         engine.load(QUrl::fromLocalFile(path));
         QVERIFY2(!engine.rootObjects().isEmpty(), qPrintable(warnings.join('\n')));
-        QTest::qWait(300);
+        QObject *root = engine.rootObjects().first();
+        for (const QVariant &s : root->property("sections").toList()) {
+            const QString id = s.toMap().value("id").toString();
+            root->setProperty("current", id);
+            QTest::qWait(1200);   // almeno un campionamento reale per pagina
+            QObject *loader = root->findChild<QObject *>(QStringLiteral("app:pagina"));
+            QVERIFY2(loader, qPrintable(id));
+            QTRY_VERIFY2_WITH_TIMEOUT(loader->property("status").toInt() == 1, qPrintable(id + QLatin1Char('\n') + serious(warnings).join('\n')), 3000);
+        }
+        if (file == QLatin1String("TaskManagerApp.qml")) {   // dati reali di /proc, non vuoti
+            QObject *mon = root->property("mon").value<QObject *>();
+            QVERIFY(mon);
+            QVERIFY(mon->property("processCount").toInt() > 1);
+            QVERIFY(mon->property("memTotalMb").toDouble() > 0);
+            QVERIFY(mon->property("cpuHistory").toList().size() > 1);
+        }
         const QStringList bad = serious(warnings);
         QVERIFY2(bad.isEmpty(), qPrintable(bad.join('\n')));
     }

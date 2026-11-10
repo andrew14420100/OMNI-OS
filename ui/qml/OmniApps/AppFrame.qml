@@ -28,7 +28,16 @@ Window {
         Theme.reducedMotion = shellSettings.reducedMotion
     }
     Connections { target: shellSettings; function onChanged() { win.applyPrefs() } }
-    Component.onCompleted: { applyPrefs(); shellPerf.mark("finestra creata") }
+    Component.onCompleted: {
+        applyPrefs()
+        // pagina iniziale da riga di comando: --pagina <id> oppure --pagina=<id>
+        const a = Qt.application.arguments
+        for (let i = 0; i < a.length; ++i) {
+            const v = a[i] === "--pagina" ? a[i + 1] : (a[i].startsWith("--pagina=") ? a[i].slice(9) : undefined)
+            if (v && sections.some(s => s.id === v)) current = v
+        }
+        shellPerf.mark("finestra creata")
+    }
     onFrameSwapped: shellPerf.mark("primo fotogramma")
     function open(id) { current = id }
 

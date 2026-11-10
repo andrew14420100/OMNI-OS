@@ -13,7 +13,7 @@ target_include_directories(omni_desktopentries PUBLIC src)
 add_executable(omni-shell-prototipo src/main.cpp src/recorder.cpp src/recorder.h
     src/notificationserver.cpp src/notificationserver.h src/sessionactions.cpp src/sessionactions.h
     src/systemstatus.cpp src/systemstatus.h src/shellservices.cpp src/shellservices.h
-    src/omnisystem.cpp src/omnisystem.h)
+    src/omnisystem.cpp src/omnisystem.h src/systemmonitor.cpp src/systemmonitor.h)
 target_link_libraries(omni-shell-prototipo PRIVATE omni_desktopentries Qt6::Gui Qt6::Quick Qt6::DBus)
 target_compile_definitions(omni-shell-prototipo PRIVATE OMNI_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
 target_compile_options(omni-shell-prototipo PRIVATE -Wall -Wextra)
@@ -46,7 +46,7 @@ target_compile_definitions(tst_session PRIVATE OMNI_QML_SRC="${CMAKE_CURRENT_SOU
 add_test(NAME session COMMAND tst_session)
 set_tests_properties(session PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
-add_executable(tst_apps tests/tst_apps.cpp src/sessionactions.cpp src/systemstatus.cpp src/shellservices.cpp src/omnisystem.cpp)
+add_executable(tst_apps tests/tst_apps.cpp src/sessionactions.cpp src/systemstatus.cpp src/shellservices.cpp src/omnisystem.cpp src/systemmonitor.cpp)
 target_link_libraries(tst_apps PRIVATE omni_desktopentries Qt6::Quick Qt6::Test Qt6::DBus)
 target_compile_definitions(tst_apps PRIVATE OMNI_QML_SRC="${CMAKE_CURRENT_SOURCE_DIR}/qml" OMNI_TEST_APPS="${CMAKE_CURRENT_SOURCE_DIR}/tests/desktop")
 add_test(NAME apps COMMAND tst_apps)

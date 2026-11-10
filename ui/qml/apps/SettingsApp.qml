@@ -31,8 +31,6 @@ AppFrame {
         { id: "info", title: qsTr("Informazioni"), icon: "info", source: "settings/About.qml", keywords: "versione sistema processore memoria" }
     ]
     Component.onCompleted: {
-        const arg = Qt.application.arguments.indexOf("--pagina")
-        if (arg >= 0 && arg + 1 < Qt.application.arguments.length) current = Qt.application.arguments[arg + 1]
         Qt.callLater(svc.loadLate)
         systemStatus.refresh()
     }
