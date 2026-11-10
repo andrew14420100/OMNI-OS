@@ -24,4 +24,9 @@ una, la variazione deve essere evidenziata e approvata dal proprietario
 | [0003](ADR-0003-immagini-aggiornamenti-rollback-firma.md) | bootc, rpm-ostree, aggiornamenti, rollback e firma | Proposto |
 | [0004](ADR-0004-nvidia-open-secure-boot.md) | Driver NVIDIA open, Secure Boot e firma dei moduli | **Proposto — richiede decisione** |
 | [0005](ADR-0005-release-fedora-riferimento.md) | Release Fedora di riferimento (Kinoite 45) | Proposto — verifica prima di M1 |
-| [0006](ADR-0006-linguaggi-ipc-privilegi.md) | Linguaggi, IPC e separazione dei privilegi | Proposto |
+| [0006](ADR-0006-linguaggi-ipc-privilegi.md) | Linguaggi, IPC e separazione dei privilegi | Proposto (base Fedora; da sostituire con 0007/0008 per il sistema autonomo) |
+| [0007](ADR-0007-linguaggio-sistema-autonomo.md) | Linguaggio del sistema OMNI autonomo (Rust) | **Proposto — richiede decisione** |
+| [0008](ADR-0008-modello-kernel.md) | Modello del kernel (ibrido orientato al microkernel) | **Proposto — richiede decisione** |
+| [0009](ADR-0009-caricatore-uefi.md) | Caricatore di avvio OMNI Boot (UEFI) | **Proposto — richiede decisione** |
+| [0010](ADR-0010-formati-standard.md) | Formati: ELF64, GPT/FAT32, OMNIFS | Proposto |
+| [0011](ADR-0011-dipendenze-licenze.md) | Dipendenze di terze parti e licenza del codice OMNI | **Proposto — richiede decisione** |
