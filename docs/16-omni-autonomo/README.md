@@ -12,6 +12,8 @@
 |---|---|
 | Questo file | Obiettivo, fattibilità, architettura, componenti originali, dipendenze, rischi |
 | [`roadmap.md`](roadmap.md) | Piano progressivo K0–K12: kernel, avvio UEFI, memoria, processi, driver, filesystem, grafica, servizi |
+| [`milestone-k2.md`](milestone-k2.md) | Milestone K2: SMP, memoria virtuale, energia ACPI (criteri) |
+| [`k2-risultati.md`](k2-risultati.md) | **Risultati di K2**: 20/20 criteri (K1+K2) in CI, KVM e TCG a 1 e 4 CPU, riavvio e spegnimento ACPI |
 | [`k1-risultati.md`](k1-risultati.md) | **Risultati di K1**: 12/12 criteri superati in CI (QEMU KVM e TCG), schermate e rapporto |
 | [`milestone-k1.md`](milestone-k1.md) | Prima milestone verificabile: kernel OMNI autonomo in QEMU, con criteri di accettazione e prove |
 | [`riuso.md`](riuso.md) | Cosa del lavoro già fatto si riusa, legalmente e tecnicamente, e cosa va riscritto |
