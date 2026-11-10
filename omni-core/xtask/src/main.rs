@@ -6,7 +6,8 @@
 //!
 //!   cargo xtask controlli        licenze/dipendenze e blocchi `unsafe` documentati
 //!   cargo xtask prova [--tcg]    tutte le prove in QEMU, rapporto in target/prove/rapporto/
-//!   cargo xtask avvia            avvio interattivo in QEMU (finestra)
+//!   cargo xtask rapida [cpu]     variante di prova in QEMU fino all'attesa della tastiera:
+//!                                stampa gli esiti delle prove (sviluppo; nessun rapporto)
 
 use omni_comune::sha256;
 use std::collections::BTreeMap;
@@ -634,6 +635,29 @@ fn prova(forza_tcg: bool) -> Esito<bool> {
     Ok(tutti)
 }
 
+/// Prova veloce durante lo sviluppo: un avvio della variante di prova, senza tastiera.
+fn rapida(cpu: u32) -> Esito<bool> {
+    let r = radice();
+    let esp = costruisci("ktest", "ktest")?;
+    let usa_kvm = kvm(false);
+    let lavoro = r.join("target/prove/rapida");
+    let mut m = Macchina::avvia(&esp, &lavoro, cpu, usa_kvm, false)?;
+    let atteso = m.attendi_seriale("[K1] in attesa della tastiera", 900);
+    let s = m.testo_seriale();
+    for l in s.lines().filter(|l| l.contains("[PROVA]") || l.contains("PANIC") || l.contains("[K3]") || l.contains("[utente")) {
+        println!("{l}");
+    }
+    let fallite = s.lines().filter(|l| l.contains("[PROVA]") && l.contains("FALLITO")).count();
+    println!(
+        "{} CPU, {}: {}; prove fallite {fallite}; registro {}",
+        cpu,
+        if usa_kvm { "KVM" } else { "TCG" },
+        if atteso.is_ok() { "arrivato all'attesa della tastiera" } else { "attesa della tastiera NON raggiunta" },
+        lavoro.join("seriale.log").display()
+    );
+    Ok(atteso.is_ok() && fallite == 0)
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let risultato = match args.first().map(String::as_str) {
@@ -642,11 +666,12 @@ fn main() {
             true
         }),
         Some("prova") => prova(args.iter().any(|a| a == "--tcg")),
+        Some("rapida") => rapida(args.get(1).and_then(|c| c.parse().ok()).unwrap_or(1)),
         Some("costruisci") => costruisci("normale", "").map(|p| {
             println!("{}", p.display());
             true
         }),
-        _ => Err("uso: cargo xtask controlli | prova [--tcg] | costruisci".into()),
+        _ => Err("uso: cargo xtask controlli | prova [--tcg] | rapida [cpu] | costruisci".into()),
     };
     match risultato {
         Ok(true) => {}
