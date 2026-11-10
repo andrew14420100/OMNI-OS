@@ -2,7 +2,7 @@
 # Nessuna dipendenza esterna (ADR-0011): solo i crate di questo workspace.
 [workspace]
 resolver = "2"
-members = ["comune", "boot", "kernel", "xtask"]
+members = ["comune", "boot", "kernel", "xtask", "utente/omni-std", "utente/programmi"]
 
 [workspace.package]
 version = "0.1.0"
