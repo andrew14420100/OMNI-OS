@@ -24,6 +24,9 @@ impl<T> Blocco<T> {
         let interruzioni = cpu::interruzioni_attive();
         cpu::disattiva_interruzioni();
         while self.occupato.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed).is_err() {
+            // chi aspetta un blocco a interruzioni disattivate serve comunque le richieste
+            // d'invalidazione del TLB delle altre CPU (nessuno stallo con lo shootdown)
+            crate::smp::servi_richieste();
             core::hint::spin_loop();
         }
         Guardia { blocco: self, interruzioni }

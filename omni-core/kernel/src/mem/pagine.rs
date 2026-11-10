@@ -28,6 +28,9 @@ extern "C" {
     static __dati_fine: u8;
 }
 
+/// Frame usati per tabelle di pagine intermedie (per il conto esatto della memoria).
+pub static TABELLE: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+
 struct Stato {
     pml4: u64,
     prossimo_mmio: u64,
@@ -49,6 +52,7 @@ fn successiva(t: &mut [u64; 512], i: usize, crea: bool) -> Option<u64> {
         return None;
     }
     let f = frame::alloca().expect("memoria esaurita per le tabelle di pagine");
+    TABELLE.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
     t[i] = f | PRESENTE | SCRIVIBILE;
     Some(f)
 }
@@ -151,7 +155,26 @@ pub fn rimuovi(virt: u64) -> Option<u64> {
     }
     t[d] = 0;
     cpu::invlpg(virt);
+    crate::smp::shootdown(virt);
     Some(e & INDIRIZZO)
+}
+
+/// Cambia i permessi di una pagina già mappata (stesso frame) su tutte le CPU.
+pub fn imposta_flag(virt: u64, flag: u64) -> Option<u64> {
+    let pml4 = STATO.prendi().pml4;
+    let [a, b, c, d] = indici(virt);
+    let pdpt = successiva(tabella(pml4), a, false)?;
+    let pd = successiva(tabella(pdpt), b, false)?;
+    let pt = successiva(tabella(pd), c, false)?;
+    let t = tabella(pt);
+    if t[d] & PRESENTE == 0 {
+        return None;
+    }
+    let f = t[d] & INDIRIZZO;
+    t[d] = f | flag | PRESENTE;
+    cpu::invlpg(virt);
+    crate::smp::shootdown(virt);
+    Some(f)
 }
 
 /// Indirizzo fisico e flag della voce che mappa `virt`.

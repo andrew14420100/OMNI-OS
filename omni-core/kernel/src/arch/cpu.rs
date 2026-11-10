@@ -9,6 +9,11 @@ pub fn outb(porta: u16, v: u8) {
     unsafe { asm!("out dx, al", in("dx") porta, in("al") v, options(nomem, nostack, preserves_flags)) };
 }
 
+pub fn outw(porta: u16, v: u16) {
+    // SAFETY: come outb (registri ACPI PM1x_CNT a 16 bit)
+    unsafe { asm!("out dx, ax", in("dx") porta, in("ax") v, options(nomem, nostack, preserves_flags)) };
+}
+
 pub fn inb(porta: u16) -> u8 {
     let v: u8;
     // SAFETY: come outb

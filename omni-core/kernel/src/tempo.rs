@@ -103,7 +103,44 @@ pub fn inizializza_apic(madt: &Madt) -> InfoApic {
     let per_tick = (trascorsi as u64 * (100 / FREQUENZA_HZ)) as u32;
     scrivi32(b, 0x320, idt::VETTORE_TIMER as u32 | (1 << 17)); // periodico
     scrivi32(b, 0x380, per_tick.max(1));
+    CONTEGGI_PER_TICK.store(per_tick.max(1) as u64, Ordering::Relaxed);
     InfoApic { id: leggi32(b, 0x20) >> 24, versione: leggi32(b, 0x30) & 0xff, conteggi_per_tick: per_tick }
+}
+
+static CONTEGGI_PER_TICK: AtomicU64 = AtomicU64::new(0);
+
+/// APIC locale di una CPU secondaria: stessi registri (indirizzo uguale per tutte le CPU),
+/// timer periodico con la calibrazione fatta dalla CPU di avvio (stessa frequenza del bus).
+pub fn attiva_apic_secondaria() {
+    let b = APIC.load(Ordering::Relaxed);
+    scrivi32(b, 0x80, 0);
+    scrivi32(b, 0xf0, 0x100 | idt::VETTORE_SPURIO as u32);
+    scrivi32(b, 0x3e0, 0x3);
+    scrivi32(b, 0x320, idt::VETTORE_TIMER as u32 | (1 << 17));
+    scrivi32(b, 0x380, CONTEGGI_PER_TICK.load(Ordering::Relaxed) as u32);
+}
+
+/// ID APIC della CPU che esegue (0 prima dell'inizializzazione dell'APIC).
+pub fn id_apic() -> u32 {
+    let b = APIC.load(Ordering::Relaxed);
+    if b == 0 {
+        return 0;
+    }
+    leggi32(b, 0x20) >> 24
+}
+
+/// Invia un'interruzione fra processori (ICR, Intel SDM vol. 3, 11.6). `destinazione` è un ID
+/// APIC; `abbreviazione` 0 = nessuna, 3 = tutte le CPU tranne questa.
+pub fn invia_ipi(destinazione: u32, basso: u32, abbreviazione: u32) {
+    let b = APIC.load(Ordering::Relaxed);
+    while leggi32(b, 0x300) & (1 << 12) != 0 {
+        core::hint::spin_loop(); // consegna precedente in corso
+    }
+    scrivi32(b, 0x310, destinazione << 24);
+    scrivi32(b, 0x300, basso | (abbreviazione << 18));
+    while leggi32(b, 0x300) & (1 << 12) != 0 {
+        core::hint::spin_loop();
+    }
 }
 
 pub fn fine_interruzione() {

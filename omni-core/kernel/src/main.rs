@@ -13,13 +13,17 @@ mod acpi;
 mod arch;
 mod interruzioni;
 mod mem;
+mod potenza;
 mod prove;
+mod prove_k2;
 mod sched;
+mod smp;
 mod seriale;
 mod sync;
 mod tastiera;
 mod tempo;
 mod video;
+mod vmm;
 
 use arch::cpu;
 use core::fmt::Write;

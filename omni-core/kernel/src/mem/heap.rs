@@ -14,15 +14,29 @@ const LIMITE: u64 = 1 << 30; // 1 GiB di spazio virtuale per l'heap
 const CLASSI: usize = 8; // 16, 32, ..., 2048
 const MINIMO: usize = 16;
 
+/// Intervalli virtuali liberati dai blocchi grandi, riusati prima di far crescere l'heap
+/// (senza riuso lo spazio virtuale si consumerebbe a ogni allocazione grande).
+const MAX_LIBERI: usize = 256;
+
 struct Heap {
     liste: [u64; CLASSI],
     cima: u64,
     in_uso: usize,
     allocazioni: u64,
     pagine_mappate: u64,
+    liberi: [(u64, u64); MAX_LIBERI], // (inizio, pagine)
+    n_liberi: usize,
 }
 
-static HEAP: Blocco<Heap> = Blocco::new(Heap { liste: [0; CLASSI], cima: BASE, in_uso: 0, allocazioni: 0, pagine_mappate: 0 });
+static HEAP: Blocco<Heap> = Blocco::new(Heap {
+    liste: [0; CLASSI],
+    cima: BASE,
+    in_uso: 0,
+    allocazioni: 0,
+    pagine_mappate: 0,
+    liberi: [(0, 0); MAX_LIBERI],
+    n_liberi: 0,
+});
 
 fn classe(l: &Layout) -> Option<usize> {
     let d = l.size().max(l.align()).max(MINIMO).next_power_of_two();
@@ -32,15 +46,28 @@ fn classe(l: &Layout) -> Option<usize> {
 impl Heap {
     /// Riserva `n` pagine virtuali nuove e le mappa a frame fisici.
     fn pagine(&mut self, n: u64) -> Option<u64> {
-        if self.cima + n * PAGINA > BASE + LIMITE {
-            return None;
-        }
-        let v = self.cima;
+        // primo intervallo liberato abbastanza grande (le sue tabelle di pagine esistono già)
+        let v = if let Some(i) = (0..self.n_liberi).find(|&i| self.liberi[i].1 >= n) {
+            let (inizio, p) = self.liberi[i];
+            if p == n {
+                self.n_liberi -= 1;
+                self.liberi[i] = self.liberi[self.n_liberi];
+            } else {
+                self.liberi[i] = (inizio + n * PAGINA, p - n);
+            }
+            inizio
+        } else {
+            if self.cima + n * PAGINA > BASE + LIMITE {
+                return None;
+            }
+            let v = self.cima;
+            self.cima += n * PAGINA;
+            v
+        };
         for i in 0..n {
             let f = frame::alloca()?;
             pagine::mappa(v + i * PAGINA, f, pagine::SCRIVIBILE | pagine::NON_ESEGUIBILE);
         }
-        self.cima += n * PAGINA;
         self.pagine_mappate += n;
         Some(v)
     }
@@ -111,6 +138,19 @@ unsafe impl GlobalAlloc for AllocatoreKernel {
                 }
                 h.in_uso -= (n * PAGINA) as usize;
                 h.pagine_mappate -= n;
+                // l'intervallo virtuale torna disponibile (unito a uno adiacente se possibile)
+                let inizio = p as u64;
+                let fine = inizio + n * PAGINA;
+                let k = h.n_liberi;
+                if let Some(j) = (0..k).find(|&j| h.liberi[j].0 + h.liberi[j].1 * PAGINA == inizio) {
+                    h.liberi[j].1 += n;
+                } else if let Some(j) = (0..k).find(|&j| h.liberi[j].0 == fine) {
+                    h.liberi[j] = (inizio, h.liberi[j].1 + n);
+                } else if k < MAX_LIBERI {
+                    h.liberi[k] = (inizio, n);
+                    h.n_liberi += 1;
+                }
+                // con la lista piena l'intervallo resta inutilizzato (solo spazio virtuale)
             }
         }
     }

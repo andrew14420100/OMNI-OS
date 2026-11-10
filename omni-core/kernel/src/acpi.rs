@@ -3,7 +3,7 @@
 //! verifiche del modulo `omni_comune::acpi` (firme e somme di controllo).
 
 use crate::mem::frame::virtuale;
-use omni_comune::acpi::{self, Madt, Rsdp};
+use omni_comune::acpi::{self, Fadt, Madt, Rsdp};
 
 pub struct InfoAcpi {
     pub rsdp: Rsdp,
@@ -11,6 +11,9 @@ pub struct InfoAcpi {
     pub madt: Madt,
     pub hpet: u64,
     pub firme: [[u8; 4]; 24],
+    pub fadt: Fadt,
+    /// SLP_TYPa e SLP_TYPb dal pacchetto \_S5 della DSDT
+    pub s5: Option<(u8, u8)>,
 }
 
 fn fetta(fisico: u64, n: usize) -> &'static [u8] {
@@ -31,7 +34,7 @@ pub fn leggi(rsdp_fisico: u64) -> Result<InfoAcpi, &'static str> {
     let rsdp = acpi::rsdp(fetta(rsdp_fisico, 36)).map_err(|_| "RSDP non valida")?;
     let xsdt = tabella(rsdp.xsdt).ok_or("XSDT illeggibile")?;
     let xsdt = acpi::verifica_sdt(xsdt, b"XSDT").map_err(|_| "XSDT non valida (firma o somma di controllo)")?;
-    let mut info = InfoAcpi { rsdp, tabelle: 0, madt: Madt::default(), hpet: 0, firme: [[b' '; 4]; 24] };
+    let mut info = InfoAcpi { rsdp, tabelle: 0, madt: Madt::default(), hpet: 0, firme: [[b' '; 4]; 24], fadt: Fadt::default(), s5: None };
     let mut madt = None;
     for ind in acpi::voci_xsdt(xsdt) {
         let Some(t) = tabella(ind) else { continue };
@@ -42,7 +45,15 @@ pub fn leggi(rsdp_fisico: u64) -> Result<InfoAcpi, &'static str> {
         match &t[0..4] {
             b"APIC" => madt = Some(acpi::verifica_sdt(t, b"APIC").map_err(|_| "MADT non valida")?),
             b"HPET" => info.hpet = acpi::hpet_base(acpi::verifica_sdt(t, b"HPET").map_err(|_| "HPET non valida")?).map_err(|_| "HPET troncata")?,
+            b"FACP" => info.fadt = acpi::fadt(acpi::verifica_sdt(t, b"FACP").map_err(|_| "FADT non valida")?).map_err(|_| "FADT troncata")?,
             _ => {}
+        }
+    }
+    if info.fadt.dsdt != 0 {
+        if let Some(d) = tabella(info.fadt.dsdt) {
+            if let Ok(d) = acpi::verifica_sdt(d, b"DSDT") {
+                info.s5 = acpi::s5(&d[36..]);
+            }
         }
     }
     info.madt = acpi::madt(madt.ok_or("MADT assente")?).map_err(|_| "MADT illeggibile")?;
