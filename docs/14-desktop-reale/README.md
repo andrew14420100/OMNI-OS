@@ -60,7 +60,7 @@ plasmalogin ── sessione "OMNI OS" (/usr/share/wayland-sessions/plasma.deskto
 | Audio: volume, muto, uscita, microfono, app | PipeWire tramite plasma-pa | reale con scheda audio virtuale |
 | Bluetooth: stato, accensione, ricerca, associazione | BlueZ (bluez-qt) | nessun adattatore nella VM: "non disponibile" |
 | Schermo: risoluzione, frequenza, scala | KScreen (`kscreen-doctor`), con verifica dello stato effettivo | reale; frequenze solo quelle offerte dal monitor virtuale |
-| Luminosità | PowerDevil `org.kde.ScreenBrightness` | non regolabile su monitor virtuale (dichiarato) |
+| Luminosità | PowerDevil `org.kde.ScreenBrightness` | nella VM QEMU PowerDevil espone un controllo (cursore visibile), non verificato dalle prove; se il servizio non lo offre, OMNI lo dichiara |
 | Profilo energetico | power-profiles-daemon / tuned-ppd | reale se il servizio è presente |
 | Batteria | UPower | mostrata solo se presente |
 | Spegni, riavvia, disconnetti | `org.kde.Shutdown` (ksmserver), ripiego logind con polkit | reale (provato) |
@@ -131,3 +131,61 @@ Clic e tasti veri (QMP) nella VM 4K a scala 200%:
 
 Queste prove riguardano l'installazione su hardware, che resta fuori da questa fase
 (nessuna installazione fisica senza autorizzazione).
+
+## 7. Risultati della run finale 42736225432 (commit e50d72a)
+
+Tutto nella stessa esecuzione e sullo stesso runner: misure della 0.2.0 e della 0.3.0, prove
+reali della 0.3.0, controlli di sicurezza del disco consegnato, primo avvio, pacchetto.
+
+- **Prove reali**: 41 superate su 41 → [prove-reali.md](prove-reali.md)
+- **Sicurezza del disco consegnato**: 8 su 8 → [controlli-di-sicurezza.md](controlli-di-sicurezza.md)
+- **Confronto delle prestazioni** → [confronto-prestazioni.md](confronto-prestazioni.md)
+- **Pacchetto** `OMNI-OS-0.3.0-desktop-VM` (3,4 GB), disco
+  `OMNI-OS-0.3.0-desktop.vmdk`, SHA-256
+  `b5b0b24d2ece181367c28b4dafc260604eb514c851c8ec697206be80dadc0080`
+
+### Prestazioni (QEMU/KVM, 4 CPU, 8 GB, 4K a scala 200%, grafica software)
+
+| Misura | 0.2.0 | 0.3.0 | Nota |
+|---|---|---|---|
+| Avvio fino alla schermata di accesso | 19,7 s | 15,0 s | −24% |
+| Accesso: dall'Invio al desktop pronto (primo / successivo) | 8,45 / 8,26 s | 5,35 / 5,36 s | −37% / −35% |
+| CPU di shell + KWin a riposo | 8,3% | 0,0% | nessuna animazione continua |
+| CPU di shell + KWin passando il mouse sulla barra | 301,9% | 1,3% | la 0.2 ridisegnava a ogni movimento una finestra 4K a schermo intero |
+| Memoria disponibile dopo l'accesso | 3835 MB | 4552 MB | +717 MB: niente pannello di Plasma (912 MB) |
+| Spegnimento con Konsole e Dolphin aperte | 9 s | 8 s | `org.kde.Shutdown` |
+| Apertura delle app (freddo / riapertura) | | | **nessuna variazione significativa**: entro ±0,3 s, dipende dalle app stesse e dal disco |
+
+Lettura onesta: l'apertura delle applicazioni dipende dalle applicazioni e dal disco, non
+dalla shell. OMNI 0.3 non la peggiora e non la migliora in modo misurabile.
+Il guadagno sta altrove:
+- **accesso**: un terzo più veloce;
+- **CPU**: niente lavoro inutile della shell;
+- **memoria**: circa 0,7 GB in più disponibili;
+- **reattività**: sparisce il carico al passaggio del mouse.
+
+Con l'accelerazione 3D di VirtualBox il carico grafico passa alla GPU dell'host. Queste
+misure non lo possono mostrare, perché i runner non hanno una GPU.
+
+### Problemi trovati e corretti durante le prove reali
+
+| Problema | Causa | Correzione |
+|---|---|---|
+| Pannelli collegati a se stessi | `session: session` nel QML risolveva la proprietà omonima | radice rinominata; prova tst_session con clic reali |
+| La sessione OMNI non era quella predefinita | plasmalogin sceglie `plasma.desktop` | `plasma.desktop` avvia la sessione OMNI; Plasma originale = modalità sicura |
+| Schermata di caricamento di Plasma sempre sopra | KSplash attende lo stadio `desktop` da plasmashell | OMNI Shell lo invia al primo fotogramma |
+| Tasto Meta senza effetto | in Plasma 6.8 è una scorciatoia KGlobalAccel di `plasmashell` | OMNI Shell registra la stessa azione (Meta, Alt+F1) |
+| Un solo arresto anomalo faceva partire Plasma | `OnFailure` scatta a ogni arresto, anche con riavvio automatico | il recupero attende il riavvio e interviene solo se OMNI Shell non riparte |
+| Notifiche di errore per un'ottimizzazione facoltativa | ogni chiamata fallita a KWin diventava una notifica | gli esiti delle ottimizzazioni vanno solo nel registro |
+
+### Schermate (prove reali, 4K a scala 200%)
+
+| | |
+|---|---|
+| ![accesso](img/00-accesso.jpg) | ![Start](img/03-start.jpg) |
+| ![Konsole](img/04-konsole.jpg) | ![Firefox](img/06-firefox.jpg) |
+| ![desktop 2](img/08-desktop-2.jpg) | ![visualizzazione attività](img/09-visualizzazione-attivita.jpg) |
+| ![notifica](img/10-notifica.jpg) | ![centro notifiche](img/11-centro-notifiche.jpg) |
+| ![impostazioni rapide](img/12-impostazioni-rapide.jpg) | ![rete](img/13-rete.jpg) |
+| ![schermo](img/14-schermo.jpg) | ![recupero](img/15-recupero.jpg) |
+| ![menu energia](img/16-menu-energia.jpg) | ![modalità sicura](img/18-modalita-sicura.jpg) |
