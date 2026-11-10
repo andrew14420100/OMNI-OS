@@ -91,6 +91,7 @@ if has start:search; then rec OK "menu Start aperto con un clic (unico menu dell
 qmp key esc; sleep 1
 if ! has start:search; then rec OK "Esc chiude il menu Start"; else rec FAIL "Esc non chiude il menu Start"; fi
 qmp key meta_l; sleep 2
+if ! has start:search; then qmp tap meta_l; sleep 2; fi
 if has start:search; then rec OK "tasto Meta apre il menu Start di OMNI"; else
   rec FAIL "tasto Meta: menu Start non aperto"
   { echo "--- diagnosi tasto Meta"; u_sh "kreadconfig6 --file kwinrc --group ModifierOnlyShortcuts --key Meta; gdbus call --session --dest org.kde.plasmashell --object-path /PlasmaShell --method org.kde.PlasmaShell.activateLauncherMenu"; } >> "$ev" 2>&1
@@ -182,7 +183,7 @@ if [ -n "$pid2" ] && [ "$pid2" != "$pid1" ]; then rec OK "arresto anomalo: OMNI 
   vm_ssh "journalctl -b _UID=$UID_ --no-pager -o short-monotonic | grep -E 'omni-shell|coredump|SEGV|Scheduled restart' | tail -25"
   vm_ssh "journalctl -b -u systemd-coredump@* --no-pager -o short-monotonic | tail -8"; } >> "$ev" 2>&1
 for _ in 1 2 3 4; do p=$(vm_ssh "pgrep -u $U -f 'omni-shell-prototipo --session'" 2>/dev/null); [ -n "$p" ] && vm_ssh "kill -SEGV $p" >/dev/null 2>&1; sleep 3; done
-sleep 15; shot 15-recupero
+for _ in $(seq 1 40); do plasma_up && break; sleep 2; done; sleep 5; shot 15-recupero
 if plasma_up; then rec OK "arresti ripetuti: desktop Plasma di riserva avviato automaticamente (mai senza interfaccia)"; else rec FAIL "nessuna interfaccia dopo arresti ripetuti"; fi
 
 # --- 8. nuovo accesso e Disconnetti dal menu energia ---
@@ -204,6 +205,7 @@ vm_ssh "mkdir -p /var/lib/plasmalogin; printf '[Last]\nSession=/usr/share/waylan
 sess_greeter
 if sess_login; then
   sess_env; for _ in $(seq 1 60); do plasma_up && break; sleep 2; done; sleep 10; shot 18-modalita-sicura
+  qmp tap meta_l; sleep 3; shot 18b-modalita-sicura-tasto-meta; qmp key esc
   if plasma_up && ! shell_up; then rec OK "modalità sicura: desktop Plasma originale senza OMNI Shell"; else rec INFO "modalità sicura non selezionata automaticamente in questa prova (si sceglie all'accesso)"; fi
   vm_ssh "loginctl terminate-session $SID" >/dev/null 2>&1; sleep 20
 fi

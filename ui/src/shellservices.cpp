@@ -39,7 +39,7 @@ bool PlasmaShellProxy::registerOnBus() {
     return m_registered;
 }
 
-void PlasmaShellProxy::activateLauncherMenu() { emit startRequested(); }
+void PlasmaShellProxy::activateLauncherMenu() { qInfo("tasto Meta: richiesta ricevuta (activateLauncherMenu)"); emit startRequested(); }
 void PlasmaShellProxy::toggleDashboard() { emit showDesktopRequested(); }
 
 QPixmap ThemeIconProvider::requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) {
