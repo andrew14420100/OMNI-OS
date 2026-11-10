@@ -11,8 +11,13 @@ set -u
 modo=$1 cosa=$2 q=$3 re=$4
 m() { gdbus call --session --dest org.kde.KWin --object-path /WindowsRunner --method org.kde.krunner1.Match "$q" 2>/dev/null; }
 ms() { date +%s%3N; }
-pids() { pgrep -u "$(id -u)" -f "$re" 2>/dev/null; }
-ticks() { local t=0 p; for p in $(pids); do read -r -a f < "/proc/$p/stat" 2>/dev/null || continue; t=$((t + f[13] + f[14])); done; echo $t; }
+# processi dell'app: esclusi questo script e i suoi sottoprocessi (la riga di comando dello
+# script contiene il nome dell'app e altrimenti verrebbe contata come attività dell'app)
+pids() { local p; for p in $(pgrep -u "$(id -u)" -f "$re" 2>/dev/null); do
+  [ "$p" = $$ ] && continue; grep -qa misura_app "/proc/$p/cmdline" 2>/dev/null && continue
+  [ "$(sed 's/.*) //' "/proc/$p/stat" 2>/dev/null | awk '{print $2}')" = $$ ] && continue; echo "$p"; done; }
+# utime+stime: campi dopo ")" perché il nome del processo può contenere spazi ("Isolated Web Co")
+ticks() { local t=0 p f; for p in $(pids); do f=$(sed 's/.*) //' "/proc/$p/stat" 2>/dev/null | awk '{print $12 + $13}') || continue; t=$((t + ${f:-0})); done; echo $t; }
 readb() { local b=0 p v; for p in $(pids); do v=$(awk '/^read_bytes/ {print $2}' "/proc/$p/io" 2>/dev/null); b=$((b + ${v:-0})); done; echo $b; }
 m | grep -q "\[(" && { echo "ERRORE finestra già aperta"; exit 2; }
 t0=$(ms)

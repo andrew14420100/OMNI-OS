@@ -89,5 +89,12 @@ SettingsPage {
         icon: "motion"; title: qsTr("Movimento ridotto"); subtitle: qsTr("Riduce le animazioni di OMNI, di KWin e delle app KDE")
         OmniSwitch { checked: shellSettings.reducedMotion; onToggled: { shellSettings.reducedMotion = checked; kwinActions.setSystemReducedMotion(checked) } }
     }
+    SettingCard {
+        objectName: "aspetto:qtquick-software"
+        icon: "cpu"; title: qsTr("App più rapide senza accelerazione 3D")
+        subtitle: qsTr("Quando la grafica è disegnata dal processore (VM senza accelerazione 3D), le app Qt Quick aperte da OMNI usano il disegno software di Qt Quick: si aprono in circa metà del tempo. Con accelerazione 3D non cambia nulla. Vale per le app aperte dopo la modifica.")
+              + (omniSystem.env("QT_QUICK_BACKEND") === "software" ? qsTr(" Attivo ora: questa finestra lo sta usando.") : "")
+        OmniSwitch { checked: shellSettings.softwareQuickApps; onToggled: shellSettings.softwareQuickApps = checked }
+    }
     StatusNote { objectName: "aspetto:nota"; text: page.note; kind: page.noteKind }
 }

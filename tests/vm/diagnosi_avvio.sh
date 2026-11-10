@@ -11,7 +11,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 # shellcheck source=tests/vm/sessione_lib.sh
 . tests/vm/sessione_lib.sh
 w=$1 etichetta=$2; mkdir -p "$w/schermate"
-LOG=$w/diagnosi.log; : > "$LOG"
+LOG=$w/diagnosi.log; : > "$LOG"; : > "$w/diagnosi-sistema.txt"
 D=$w/diagnosi.tsv; printf 'app\tvariante\tfinestra_ms\tutilizzabile_ms\tletti_mb\tnota\n' > "$D"
 res_init "$w/diagnosi.md" "Diagnosi dell'apertura delle applicazioni: $etichetta"
 export VM_TABLET=1 VM_RES=${VM_RES:-3840x2160} VM_MEM=${VM_MEM:-8192} VM_CPUS=${VM_CPUS:-4}
@@ -46,6 +46,10 @@ for spec in "Konsole;org.kde.konsole;konsole;(^|/)konsole( |\$);/usr/bin/konsole
   rec_tsv "$nome" primo-dopo-accesso "$(misura gio "$f" "$q" "$re")" "prima apertura nella sessione, senza svuotare le cache"; chiudi "$re"
   rec_tsv "$nome" riapertura "$(misura gio "$f" "$q" "$re")"; chiudi "$re"
   rec_tsv "$nome" riapertura-diretta "$(misura exec "$bin" "$q" "$re")" "eseguibile avviato direttamente, senza gio"; chiudi "$re"
+  rec_tsv "$nome" riapertura-da-OMNI "$(misura omni "$f" "$q" "$re")" "avvio dalla shell OMNI (come un clic in Start o nella barra)"
+  e=$(vm_ssh "for p in \$(pgrep -u $U -f '$re'); do tr '\\0' '\\n' < /proc/\$p/environ 2>/dev/null | grep -m1 '^QT_QUICK_BACKEND='; done | sort -u" 2>/dev/null)
+  echo "INFO $nome avviata da OMNI: ${e:-QT_QUICK_BACKEND non impostato}" | tee -a "$LOG" >> "$w/diagnosi-sistema.txt"
+  chiudi "$re"
   svuota; rec_tsv "$nome" freddo "$(misura gio "$f" "$q" "$re")" "cache del disco svuotate"; chiudi "$re"
   svuota; p=$(u_sh "bash /tmp/prefetch_app.sh $bin $dati" | tail -1)
   rec_tsv "$nome" freddo+lettura-anticipata "$(misura gio "$f" "$q" "$re")" "$p"; chiudi "$re"
@@ -55,7 +59,15 @@ for spec in "Konsole;org.kde.konsole;konsole;(^|/)konsole( |\$);/usr/bin/konsole
 done
 rec OK "misure completate"
 
-{ echo "=== systemd-analyze --user blame (sessione)"; u_sh "systemd-analyze --user blame --no-pager | head -30"
+{ echo "=== processi di Plasma non necessari nella sessione OMNI"
+  vm_ssh "ps -u $U -o pid,ppid,rss,comm,args --sort=-rss | grep -E 'plasma-welcome|plasma-keyboard|xwaylandvideo|DiscoverNotif' | grep -v grep"
+  echo "=== origine della tastiera su schermo"
+  vm_ssh "p=\$(pgrep -u $U -x plasma-keyboard | head -1); [ -n \"\$p\" ] && ps -o pid,ppid,comm -p \$(awk '{print \$4}' /proc/\$p/stat) 2>/dev/null"
+  u_sh "kreadconfig6 --file kwinrc --group Wayland --key InputMethod; cat /etc/xdg/kwinrc 2>/dev/null | head -20"
+  echo "=== Centro di benvenuto: unità"; u_sh "systemctl --user list-units --all --no-legend 'app-org.kde.plasma-welcome*' 2>&1 | head"
+  echo "=== moduli kded caricati"; u_sh "gdbus call --session --dest org.kde.kded6 --object-path /kded --method org.kde.kded6.loadedModules 2>&1 | head -5"
+  echo "=== criteri di Firefox"; vm_ssh "ls -la /etc/firefox/policies/ 2>&1"
+  echo "=== systemd-analyze --user blame (sessione)"; u_sh "systemd-analyze --user blame --no-pager | head -30"
   echo "=== critical-chain plasma-workspace.target"; u_sh "systemd-analyze --user critical-chain plasma-workspace.target --no-pager"
   echo "=== servizi utente in esecuzione"; u_sh "systemctl --user list-units --type=service --state=running --no-legend --no-pager"
   echo "=== processi dell'utente per memoria"; vm_ssh "ps -u $U -o rss,pcpu,comm --sort=-rss | head -30"
@@ -63,7 +75,7 @@ rec OK "misure completate"
   echo "=== errori dell'avvio"; vm_ssh "journalctl -b -p err --no-pager -o short-monotonic | tail -40"
   echo "=== renderer"; vm_ssh "journalctl -b _UID=$UID_ -o cat --no-pager | grep -m3 -iE 'renderer|OpenGL'"
   echo "=== file desktop DBusActivatable"; vm_ssh "grep -l DBusActivatable=true /usr/share/applications/*.desktop | head -20"
-} > "$w/diagnosi-sistema.txt" 2>&1
+} >> "$w/diagnosi-sistema.txt" 2>&1
 { echo; echo "### Tempi ($etichetta)"; echo; echo "| App | Variante | Finestra (ms) | Utilizzabile (ms) | Letti (MB) | Nota |"; echo "|---|---|---|---|---|---|"
   tail -n +2 "$D" | awk -F'\t' '{printf "| %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6}'; } >> "$RESULTS"
 vm_ssh "userdel -r -f $U" >/dev/null 2>&1 || true

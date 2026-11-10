@@ -194,6 +194,7 @@ int ShellSettings::barSize() const { return OMNI_GET(int, "barSize", 48); }
 QString ShellSettings::wallpaper() const { return OMNI_GET(QString, "wallpaper", QStringLiteral("aurora")); }
 int ShellSettings::effects() const { return OMNI_GET(int, "effects", 1); }
 bool ShellSettings::startShowRecent() const { return OMNI_GET(bool, "startShowRecent", true); }
+bool ShellSettings::softwareQuickApps() const { return OMNI_GET(bool, "softwareQuickApps", true); }
 #undef OMNI_GET
 void ShellSettings::set(const char *key, const QVariant &v) {
     QSettings st(m_file, QSettings::IniFormat);

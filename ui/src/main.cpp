@@ -86,6 +86,23 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
     ShellControl control;
     control.setLauncher(&launcher);
     control.registerOnBus();
+    ShellSettings settings;
+    // Grafica software (nessuna accelerazione 3D): Qt Quick con OpenGL su llvmpipe costa
+    // molto in 4K. Le app avviate da qui (stesso ambiente dei processi figli) usano il
+    // renderer software di Qt Quick; KWin e la shell non sono toccati. Disattivabile da
+    // OMNI Settings (Aspetto). Con accelerazione 3D non si cambia nulla.
+    const QByteArray userBackend = qgetenv("QT_QUICK_BACKEND");
+    auto applyQuickBackend = [softwareGl, userBackend, &settings]() {
+        if (!softwareGl || !userBackend.isEmpty()) return;
+        static int last = -1;
+        const int on = settings.softwareQuickApps() ? 1 : 0;
+        if (on == last) return;
+        last = on;
+        if (on) qputenv("QT_QUICK_BACKEND", "software"); else qunsetenv("QT_QUICK_BACKEND");
+        qInfo("app Qt Quick avviate dalla shell: renderer %s", on ? "software (grafica senza accelerazione)" : "predefinito");
+    };
+    applyQuickBackend();
+    QObject::connect(&settings, &ShellSettings::changed, &app, applyQuickBackend);
 #ifdef OMNI_HAVE_KGLOBALACCEL
     // Stessa azione globale che registra plasmashell: in Plasma 6 il tasto Meta da solo è una
     // scorciatoia KGlobalAccel, non più un'impostazione di KWin. Nella sessione OMNI il
@@ -103,7 +120,6 @@ static int runSession(QGuiApplication &app, DesktopEntryModel &apps, ShellPerf &
         QList<QKeySequence>() << QKeySequence(Qt::Key_Meta) << QKeySequence(Qt::AltModifier | Qt::Key_F1));
     qInfo("tasto Meta: scorciatoia globale %s", keyOk ? "registrata" : "NON registrata");
 #endif
-    ShellSettings settings;
     // "Non disturbare" è una preferenza condivisa: Control Center e OMNI Settings scrivono lo
     // stesso valore, il server delle notifiche lo segue (nessuno stato duplicato).
     notifications.setDoNotDisturb(settings.doNotDisturb());

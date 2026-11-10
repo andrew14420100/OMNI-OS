@@ -103,6 +103,9 @@ class ShellSettings : public QObject {
     Q_PROPERTY(QString wallpaper READ wallpaper WRITE setWallpaper NOTIFY changed)
     Q_PROPERTY(int effects READ effects WRITE setEffects NOTIFY changed)          // 0 essenziali, 1 equilibrati, 2 completi
     Q_PROPERTY(bool startShowRecent READ startShowRecent WRITE setStartShowRecent NOTIFY changed)
+    // con grafica software (llvmpipe): le app Qt Quick avviate dalla shell usano il renderer
+    // software di Qt Quick (misurato: Impostazioni utilizzabili in 1,0 s invece di 2,2 s)
+    Q_PROPERTY(bool softwareQuickApps READ softwareQuickApps WRITE setSoftwareQuickApps NOTIFY changed)
 public:
     explicit ShellSettings(const QString &file = QString(), QObject *parent = nullptr);
     bool dark() const;
@@ -127,6 +130,8 @@ public:
     void setWallpaper(const QString &v) { set("wallpaper", v); }
     void setEffects(int v) { set("effects", qBound(0, v, 2)); }
     void setStartShowRecent(bool v) { set("startShowRecent", v); }
+    bool softwareQuickApps() const;
+    void setSoftwareQuickApps(bool v) { set("softwareQuickApps", v); }
     Q_INVOKABLE QString file() const { return m_file; }
 signals:
     void changed();
