@@ -1,6 +1,6 @@
 # ADR-0008 — Modello del kernel OMNI
 
-- **Stato:** Proposto — richiede decisione
+- **Stato:** Accettato (2026-11-10, dal proprietario)
 - **Data:** 2026-11-10
 - **Decisioni approvate correlate:** 1, 14, 51, 53
 
@@ -38,4 +38,4 @@ Opzione 3.
 
 ## Decisione del proprietario
 
-—
+**Accettato il 2026-11-10:** kernel ibrido orientato al microkernel, con modello di sicurezza basato su capability.

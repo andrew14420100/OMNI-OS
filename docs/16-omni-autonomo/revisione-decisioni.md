@@ -11,6 +11,30 @@ obbligatorio.
 - **S** sospesa per vincolo del proprietario (nessuna funzione IA);
 - **C/R** il concetto resta, la base tecnica indicata in origine va sostituita.
 
+## Decisioni originali da sostituire dopo gli ADR accettati il 2026-11-10
+
+Il proprietario ha accettato gli ADR-0007, 0008, 0009 e 0011. Ha inoltre chiesto un sistema
+finale **senza Linux, Fedora o KDE a runtime**.
+
+Quattro decisioni originali sono in **conflitto diretto** con queste scelte: per il sistema
+autonomo **devono essere sostituite**. Il testo sostitutivo è una **proposta** e non è in
+vigore finché il proprietario non lo approva. Le decisioni originali restano registrate,
+invariate, e valgono per le versioni 0.x già prodotte.
+
+| # | Decisione originale | Conflitto | Testo sostitutivo proposto (da approvare) |
+|---|---|---|---|
+| 4 | Desktop ibrido (KDE Plasma 6 + componenti OMNI) | KDE a runtime escluso | Desktop OMNI completo: compositore, shell e app OMNI, senza componenti KDE |
+| 22 | OMNI Window Manager (script/effetti KWin, compositore non sostituito) | KWin a runtime escluso | Compositore e gestore finestre OMNI originali, servizio utente del kernel OMNI (K6–K7) |
+| 50 | Base Linux Fedora Kinoite | Linux e Fedora a runtime esclusi | Base: kernel OMNI originale (ADR-0007/0008/0009), avvio tramite OMNI Boot |
+| 51 | Architettura (ADR-0006) | ADR-0006 presuppone Linux, systemd e D-Bus | Architettura del sistema autonomo: `docs/16-omni-autonomo/README.md` e ADR-0007/0008 |
+
+**Tutte le altre decisioni contrassegnate "R" o "C/R" nella tabella sotto restano "da
+rivedere".** Questa approvazione **non** le modifica. Saranno proposte una per una quando la
+roadmap arriverà alle aree che toccano. Per esempio: 10 e 19 prima di K12; 52 dopo K1, con
+la nuova roadmap; 11, 12, 15 e 16 prima delle rispettive milestone.
+
+## Tabella completa
+
 | # | Decisione | Esito | Motivo e proposta |
 |---|---|---|---|
 | 1 | Sistema operativo autonomo | **C (rafforzata)** | ora con kernel e ambiente propri |

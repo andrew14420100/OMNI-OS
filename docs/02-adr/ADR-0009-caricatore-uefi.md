@@ -1,6 +1,6 @@
 # ADR-0009 — Caricatore di avvio: OMNI Boot (UEFI)
 
-- **Stato:** Proposto — richiede decisione
+- **Stato:** Accettato (2026-11-10, dal proprietario)
 - **Data:** 2026-11-10
 - **Decisioni approvate correlate:** 1, 15, 47
 
@@ -32,4 +32,4 @@ Criteri K1-01 e K1-02 in QEMU+OVMF.
 
 ## Decisione del proprietario
 
-—
+**Accettato il 2026-11-10:** OMNI Boot originale, scritto in Rust per UEFI. Limine è ammesso **solo come soluzione temporanea di sviluppo, se indispensabile**, e non entra nel sistema finale. In K1 non viene usato.

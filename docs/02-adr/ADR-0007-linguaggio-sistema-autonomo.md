@@ -1,6 +1,6 @@
 # ADR-0007 — Linguaggio del sistema OMNI autonomo
 
-- **Stato:** Proposto — richiede decisione
+- **Stato:** Accettato (2026-11-10, dal proprietario)
 - **Data:** 2026-11-10
 - **Decisioni approvate correlate:** 1, 51, 54 (sostituisce ADR-0006 per il sistema autonomo, se accettato)
 
@@ -37,4 +37,4 @@ K1 compila con Rust stabile, nessun avviso clippy, `unsafe` contato e motivato.
 
 ## Decisione del proprietario
 
-—
+**Accettato il 2026-11-10:** Rust stabile come linguaggio principale, assembly dove tecnicamente necessario. Per il sistema autonomo sostituisce l'ADR-0006 (che resta valido solo per le versioni 0.x su Fedora).

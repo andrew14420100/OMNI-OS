@@ -1,6 +1,6 @@
 # ADR-0011 — Dipendenze di terze parti e licenza del codice OMNI
 
-- **Stato:** Proposto — richiede decisione
+- **Stato:** Accettato (2026-11-10, dal proprietario)
 - **Data:** 2026-11-10
 - **Decisioni approvate correlate:** 1, 54
 
@@ -42,4 +42,10 @@ altri potranno usare il codice.
 
 ## Decisione del proprietario
 
-—
+**Accettato il 2026-11-10:**
+- Il codice originale OMNI è **proprietario, tutti i diritti riservati**.
+- In K1 non ci sono dipendenze esterne nel kernel, né nel caricatore.
+- Più avanti il proprietario autorizza la **valutazione** di librerie con licenze compatibili. Ognuna va approvata singolarmente prima dell'inclusione.
+- Nessun codice di terzi entra nel repository senza aver verificato la licenza.
+
+Gli strumenti di sviluppo (rustc/LLVM, QEMU, OVMF) non fanno parte del sistema e non sono inclusi nei binari.
