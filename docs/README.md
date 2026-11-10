@@ -21,3 +21,7 @@
 Convenzioni: **[P]** proposta, **[V]** verificato con fonte, **[D]** da verificare.
 
 Contenuto: 25 documenti in `docs/` + `README.md` principale = 26 file (inventario in `10-rapporti/rapporto-M0.md` §1).
+
+## Sistema OMNI autonomo (proposta)
+
+- [16 — OMNI OS autonomo: progetto architetturale](16-omni-autonomo/README.md) — kernel originale, roadmap K0–K12, milestone K1, riuso, revisione delle 55 decisioni
