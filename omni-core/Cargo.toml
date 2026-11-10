@@ -1,0 +1,20 @@
+# OMNI OS — sistema autonomo. Copyright (c) 2026 OMNI OS. Tutti i diritti riservati.
+# Nessuna dipendenza esterna (ADR-0011): solo i crate di questo workspace.
+[workspace]
+resolver = "2"
+members = ["comune", "boot", "kernel", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "LicenseRef-OMNI-Proprietaria"
+publish = false
+
+[profile.dev]
+panic = "abort"
+opt-level = 1
+
+[profile.release]
+panic = "abort"
+opt-level = 2
+debug = 1

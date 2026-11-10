@@ -1,0 +1,10 @@
+[package]
+name = "omni-comune"
+description = "Strutture e algoritmi condivisi fra OMNI Boot e il kernel (no_std, provati sul computer di build)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+test = true

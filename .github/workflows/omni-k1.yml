@@ -1,0 +1,67 @@
+# OMNI OS autonomo — milestone K1: kernel OMNI in QEMU (UEFI/OVMF), prove automatiche.
+# Nessuna ISO, nessuna release: rapporto, registri seriali e schermate sono artifact.
+name: omni-k1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/omni-k1"]
+    paths: ["omni-core/**", ".github/workflows/omni-k1.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omni-k1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  k1:
+    name: K1 (build, test, QEMU KVM e TCG)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: omni-core
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Strumenti di prova (QEMU, OVMF) e accesso a KVM
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-system-x86 ovmf >/dev/null
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules >/dev/null
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm /usr/share/OVMF/
+          qemu-system-x86_64 --version | head -1
+      - name: Toolchain Rust fissata (rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Formattazione
+        run: cargo fmt --all --check
+      - name: Test del crate comune (ELF, SHA-256, bitmap, ACPI, font)
+        run: cargo test -p omni-comune
+      - name: Clippy (nessun avviso ammesso)
+        run: |
+          cargo clippy -q -p omni-comune --all-targets -- -D warnings
+          cargo clippy -q -p omni-xtask -- -D warnings
+          cargo clippy -q -p omni-boot --target x86_64-unknown-uefi -- -D warnings
+          for f in "" ktest prova-panico prova-doppio-errore; do
+            cargo clippy -q -p omni-kernel --target x86_64-unknown-none ${f:+--features $f} -- -D warnings
+          done
+      - name: Controlli (nessuna dipendenza esterna, unsafe documentati)
+        run: cargo xtask controlli | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Prove K1 in QEMU (KVM 1 e 4 CPU, TCG, panico, double fault)
+        run: cargo xtask prova
+      - name: Rapporto
+        if: always()
+        run: cat target/k1/rapporto/k1.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Evidenze
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: OMNI-K1-prove
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            omni-core/target/k1/rapporto/k1.md
+            omni-core/target/k1/rapporto/*.png
+            omni-core/target/k1/rapporto/*/seriale.txt

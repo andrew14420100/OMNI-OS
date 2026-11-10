@@ -1,0 +1,15 @@
+[package]
+name = "omni-boot"
+description = "OMNI Boot: caricatore UEFI del kernel OMNI (binding UEFI originali)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "omni-boot"
+test = false
+bench = false
+
+[dependencies]
+omni-comune = { path = "../comune" }
