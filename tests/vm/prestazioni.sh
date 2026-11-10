@@ -91,6 +91,26 @@ fi
 shot 01-desktop-4k
 m memoria.disponibile "$(vm_ssh "awk '/MemAvailable/ {printf \"%.0f\", \$2/1024}' /proc/meminfo")" MB "dopo l'accesso"
 
+# --- 4b. strumenti di misura dentro la VM (stesso metodo per ogni versione) ---
+vm_scp tests/vm/misura_app.sh tests/vm/misura_start.sh root@127.0.0.1:/tmp/ >> "$LOG" 2>&1 || true
+vm_ssh "chmod 755 /tmp/misura_app.sh /tmp/misura_start.sh" >> "$LOG" 2>&1
+misura() { u_sh "bash /tmp/misura_app.sh $(printf '%q ' "$@")" 2>>"$LOG" | tail -1; }
+campo() { sed -n "s/.*$1=\([0-9NA]*\).*/\1/p" <<< "$2"; }
+# prima apertura di un'app dopo l'accesso (senza svuotare le cache): ciò che l'utente nota per primo
+f=$(app_desktop "org.kde.konsole|konsole")
+if [ -n "$f" ]; then
+  r=$(misura gio "$(basename "$f")" konsole '(^|/)konsole( |$)')
+  fw=$(campo finestra "$r"); fu=$(campo utilizzabile "$r")
+  if [ -n "$fw" ]; then m app.Konsole.primo-dopo-accesso "$(python3 -c "print('%.2f' % ($fw/1000))")" s "prima app aperta dopo l'accesso; utilizzabile dopo ${fu:-NA} ms"; else rec FAIL "Konsole: prima apertura non misurata ($r)"; fi
+  app_close konsole; sleep 3
+fi
+# reattività del menu Start (richiesta del tasto Meta -> contenuto visibile)
+r=$(u_sh "bash /tmp/misura_start.sh 7" 2>>"$LOG" | tail -1)
+if [ -n "$(campo apertura_mediana "$r")" ]; then
+  m start.apertura "$(campo apertura_mediana "$r")" ms "mediana di 7, massimo $(campo apertura_max "$r") ms (include ~gdbus della misura)"
+  m start.chiusura "$(campo chiusura_mediana "$r")" ms "mediana di 7, massimo $(campo chiusura_max "$r") ms"
+else rec FAIL "reattività del menu Start non misurata ($r)"; fi
+
 # --- 5. apertura delle applicazioni: a freddo (cache svuotate) e riapertura ---
 for spec in "Konsole|konsole|org.kde.konsole|konsole" "Dolphin|dolphin|org.kde.dolphin|dolphin" "Firefox|firefox|org.mozilla.firefox|firefox" "Impostazioni|settings|org.kde.systemsettings|systemsettings"; do
   IFS='|' read -r nome q dsk proc <<< "$spec"
@@ -103,6 +123,24 @@ for spec in "Konsole|konsole|org.kde.konsole|konsole" "Dolphin|dolphin|org.kde.d
   d=$(app_open_ms "$f" "$q")
   if [ -n "$d" ]; then m "app.$nome.riapertura" "$(python3 -c "print('%.2f' % (${d% *}/1000))")" s "subito dopo la chiusura${d#"${d% *}"}"; else rec FAIL "$nome: nessuna finestra entro 120 s (riapertura)"; fi
   sleep 3; app_close "$proc"; sleep 2
+  # tempo all'utilizzabilità (caricamento finito: CPU dell'app a riposo), riapertura
+  r=$(misura gio "$(basename "$f")" "$q" "(^|/)$proc( |\$)")
+  fu=$(campo utilizzabile "$r")
+  if [ -n "$fu" ] && [ "$fu" != NA ]; then m "app.$nome.utilizzabile" "$(python3 -c "print('%.2f' % ($fu/1000))")" s "riapertura: finestra dopo $(campo finestra "$r") ms, caricamento finito"; else rec INFO "$nome: utilizzabilità non misurata ($r)"; fi
+  app_close "$proc"; sleep 2
+done
+# app OMNI di sistema (dalla 0.4; nella 0.3.0 non esistono): stesso metodo, chiusura mirata
+oclose() { vm_ssh "pkill -u $U -f 'omni-shell-prototipo --app $1'" >/dev/null 2>&1; sleep 3; }
+for spec in "OMNI-Impostazioni|org.omnios.Settings|impostazioni|Impostazioni" "OMNI-Esplora-file|org.omnios.Explorer|explorer|Esplora" "OMNI-Gestione-attivita|org.omnios.TaskManager|attivita|attivit"; do
+  IFS='|' read -r nome dsk arg q <<< "$spec"
+  if ! vm_ssh "test -f /usr/share/applications/$dsk.desktop"; then m "app.$nome.freddo" assente "" "app non presente in questa versione"; continue; fi
+  vm_ssh "sync; echo 3 > /proc/sys/vm/drop_caches" >/dev/null 2>&1
+  r=$(misura gio "$dsk.desktop" "$q" "omni-shell-prototipo --app $arg")
+  if [ -n "$(campo finestra "$r")" ]; then m "app.$nome.freddo" "$(python3 -c "print('%.2f' % ($(campo finestra "$r")/1000))")" s "cache svuotate; utilizzabile dopo $(campo utilizzabile "$r") ms"; else rec FAIL "$nome: nessuna finestra (a freddo: $r)"; fi
+  sleep 3; shot "02-$nome"; oclose "$arg"
+  r=$(misura gio "$dsk.desktop" "$q" "omni-shell-prototipo --app $arg")
+  if [ -n "$(campo finestra "$r")" ]; then m "app.$nome.riapertura" "$(python3 -c "print('%.2f' % ($(campo finestra "$r")/1000))")" s "utilizzabile dopo $(campo utilizzabile "$r") ms"; else rec FAIL "$nome: nessuna finestra (riapertura: $r)"; fi
+  oclose "$arg"
 done
 rec OK "tempi di apertura misurati (vedi tabella)"
 
