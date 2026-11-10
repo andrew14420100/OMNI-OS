@@ -206,17 +206,6 @@ if sess_login; then
   if ! vm_ssh "loginctl list-sessions --no-legend | awk '{print \$3}' | grep -qx $U"; then rec OK "Disconnetti (menu energia OMNI): sessione chiusa, schermata di accesso"; else rec FAIL "Disconnetti non ha chiuso la sessione"; fi
 else rec FAIL "nuovo accesso dopo il recupero"; fi
 
-# --- 9. modalità sicura (Plasma originale), scelta come ultima sessione ---
-vm_ssh "mkdir -p /var/lib/plasmalogin; printf '[Last]\nSession=/usr/share/wayland-sessions/omnios-sicura.desktop\nUser=$U\n' > /var/lib/plasmalogin/state.conf" >> "$LOG" 2>&1
-sess_greeter
-if sess_login; then
-  sess_env; for _ in $(seq 1 60); do plasma_up && break; sleep 2; done; sleep 10; shot 18-modalita-sicura
-  qmp tap meta_l; sleep 3; shot 18b-modalita-sicura-tasto-meta; qmp key esc
-  if plasma_up && ! shell_up; then rec OK "modalità sicura: desktop Plasma originale senza OMNI Shell"; else rec INFO "modalità sicura non selezionata automaticamente in questa prova (si sceglie all'accesso)"; fi
-  vm_ssh "loginctl terminate-session $SID" >/dev/null 2>&1; sleep 20
-fi
-vm_ssh "rm -f /var/lib/plasmalogin/state.conf" >/dev/null 2>&1
-
 # --- 10. Arresta dal menu energia (con app aperte), nuovo avvio, Riavvia dal menu ---
 sess_greeter
 if sess_login; then
@@ -243,6 +232,21 @@ if sess_login || { shot 20a-accesso-primo-tentativo; GREETER_WAIT=45 sess_greete
     if [ -n "$b1" ] && [ "$b1" != "$b0" ]; then rec OK "Riavvia (menu OMNI): sistema riavviato e di nuovo pronto"; else rec FAIL "riavvio non avvenuto"; fi
   else rec FAIL "il sistema non è tornato dopo il riavvio"; fi
 else rec FAIL "accesso prima della prova di riavvio"; shot 20-accesso-dopo-avvio; fi
+SID=$(vm_ssh "loginctl list-sessions --no-legend" 2>/dev/null | awk -v u="$U" '$3==u {print $1; exit}')
+[ -n "$SID" ] && { vm_ssh "loginctl terminate-session $SID" >/dev/null 2>&1; sleep 20; }
+# --- 9. modalità sicura (Plasma originale) dalla sua voce di sessione, tramite il gestore di accesso:
+# accesso automatico configurato SOLO per questa prova e poi rimosso ---
+vm_ssh "mkdir -p /etc/plasmalogin.conf.d; printf '[Autologin]\nUser=$U\nSession=omnios-sicura.desktop\nRelogin=false\n' > /etc/plasmalogin.conf.d/zz-prova-modalita-sicura.conf" >> "$LOG" 2>&1
+vm_ssh "systemctl restart display-manager" >> "$LOG" 2>&1
+SID=""; for _ in $(seq 1 60); do SID=$(vm_ssh "loginctl list-sessions --no-legend" 2>/dev/null | awk -v u="$U" '$3==u {print $1; exit}'); [ -n "$SID" ] && break; sleep 2; done
+vm_ssh "rm -f /etc/plasmalogin.conf.d/zz-prova-modalita-sicura.conf" >> "$LOG" 2>&1
+if [ -n "$SID" ]; then
+  sess_env; for _ in $(seq 1 60); do plasma_up && break; sleep 2; done; sleep 10; shot 18-modalita-sicura
+  if plasma_up && ! shell_up; then rec OK "modalità sicura (voce 'OMNI OS - modalità sicura'): desktop Plasma originale, OMNI Shell non avviata"
+  else rec FAIL "modalità sicura: plasma=$(plasma_up && echo sì || echo no), OMNI Shell=$(shell_up && echo sì || echo no)"; fi
+  vm_ssh "loginctl terminate-session $SID" >/dev/null 2>&1; sleep 20
+else rec FAIL "modalità sicura: accesso non avvenuto"; fi
+
 echo "INFO core dump registrati (quelli con SEGV sono provocati dalla prova di recupero): $(vm_ssh 'coredumpctl list --no-legend 2>/dev/null | wc -l')" >> "$ev"
 vm_ssh "coredumpctl list --no-legend 2>/dev/null" >> "$ev" 2>&1
 vm_ssh "userdel -r -f $U" >/dev/null 2>&1 || true
